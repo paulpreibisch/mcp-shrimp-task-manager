@@ -8,9 +8,16 @@ import {
   flexRender,
 } from '@tanstack/react-table';
 import TaskDetailView from './TaskDetailView';
+import Tooltip from './Tooltip';
+import { useLanguage } from '../i18n/LanguageContext';
+import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
 
 function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView }) {
+  const { t } = useLanguage();
   const [selectedTask, setSelectedTask] = useState(null);
+  
+  // Generate task number mapping
+  const taskNumberMap = useMemo(() => generateTaskNumbers(data), [data]);
   
   // Reset selected task when parent requests it
   useEffect(() => {
@@ -31,29 +38,32 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   const columns = useMemo(() => [
     {
       accessorKey: 'taskNumber',
-      header: '#',
-      cell: ({ row }) => (
-        <span 
-          className="task-number clickable"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigator.clipboard.writeText(row.original.id);
-            const element = e.target;
-            element.classList.add('copied');
-            setTimeout(() => {
-              element.classList.remove('copied');
-            }, 2000);
-          }}
-          title={`Click to copy UUID to clipboard: ${row.original.id}`}
-        >
-          TASK {row.index + 1}
-        </span>
-      ),
+      header: 'Task',
+      cell: ({ row }) => {
+        const taskNumber = taskNumberMap[row.original.id] || row.index + 1;
+        return (
+          <span 
+            className="task-number clickable"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(row.original.id);
+              const element = e.target;
+              element.classList.add('copied');
+              setTimeout(() => {
+                element.classList.remove('copied');
+              }, 2000);
+            }}
+            title={`${t('clickToCopyUuid')}: ${row.original.id}`}
+          >
+            Task {taskNumber}
+          </span>
+        );
+      },
       size: 120,
     },
     {
       accessorKey: 'name',
-      header: 'Task Name',
+      header: t('taskName'),
       cell: ({ row }) => (
         <div>
           <div className="task-name">{row.original.name}</div>
@@ -69,7 +79,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
                   element.classList.remove('copied');
                 }, 2000);
               }}
-              title="Click to copy UUID to clipboard"
+              title={t('clickToCopyUuid')}
             >
               ID: {row.original.id.slice(0, 8)}...
             </span>
@@ -80,7 +90,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     },
     {
       accessorKey: 'description',
-      header: 'Description',
+      header: t('description'),
       cell: ({ getValue }) => (
         <div className="task-description">
           {getValue()?.slice(0, 150)}
@@ -91,7 +101,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     },
     {
       accessorKey: 'status',
-      header: 'Status',
+      header: t('status'),
       cell: ({ getValue }) => (
         <span className={`status-badge status-${getValue()}`}>
           {getValue()?.replace('_', ' ')}
@@ -101,7 +111,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     },
     {
       accessorKey: 'createdAt',
-      header: 'Created',
+      header: t('created'),
       cell: ({ getValue }) => {
         const date = new Date(getValue());
         return (
@@ -115,7 +125,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     },
     {
       accessorKey: 'updatedAt',
-      header: 'Updated',
+      header: t('updated'),
       cell: ({ getValue }) => {
         const date = new Date(getValue());
         return (
@@ -129,7 +139,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     },
     {
       accessorKey: 'dependencies',
-      header: 'Dependencies',
+      header: t('dependencies'),
       cell: ({ row }) => {
         const dependencies = row.original.dependencies;
         if (!dependencies || !Array.isArray(dependencies) || dependencies.length === 0) {
@@ -151,26 +161,27 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
                 return null;
               }
               
+              // Get task number for display
+              const taskNumber = getTaskNumber(depId, taskNumberMap);
+              const depTask = data.find(t => t.id === depId);
+              const depTaskName = depTask ? depTask.name : 'Unknown Task';
+              
               return (
-                <span key={depId}>
-                  <a
-                    href="#"
-                    className="dependency-link"
+                <Tooltip key={depId} content={`UUID: ${depId}`}>
+                  <span
+                    className="dependency-badge"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       // Find the task with this ID
-                      const depTask = data.find(t => t.id === depId);
                       if (depTask) {
                         setSelectedTask(depTask);
                       }
                     }}
-                    title={`View task: ${depId}`}
                   >
-                    {depId.slice(0, 8)}...
-                  </a>
-                  {index < dependencies.length - 1 && ', '}
-                </span>
+                    Task {taskNumberMap[depId] || 'Unknown'}
+                  </span>
+                </Tooltip>
               );
             }).filter(Boolean)}
           </div>
@@ -180,7 +191,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     },
     {
       accessorKey: 'actions',
-      header: 'Actions',
+      header: t('actions'),
       cell: ({ row }) => (
         <div className="actions-cell">
           <button
@@ -195,7 +206,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
                 button.textContent = '🤖';
               }, 2000);
             }}
-            title={`Copy the following to the clipboard: Use task manager to complete this shrimp task: ${row.original.id}`}
+            title={`${t('copyTaskInstruction')}: ${row.original.id}`}
           >
             🤖
           </button>
@@ -203,7 +214,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
       ),
       size: 100,
     },
-  ], [data, setSelectedTask]);
+  ], [data, setSelectedTask, t, taskNumberMap]);
 
   const table = useReactTable({
     data,
@@ -227,7 +238,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   if (data.length === 0) {
     return (
       <div className="loading">
-        No tasks found in this profile
+        {t('noTasksFound')}
       </div>
     );
   }
@@ -280,9 +291,9 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           {table.getRowModel().rows.map(row => (
             <tr 
               key={row.id}
-              className="clickable-row"
+              className={`clickable-row ${row.original.status === 'in_progress' ? 'task-in-progress' : ''}`}
               onClick={() => setSelectedTask(row.original)}
-              title="Click to view task details"
+              title={t('clickToViewTaskDetails')}
             >
               {row.getVisibleCells().map(cell => (
                 <td key={cell.id}>
@@ -296,13 +307,13 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
 
       <div className="pagination">
         <div className="pagination-info">
-          Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
+          {t('showing')} {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} {t('to')}{' '}
           {Math.min(
             (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
             table.getFilteredRowModel().rows.length
           )}{' '}
-          of {table.getFilteredRowModel().rows.length} tasks
-          {globalFilter && ` (filtered from ${data.length} total)`}
+          {t('of')} {table.getFilteredRowModel().rows.length} {t('tasks')}
+          {globalFilter && ` (${t('filteredFrom')} ${data.length} ${t('total')})`}
         </div>
         
         <div className="pagination-controls">
@@ -319,7 +330,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             {'<'}
           </button>
           <span>
-            Page {table.getState().pagination.pageIndex + 1} of{' '}
+            {t('page')} {table.getState().pagination.pageIndex + 1} {t('of')}{' '}
             {table.getPageCount()}
           </span>
           <button
