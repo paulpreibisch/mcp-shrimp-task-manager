@@ -3,35 +3,57 @@ import { releaseMetadata, getReleaseFile } from '../data/releases';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 // @ts-ignore
 import { dark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { useLanguage } from '../i18n/LanguageContext';
+import { getUIStrings, getReleaseContent } from '../i18n/documentation/index.js';
 
 function ReleaseNotes() {
   const [selectedVersion, setSelectedVersion] = useState(releaseMetadata[0]?.version || '');
   const [releaseContent, setReleaseContent] = useState('');
   const [loading, setLoading] = useState(true);
+  const { currentLanguage } = useLanguage();
+  const uiStrings = getUIStrings('releaseNotes', currentLanguage);
 
   useEffect(() => {
     if (selectedVersion) {
       loadReleaseContent(selectedVersion);
     }
-  }, [selectedVersion]);
+  }, [selectedVersion, currentLanguage]);
 
   const loadReleaseContent = async (version) => {
     setLoading(true);
     setReleaseContent('');
     
     try {
-      const releaseFile = getReleaseFile(version);
-      const response = await fetch(releaseFile);
-      
-      if (response.ok) {
-        const content = await response.text();
-        setReleaseContent(content);
+      // First check if we have translated content
+      const translatedContent = getReleaseContent(version, currentLanguage);
+      if (translatedContent && translatedContent.content) {
+        setReleaseContent(translatedContent.content);
+      } else if (currentLanguage === 'en') {
+        // Load from markdown file for English
+        const releaseFile = getReleaseFile(version);
+        const response = await fetch(releaseFile);
+        
+        if (response.ok) {
+          const content = await response.text();
+          setReleaseContent(content);
+        } else {
+          setReleaseContent(`# ${version}\n\n${uiStrings.notFound}`);
+        }
       } else {
-        setReleaseContent(`# ${version}\n\nRelease notes not found.`);
+        // Fallback to English if translation not available
+        const releaseFile = getReleaseFile(version);
+        const response = await fetch(releaseFile);
+        
+        if (response.ok) {
+          const content = await response.text();
+          setReleaseContent(content);
+        } else {
+          setReleaseContent(`# ${version}\n\n${uiStrings.notFound}`);
+        }
       }
     } catch (error) {
       console.error('Error loading release content:', error);
-      setReleaseContent(`# ${version}\n\nError loading release notes.`);
+      setReleaseContent(`# ${version}\n\n${uiStrings.error}`);
     } finally {
       setLoading(false);
     }
@@ -188,7 +210,7 @@ function ReleaseNotes() {
                 // Optional: Add visual feedback
                 const button = event.target;
                 const originalText = button.textContent;
-                button.textContent = 'Copied!';
+                button.textContent = uiStrings.copied;
                 button.classList.add('copied');
                 setTimeout(() => {
                   button.textContent = originalText;
@@ -197,7 +219,7 @@ function ReleaseNotes() {
               }}
               title="Copy code to clipboard"
             >
-              Copy
+              {uiStrings.copy}
             </button>
             <SyntaxHighlighter
               language={language}
@@ -283,12 +305,12 @@ function ReleaseNotes() {
     <div className="release-notes-tab-content">
       <div className="release-notes-inner">
         <div className="release-notes-header">
-          <h2>📋 Release Notes</h2>
+          <h2>{uiStrings.header}</h2>
         </div>
         
         <div className="release-notes-content">
           <div className="release-sidebar">
-            <h3>Versions</h3>
+            <h3>{uiStrings.versions}</h3>
             <ul className="version-list">
               {releaseMetadata.map((release) => (
                 <li key={release.version}>
@@ -310,7 +332,7 @@ function ReleaseNotes() {
           
           <div className="release-details">
             {loading ? (
-              <div className="release-loading">Loading release notes...</div>
+              <div className="release-loading">{uiStrings.loading}</div>
             ) : (
               <div className="release-markdown-content">
                 {renderMarkdown(releaseContent)}

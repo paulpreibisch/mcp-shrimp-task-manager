@@ -2,30 +2,51 @@ import React, { useState, useEffect } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 // @ts-ignore
 import { dark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
+import { useLanguage } from '../i18n/LanguageContext';
+import { getUIStrings, getReadmeContent } from '../i18n/documentation/index.js';
 
 function Help() {
   const [readmeContent, setReadmeContent] = useState('');
   const [loading, setLoading] = useState(true);
+  const { currentLanguage } = useLanguage();
+  const uiStrings = getUIStrings('help', currentLanguage);
 
   useEffect(() => {
     loadReadmeContent();
-  }, []);
+  }, [currentLanguage]);
 
   const loadReadmeContent = async () => {
     setLoading(true);
     
     try {
-      const response = await fetch('/api/readme');
-      
-      if (response.ok) {
-        const content = await response.text();
-        setReadmeContent(content);
+      // First check if we have translated content
+      const translatedContent = getReadmeContent(currentLanguage);
+      if (translatedContent && translatedContent.content) {
+        setReadmeContent(translatedContent.content);
+      } else if (currentLanguage === 'en') {
+        // Load from README.md for English
+        const response = await fetch('/api/readme');
+        
+        if (response.ok) {
+          const content = await response.text();
+          setReadmeContent(content);
+        } else {
+          setReadmeContent(`# Help\n\n${uiStrings.notFound}`);
+        }
       } else {
-        setReadmeContent('# Help\n\nREADME not found.');
+        // Fallback to English if translation not available
+        const response = await fetch('/api/readme');
+        
+        if (response.ok) {
+          const content = await response.text();
+          setReadmeContent(content);
+        } else {
+          setReadmeContent(`# Help\n\n${uiStrings.notFound}`);
+        }
       }
     } catch (error) {
       console.error('Error loading README:', error);
-      setReadmeContent('# Help\n\nError loading README.');
+      setReadmeContent(`# Help\n\n${uiStrings.error}`);
     } finally {
       setLoading(false);
     }
@@ -188,7 +209,7 @@ function Help() {
                 // Optional: Add visual feedback
                 const button = event.target;
                 const originalText = button.textContent;
-                button.textContent = 'Copied!';
+                button.textContent = uiStrings.copied;
                 button.classList.add('copied');
                 setTimeout(() => {
                   button.textContent = originalText;
@@ -197,7 +218,7 @@ function Help() {
               }}
               title="Copy code to clipboard"
             >
-              Copy
+              {uiStrings.copy}
             </button>
             <SyntaxHighlighter
               language={language}
@@ -275,13 +296,13 @@ function Help() {
     <div className="release-notes-tab-content">
       <div className="release-notes-inner">
         <div className="release-notes-header">
-          <h2>ℹ️ Help & Documentation</h2>
+          <h2>{uiStrings.header}</h2>
         </div>
         
         <div className="release-notes-content" style={{ maxWidth: '100%' }}>
           <div className="release-details" style={{ maxWidth: '100%' }}>
             {loading ? (
-              <div className="release-loading">Loading documentation...</div>
+              <div className="release-loading">{uiStrings.loading}</div>
             ) : (
               <div className="release-markdown-content">
                 {renderMarkdown(readmeContent)}

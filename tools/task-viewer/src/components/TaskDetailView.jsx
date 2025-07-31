@@ -1,6 +1,8 @@
 import React from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex, allTasks }) {
+  const { t } = useLanguage();
   if (!task) return null;
 
   const formatDate = (dateStr) => {
@@ -75,8 +77,8 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
         </div>
 
         <div className="task-detail-section">
-          <h3>Description</h3>
-          <div className="detail-content">{task.description || 'No description provided'}</div>
+          <h3>{t('description')}</h3>
+          <div className="detail-content">{task.description || t('noDescriptionProvided')}</div>
         </div>
 
         {task.notes && (
