@@ -14,6 +14,9 @@ const __dirname = path.dirname(__filename);
 const VERSION = '2.0.0';
 const PORT = process.env.SHRIMP_VIEWER_PORT || 9998;
 const SETTINGS_FILE = path.join(os.homedir(), '.shrimp-task-viewer-settings.json');
+const TEMPLATES_DIR = path.join(os.homedir(), '.shrimp-task-viewer-templates');
+const PROJECT_ROOT = path.join(__dirname, '..', '..');
+const DEFAULT_TEMPLATES_DIR = path.join(PROJECT_ROOT, 'src', 'prompts', 'templates_en');
 
 // Default agent data paths configuration
 const defaultAgents = [];
@@ -91,6 +94,13 @@ async function updateAgent(agentId, updates) {
     if (updates.projectRoot !== undefined) {
         agent.projectRoot = updates.projectRoot;
     }
+    if (updates.taskPath !== undefined) {
+        // Update the path property (which is what the agent actually uses)
+        agent.path = updates.taskPath;
+        // Also update taskPath and filePath for consistency
+        agent.taskPath = updates.taskPath;
+        agent.filePath = updates.taskPath;
+    }
     
     await saveSettings(agents);
     return agent;
@@ -113,6 +123,175 @@ function getMimeType(filePath) {
     };
     return mimeTypes[ext] || 'text/plain';
 }
+
+// Template management functions
+async function scanDefaultTemplates() {
+    try {
+        const templates = {};
+        const functionDirs = await fs.readdir(DEFAULT_TEMPLATES_DIR);
+        
+        for (const functionName of functionDirs) {
+            const functionPath = path.join(DEFAULT_TEMPLATES_DIR, functionName);
+            const stat = await fs.stat(functionPath);
+            
+            if (stat.isDirectory()) {
+                const indexPath = path.join(functionPath, 'index.md');
+                try {
+                    const content = await fs.readFile(indexPath, 'utf8');
+                    templates[functionName] = {
+                        name: functionName,
+                        content,
+                        status: 'default',
+                        source: 'built-in'
+                    };
+                } catch (err) {
+                    console.log(`No index.md found for ${functionName}`);
+                }
+            }
+        }
+        
+        return templates;
+    } catch (err) {
+        console.error('Error scanning default templates:', err);
+        return {};
+    }
+}
+
+async function scanCustomTemplates() {
+    try {
+        const templates = {};
+        await fs.mkdir(TEMPLATES_DIR, { recursive: true });
+        const functionDirs = await fs.readdir(TEMPLATES_DIR);
+        
+        for (const functionName of functionDirs) {
+            const functionPath = path.join(TEMPLATES_DIR, functionName);
+            const stat = await fs.stat(functionPath);
+            
+            if (stat.isDirectory()) {
+                const indexPath = path.join(functionPath, 'index.md');
+                try {
+                    const content = await fs.readFile(indexPath, 'utf8');
+                    templates[functionName] = {
+                        name: functionName,
+                        content,
+                        status: 'custom',
+                        source: 'user-custom'
+                    };
+                } catch (err) {
+                    console.log(`No index.md found in custom templates for ${functionName}`);
+                }
+            }
+        }
+        
+        return templates;
+    } catch (err) {
+        console.error('Error scanning custom templates:', err);
+        return {};
+    }
+}
+
+function getEnvironmentOverrides() {
+    const overrides = {};
+    
+    for (const [key, value] of Object.entries(process.env)) {
+        if (key.startsWith('MCP_PROMPT_')) {
+            let functionName = key.replace('MCP_PROMPT_', '').toLowerCase();
+            let isAppend = false;
+            
+            if (functionName.endsWith('_append')) {
+                functionName = functionName.replace('_append', '');
+                isAppend = true;
+            }
+            
+            // Convert PLAN_TASK -> planTask format
+            const camelCase = functionName.split('_').map((word, index) => 
+                index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1)
+            ).join('');
+            
+            if (!overrides[camelCase]) {
+                overrides[camelCase] = {};
+            }
+            
+            if (isAppend) {
+                overrides[camelCase].append = value;
+            } else {
+                overrides[camelCase].override = value;
+            }
+        }
+    }
+    
+    return overrides;
+}
+
+async function getAllTemplates() {
+    const defaultTemplates = await scanDefaultTemplates();
+    const customTemplates = await scanCustomTemplates();
+    const envOverrides = getEnvironmentOverrides();
+    
+    const allTemplates = { ...defaultTemplates };
+    
+    // Apply custom templates
+    for (const [name, template] of Object.entries(customTemplates)) {
+        allTemplates[name] = template;
+    }
+    
+    // Apply environment overrides
+    for (const [name, override] of Object.entries(envOverrides)) {
+        if (allTemplates[name]) {
+            if (override.override) {
+                allTemplates[name].content = override.override;
+                allTemplates[name].status = 'env-override';
+                allTemplates[name].source = 'environment';
+            } else if (override.append) {
+                allTemplates[name].content += '\n\n' + override.append;
+                allTemplates[name].status = 'env-append';
+                allTemplates[name].source = 'environment+' + allTemplates[name].source;
+            }
+        } else if (override.override) {
+            // Create new template from environment
+            allTemplates[name] = {
+                name,
+                content: override.override,
+                status: 'env-only',
+                source: 'environment'
+            };
+        }
+    }
+    
+    return allTemplates;
+}
+
+async function getTemplate(functionName) {
+    const templates = await getAllTemplates();
+    return templates[functionName] || null;
+}
+
+async function saveCustomTemplate(functionName, content) {
+    try {
+        const functionDir = path.join(TEMPLATES_DIR, functionName);
+        await fs.mkdir(functionDir, { recursive: true });
+        
+        const indexPath = path.join(functionDir, 'index.md');
+        await fs.writeFile(indexPath, content, 'utf8');
+        
+        return true;
+    } catch (err) {
+        console.error('Error saving custom template:', err);
+        return false;
+    }
+}
+
+async function deleteCustomTemplate(functionName) {
+    try {
+        const functionDir = path.join(TEMPLATES_DIR, functionName);
+        await fs.rm(functionDir, { recursive: true, force: true });
+        return true;
+    } catch (err) {
+        console.error('Error deleting custom template:', err);
+        return false;
+    }
+}
+
 
 // Serve static files from dist directory
 async function serveStaticFile(req, res, filePath) {
@@ -154,7 +333,7 @@ async function startServer() {
         
         // Enable CORS
         res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         
         if (req.method === 'OPTIONS') {
@@ -314,6 +493,133 @@ async function startServer() {
                 res.end('Error reading task file: ' + err.message);
             }
             
+        } else if (url.pathname.startsWith('/api/history/') && url.pathname.split('/').length === 4) {
+            const profileId = url.pathname.split('/').pop();
+            const agent = agents.find(a => a.id === profileId);
+            
+            if (!agent) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Agent not found');
+                return;
+            }
+            
+            try {
+                const tasksPath = agent.path || agent.filePath;
+                const memoryDir = path.join(path.dirname(tasksPath), 'memory');
+                
+                // Check if memory directory exists
+                const memoryExists = await fs.access(memoryDir).then(() => true).catch(() => false);
+                if (!memoryExists) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ history: [] }));
+                    return;
+                }
+                
+                // Read memory files
+                const files = await fs.readdir(memoryDir);
+                const memoryFiles = files.filter(f => f.startsWith('tasks_memory_') && f.endsWith('.json'));
+                
+                const historyData = await Promise.all(memoryFiles.map(async (filename) => {
+                    try {
+                        const filePath = path.join(memoryDir, filename);
+                        const content = await fs.readFile(filePath, 'utf8');
+                        const data = JSON.parse(content);
+                        
+                        // Parse timestamp from filename: tasks_memory_2025-07-31T21-54-13.json
+                        const timestampMatch = filename.match(/tasks_memory_(.+)\.json$/);
+                        let timestamp = new Date().toISOString();
+                        if (timestampMatch) {
+                            // Convert 2025-07-31T21-54-13 to 2025-07-31T21:54:13
+                            const rawTimestamp = timestampMatch[1];
+                            timestamp = rawTimestamp.replace(/T(\d{2})-(\d{2})-(\d{2})$/, 'T$1:$2:$3');
+                        }
+                        
+                        // Calculate task statistics
+                        const tasks = data.tasks || [];
+                        const stats = {
+                            total: tasks.length,
+                            completed: tasks.filter(t => t.status === 'completed').length,
+                            pending: tasks.filter(t => t.status === 'pending').length,
+                            inProgress: tasks.filter(t => t.status === 'in_progress').length
+                        };
+                        
+                        return {
+                            filename,
+                            timestamp,
+                            taskCount: tasks.length,
+                            stats,
+                            hasData: tasks.length > 0
+                        };
+                    } catch (err) {
+                        console.error(`Error reading memory file ${filename}:`, err);
+                        return null;
+                    }
+                }));
+                
+                // Filter out failed files and sort by timestamp descending
+                const validHistory = historyData.filter(h => h !== null)
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ history: validHistory }));
+                
+            } catch (err) {
+                console.error('Error loading history:', err);
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading history');
+            }
+            
+        } else if (url.pathname.startsWith('/api/history/') && url.pathname.split('/').length === 5) {
+            // Handle /api/history/{profileId}/{filename}
+            const pathParts = url.pathname.split('/');
+            const profileId = pathParts[3];
+            const filename = pathParts[4];
+            const agent = agents.find(a => a.id === profileId);
+            
+            if (!agent) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Agent not found');
+                return;
+            }
+            
+            // Security check: ensure filename is valid memory file
+            if (!filename.startsWith('tasks_memory_') || !filename.endsWith('.json') || filename.includes('..')) {
+                res.writeHead(400, { 'Content-Type': 'text/plain' });
+                res.end('Invalid filename');
+                return;
+            }
+            
+            try {
+                const tasksPath = agent.path || agent.filePath;
+                const memoryDir = path.join(path.dirname(tasksPath), 'memory');
+                const filePath = path.join(memoryDir, filename);
+                
+                // Check if file exists
+                const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
+                if (!fileExists) {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('History file not found');
+                    return;
+                }
+                
+                // Read and parse the memory file
+                const content = await fs.readFile(filePath, 'utf8');
+                const data = JSON.parse(content);
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(data));
+                
+            } catch (err) {
+                console.error('Error loading history file:', err);
+                if (err instanceof SyntaxError) {
+                    res.writeHead(400, { 'Content-Type': 'text/plain' });
+                    res.end('Invalid JSON in memory file');
+                } else {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error loading history file');
+                }
+            }
+            
         } else if (url.pathname === '/api/readme' && req.method === 'GET') {
             // Serve README.md file
             try {
@@ -329,6 +635,127 @@ async function startServer() {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('README not found');
             }
+
+        // Template management API routes
+        } else if (url.pathname === '/api/templates' && req.method === 'GET') {
+            // List all templates with status
+            try {
+                const templates = await getAllTemplates();
+                const templateList = Object.values(templates).map(template => ({
+                    name: template.name,
+                    status: template.status,
+                    source: template.source,
+                    contentLength: template.content.length
+                }));
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(templateList));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading templates: ' + err.message);
+            }
+            
+        } else if (url.pathname.startsWith('/api/templates/') && !url.pathname.includes('/duplicate')) {
+            const functionName = url.pathname.split('/').pop();
+            
+            if (req.method === 'GET') {
+                // Get specific template
+                try {
+                    const template = await getTemplate(functionName);
+                    if (!template) {
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('Template not found');
+                        return;
+                    }
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(template));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error loading template: ' + err.message);
+                }
+                
+            } else if (req.method === 'PUT') {
+                // Update template
+                let body = '';
+                req.on('data', chunk => body += chunk.toString());
+                req.on('end', async () => {
+                    try {
+                        const { content } = JSON.parse(body);
+                        if (!content) {
+                            res.writeHead(400, { 'Content-Type': 'text/plain' });
+                            res.end('Missing content');
+                            return;
+                        }
+                        
+                        const success = await saveCustomTemplate(functionName, content);
+                        if (success) {
+                            const updatedTemplate = await getTemplate(functionName);
+                            res.writeHead(200, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify(updatedTemplate));
+                        } else {
+                            res.writeHead(500, { 'Content-Type': 'text/plain' });
+                            res.end('Failed to save template');
+                        }
+                    } catch (err) {
+                        res.writeHead(500, { 'Content-Type': 'text/plain' });
+                        res.end('Error updating template: ' + err.message);
+                    }
+                });
+                
+            } else if (req.method === 'DELETE') {
+                // Reset to default (delete custom template)
+                try {
+                    const success = await deleteCustomTemplate(functionName);
+                    if (success) {
+                        const defaultTemplate = await getTemplate(functionName);
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify(defaultTemplate || { message: 'Template reset to default' }));
+                    } else {
+                        res.writeHead(500, { 'Content-Type': 'text/plain' });
+                        res.end('Failed to reset template');
+                    }
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error resetting template: ' + err.message);
+                }
+            }
+            
+        } else if (url.pathname.startsWith('/api/templates/') && url.pathname.endsWith('/duplicate') && req.method === 'POST') {
+            // Duplicate template
+            const functionName = url.pathname.split('/')[3];
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { newName } = JSON.parse(body);
+                    if (!newName) {
+                        res.writeHead(400, { 'Content-Type': 'text/plain' });
+                        res.end('Missing newName');
+                        return;
+                    }
+                    
+                    const sourceTemplate = await getTemplate(functionName);
+                    if (!sourceTemplate) {
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('Source template not found');
+                        return;
+                    }
+                    
+                    const success = await saveCustomTemplate(newName, sourceTemplate.content);
+                    if (success) {
+                        const newTemplate = await getTemplate(newName);
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify(newTemplate));
+                    } else {
+                        res.writeHead(500, { 'Content-Type': 'text/plain' });
+                        res.end('Failed to duplicate template');
+                    }
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error duplicating template: ' + err.message);
+                }
+            });
             
         } else if (url.pathname.startsWith('/releases/')) {
             // Serve release files (markdown and images)
