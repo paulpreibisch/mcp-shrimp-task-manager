@@ -1,0 +1,161 @@
+import React from 'react';
+import { Tab } from '@headlessui/react';
+
+const NestedTabs = ({ 
+  profiles, 
+  selectedProfile, 
+  handleProfileChange, 
+  handleRemoveProfile,
+  setShowAddProfile,
+  projectInnerTab,
+  setProjectInnerTab,
+  children,
+  t,
+  selectedOuterTab,
+  onOuterTabChange,
+  draggedTabIndex,
+  dragOverIndex,
+  handleDragStart,
+  handleDragOver,
+  handleDragEnd,
+  handleDrop
+}) => {
+  // Convert tab name to index for HeadlessUI
+  const tabNameToIndex = {
+    'projects': 0,
+    'release-notes': 1,
+    'readme': 2,
+    'templates': 3
+  };
+  
+  const selectedOuterIndex = tabNameToIndex[selectedOuterTab] || 0;
+  
+  // Handle tab change with index to name conversion
+  const handleOuterTabChange = (index) => {
+    const tabNames = ['projects', 'release-notes', 'readme', 'templates'];
+    if (onOuterTabChange) {
+      onOuterTabChange(tabNames[index]);
+    }
+  };
+
+  return (
+    <Tab.Group selectedIndex={selectedOuterIndex} onChange={handleOuterTabChange}>
+      <Tab.List className="tabs-list outer-tabs">
+        <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
+          <span className="tab-name">📁 {t('projects')}</span>
+        </Tab>
+        <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
+          <span className="tab-name">📋 {t('releaseNotes')}</span>
+        </Tab>
+        <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
+          <span className="tab-name">ℹ️ {t('readme')}</span>
+        </Tab>
+        <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
+          <span className="tab-name">🎨 {t('templates')}</span>
+        </Tab>
+      </Tab.List>
+
+      <Tab.Panels className="tab-panels-wrapper">
+        {/* Projects Panel */}
+        <Tab.Panel className="project-panel">
+          <div className="profile-tabs-wrapper">
+            <div className="profile-tabs-container">
+              <Tab.Group selectedIndex={profiles.findIndex(p => p.id === selectedProfile)} onChange={(index) => handleProfileChange(profiles[index]?.id)}>
+                <Tab.List className="tabs-list profile-tabs">
+                {profiles.map((profile, index) => (
+                  <Tab 
+                    key={profile.id} 
+                    className={({ selected }) => 
+                      `tab ${selected ? 'active' : ''} ${draggedTabIndex === index ? 'dragging' : ''} ${dragOverIndex === index ? 'drag-over' : ''}`
+                    }
+                    draggable
+                    onDragStart={(e) => handleDragStart && handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver && handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    onDrop={(e) => handleDrop && handleDrop(e, index)}
+                  >
+                    <span className="tab-name">{profile.name}</span>
+                    <button 
+                      className="tab-close-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveProfile(profile.id);
+                      }}
+                    >
+                      ×
+                    </button>
+                  </Tab>
+                ))}
+                <button 
+                  className="add-tab-btn"
+                  onClick={() => setShowAddProfile(true)}
+                >
+                  + {t('addProject')}
+                </button>
+              </Tab.List>
+
+              <div className="profile-content-wrapper">
+                <Tab.Panels>
+                  {profiles.map((profile) => (
+                    <Tab.Panel key={profile.id}>
+                      {/* Inner project tabs */}
+                      <div className="inner-tabs-wrapper">
+                        <Tab.Group selectedIndex={projectInnerTab === 'tasks' ? 0 : projectInnerTab === 'history' ? 1 : 2} 
+                                   onChange={(index) => setProjectInnerTab(['tasks', 'history', 'settings'][index])}>
+                          <Tab.List className="inner-tabs-list project-inner-tabs">
+                          <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
+                            <span>📋 {t('tasks')}</span>
+                          </Tab>
+                          <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
+                            <span>📊 {t('history')}</span>
+                          </Tab>
+                          <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
+                            <span>⚙️ {t('settings')}</span>
+                          </Tab>
+                        </Tab.List>
+
+                        <Tab.Panels className="inner-tab-panels">
+                          <Tab.Panel>
+                            {/* Tasks content */}
+                            {children.tasks}
+                          </Tab.Panel>
+                          <Tab.Panel>
+                            {/* History content */}
+                            {children.history}
+                          </Tab.Panel>
+                          <Tab.Panel>
+                            {/* Settings content */}
+                            {children.settings}
+                          </Tab.Panel>
+                        </Tab.Panels>
+                      </Tab.Group>
+                    </div>
+                  </Tab.Panel>
+                  ))}
+                </Tab.Panels>
+              </div>
+            </Tab.Group>
+            </div>
+          </div>
+        </Tab.Panel>
+
+        {/* Release Notes Panel */}
+        <Tab.Panel>
+          {children.releaseNotes}
+        </Tab.Panel>
+
+        {/* Readme Panel */}
+        <Tab.Panel>
+          {children.readme}
+        </Tab.Panel>
+
+        {/* Templates Panel */}
+        <Tab.Panel>
+          {children.templates}
+        </Tab.Panel>
+      </Tab.Panels>
+    </Tab.Group>
+  );
+};
+
+export default NestedTabs;

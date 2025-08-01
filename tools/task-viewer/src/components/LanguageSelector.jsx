@@ -8,6 +8,10 @@ function LanguageSelector() {
 
   const currentLang = availableLanguages.find(lang => lang.code === currentLanguage);
 
+  // Debug logging
+  console.log('Available languages:', availableLanguages);
+  console.log('Current language:', currentLanguage);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
@@ -36,20 +40,30 @@ function LanguageSelector() {
       
       {isOpen && (
         <div className="language-dropdown">
-          {availableLanguages.map(lang => (
-            <button
-              key={lang.code}
-              className={`language-option ${lang.code === currentLanguage ? 'active' : ''}`}
-              onClick={() => {
-                changeLanguage(lang.code);
-                setIsOpen(false);
-              }}
-            >
-              <span className="language-flag">{lang.flag}</span>
-              <span className="language-name">{lang.name}</span>
-              {lang.code === currentLanguage && <span className="checkmark">✓</span>}
-            </button>
-          ))}
+          {availableLanguages.map(lang => {
+            console.log('Rendering language option:', lang);
+            return (
+              <button
+                key={lang.code}
+                className={`language-option ${lang.code === currentLanguage ? 'active' : ''}`}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Clicked language:', lang.code);
+                  changeLanguage(lang.code);
+                  setIsOpen(false);
+                }}
+              >
+                <span className="language-flag">{lang.flag}</span>
+                <span className="language-name">{lang.name}</span>
+                {lang.code === currentLanguage && <span className="checkmark">✓</span>}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

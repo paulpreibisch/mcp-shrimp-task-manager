@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -17,6 +17,10 @@ function HistoryView({
   onBack
 }) {
   const { t } = useLanguage();
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [notesText, setNotesText] = useState('');
+  const [savedNotes, setSavedNotes] = useState({});
 
   const columns = useMemo(() => [
     {
@@ -24,9 +28,44 @@ function HistoryView({
       header: t('dateTime'),
       cell: ({ getValue }) => {
         const timestamp = getValue();
-        return new Date(timestamp).toLocaleString();
+        // Convert to local time using the user's timezone
+        const date = new Date(timestamp);
+        return date.toLocaleString(undefined, {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        });
       },
       size: 200,
+    },
+    {
+      accessorKey: 'notes',
+      header: t('notes'),
+      cell: ({ row }) => {
+        const noteKey = `${row.original.timestamp}`;
+        const hasNote = savedNotes[noteKey];
+        return (
+          <div className="notes-cell">
+            <button
+              className={`edit-notes-button ${hasNote ? 'has-note' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingEntry(row.original);
+                setNotesText(savedNotes[noteKey] || '');
+                setShowNotesModal(true);
+              }}
+              title={hasNote ? t('editNote') : t('addNote')}
+            >
+              {hasNote ? '📝' : '✏️'}
+            </button>
+          </div>
+        );
+      },
+      size: 80,
     },
     {
       accessorKey: 'taskCount',
@@ -43,13 +82,21 @@ function HistoryView({
         const stats = getValue();
         return (
           <div className="status-summary">
-            <span className="completed">{stats.completed}✓</span>
-            <span className="in-progress">{stats.inProgress}⚡</span>
-            <span className="pending">{stats.pending}⏳</span>
+            <span className="status-item completed" title={t('completed')}>
+              <span className="status-count">{stats.completed}</span> {t('completed')}
+            </span>
+            <span className="status-divider">•</span>
+            <span className="status-item in-progress" title={t('inProgress')}>
+              <span className="status-count">{stats.inProgress}</span> {t('inProgress')}
+            </span>
+            <span className="status-divider">•</span>
+            <span className="status-item pending" title={t('pending')}>
+              <span className="status-count">{stats.pending}</span> {t('pending')}
+            </span>
           </div>
         );
       },
-      size: 200,
+      size: 300,
     },
     {
       accessorKey: 'actions',
@@ -112,30 +159,32 @@ function HistoryView({
   }
 
   return (
-    <>
+    <div className="history-view">
       <div className="history-view-header">
         <div className="header-content" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <h2>📚 {t('projectHistory')}</h2>
-          <button 
-            className="back-button" 
-            onClick={onBack} 
-            title={t('backToTasks')}
-            style={{ 
-              backgroundColor: '#8b5cf6', 
-              color: 'white', 
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'background-color 0.2s'
-            }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#7c3aed'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#8b5cf6'}
-          >
-            ← {t('backToTasks')}
-          </button>
+          {onBack && (
+            <button 
+              className="back-button" 
+              onClick={onBack} 
+              title={t('backToTasks')}
+              style={{ 
+                backgroundColor: '#8b5cf6', 
+                color: 'white', 
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#7c3aed'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#8b5cf6'}
+            >
+              ← {t('backToTasks')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -225,7 +274,58 @@ function HistoryView({
           </button>
         </div>
       </div>
-    </>
+
+      {/* Notes Modal */}
+      {showNotesModal && (
+        <div className="modal-overlay" onClick={() => setShowNotesModal(false)}>
+          <div className="modal-content notes-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{t('editNote')}</h3>
+            <p className="modal-subtitle">
+              {editingEntry && new Date(editingEntry.timestamp).toLocaleString(undefined, {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+              })}
+            </p>
+            <textarea
+              className="notes-textarea"
+              value={notesText}
+              onChange={(e) => setNotesText(e.target.value)}
+              placeholder={t('enterNoteHere')}
+              rows={6}
+              autoFocus
+            />
+            <div className="modal-actions">
+              <button
+                className="primary-btn"
+                onClick={() => {
+                  if (editingEntry) {
+                    const noteKey = `${editingEntry.timestamp}`;
+                    setSavedNotes(prev => ({
+                      ...prev,
+                      [noteKey]: notesText
+                    }));
+                  }
+                  setShowNotesModal(false);
+                }}
+              >
+                {t('save')}
+              </button>
+              <button
+                className="secondary-btn"
+                onClick={() => setShowNotesModal(false)}
+              >
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

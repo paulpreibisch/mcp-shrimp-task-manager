@@ -1,3 +1,7 @@
+/* Import nested tabs styles */
+@import './styles/nested-tabs.css';
+
+/* Force reload test */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -62,17 +66,19 @@ body {
   right: 0;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 2147483646;
 }
 
 .controls {
   background: transparent;
-  padding: 20px 20px 0 20px;
-  margin-bottom: 0;
+  padding: 20px 20px 0 0;
+  margin-bottom: -2px;
   display: flex;
   gap: 20px;
+  position: relative;
+  z-index: 2;
   flex-wrap: wrap;
   align-items: flex-end;
-  position: relative;
 }
 
 .tab-border-line {
@@ -91,32 +97,59 @@ body {
   align-items: stretch;
   gap: 0;
   flex: 1;
+  position: relative;
+}
+
+.profile-controls::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #2c3e50;
+  z-index: 1;
 }
 
 .outer-tabs {
   width: 100%;
-  margin-bottom: -2px;
+  margin-bottom: 0;
 }
 
 .profile-tabs {
   width: 100%;
   background: #1a1f3a;
-  padding: 10px 10px 0 10px;
-  border-radius: 0 0 8px 8px;
+  padding: 10px 5px 5px 15px;
+  border-radius: 0;
   margin-top: -2px;
   z-index: 0;
 }
 
 .inner-tabs {
-  gap: 4px;
+  gap: 2px;
+  position: relative;
+  padding-left: 0;
+  margin-left: 0;
+}
+
+.inner-tabs::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #2c3e50;
+  z-index: 1;
 }
 
 .inner-tabs .tab {
   background: #2c3e50;
-  border-color: #1a1f3a;
+  border-color: #2c3e50;
   font-size: 0.85rem;
   padding: 8px 14px;
-  cursor: pointer;
+  cursor: move;
+  margin-bottom: -2px;
 }
 
 .inner-tabs .tab:hover {
@@ -124,14 +157,98 @@ body {
 }
 
 .inner-tabs .tab.active {
-  background: #4a5f7a;
-  border-color: #4a5f7a;
+  background: #16213e;
+  border-color: #2c3e50;
+  color: #4fbdba;
+  border-bottom: 2px solid #16213e;
+}
+
+/* Project Inner Tabs */
+.project-inner-tabs {
+  background: #0f1626;
+  padding: 10px 5px 0 30px;
+  border-bottom: 1px solid #2c3e50;
+  position: relative;
+}
+
+.inner-tabs-list {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid #2c3e50;
+  margin-bottom: -1px;
+  padding: 0 20px;
+}
+
+.inner-tab {
+  background: #1a1f3a;
+  border: 1px solid #2c3e50;
+  border-bottom: none;
+  color: #8b92a9;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  position: relative;
+  font-weight: 500;
+  margin-bottom: 0;
+}
+
+.inner-tab:hover {
+  background: rgba(79, 189, 186, 0.1);
+  color: #4fbdba;
+  border-color: #4fbdba;
+}
+
+.inner-tab.active {
+  background: #16213e;
+  color: #4fbdba;
+  border-color: #4fbdba;
+  border-bottom: 1px solid #16213e;
+  z-index: 1;
+}
+
+.inner-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: -1px;
+  right: -1px;
+  height: 1px;
+  background: #16213e;
+}
+
+/* Settings Panel */
+.settings-panel {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.settings-panel h2 {
+  color: #4fbdba;
+  margin-bottom: 30px;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.settings-panel .form-group {
+  margin-bottom: 25px;
+}
+
+.settings-panel .form-actions {
+  margin-top: 30px;
+  text-align: center;
 }
 
 .tabs-list {
   display: flex;
   align-items: center;
   gap: 2px;
+  position: relative;
+  z-index: 1;
+  padding-left: 0;
+  margin-left: 0;
 }
 
 .tab {
@@ -144,7 +261,7 @@ body {
   border-bottom: none;
   border-radius: 8px 8px 0 0;
   color: #bbb;
-  cursor: move;
+  cursor: pointer;
   transition: all 0.3s;
   white-space: nowrap;
   font-size: 0.9rem;
@@ -160,10 +277,23 @@ body {
 
 .tab.active {
   background: #16213e;
-  color: #fff;
+  color: #4fbdba;
   font-weight: 600;
   border-color: #2c3e50;
-  z-index: 1;
+  border-bottom: none;
+  z-index: 3;
+  position: relative;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  right: -2px;
+  height: 2px;
+  background: #16213e;
+  z-index: 4;
 }
 
 .tab.dragging {
@@ -235,10 +365,15 @@ body {
 
 .content-container {
   background: #16213e;
-  border-radius: 0 0 10px 10px;
+  border-radius: 0 10px 10px 0;
   border: 2px solid #2c3e50;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  margin-top: 0;
+  margin-left: 15px;
+  margin-right: 5px;
+  position: relative;
+  z-index: 1;
 }
 
 .stats-and-search-container {
@@ -246,10 +381,11 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   background: #16213e;
   padding: 15px 20px;
   border-bottom: 1px solid #2c3e50;
+  min-height: 60px;
 }
 
 .controls-right {
@@ -305,6 +441,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .search-input {
@@ -437,15 +574,25 @@ body {
   font-weight: 600;
   color: #4fbdba;
   border-bottom: 2px solid #2c3e50;
+  border-right: 1px solid #2c3e50;
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
+.table th:last-child {
+  border-right: none;
+}
+
 .table td {
   padding: 12px;
   border-bottom: 1px solid #2c3e50;
+  border-right: 1px solid #2c3e50;
   vertical-align: top;
+}
+
+.table td:last-child {
+  border-right: none;
 }
 
 .table tbody tr:hover {
@@ -617,9 +764,10 @@ body {
 .stats-and-search-container .stats-grid {
   display: flex !important;
   gap: 20px;
-  margin-bottom: 10px;
+  margin-bottom: 0;
   align-items: center;
   flex-wrap: nowrap;
+  flex: 0 1 auto;
 }
 
 /* Fallback for general stats grid */
@@ -628,6 +776,70 @@ body {
   gap: 20px;
   margin-bottom: 10px;
   align-items: center;
+}
+
+/* Ensure single-line layout on desktop */
+@media (min-width: 769px) {
+  .stats-and-search-container {
+    flex-wrap: nowrap !important;
+    gap: 15px;
+    display: flex !important;
+    flex-direction: row !important;
+  }
+  
+  .stats-and-search-container .stats-grid {
+    flex: 0 0 auto;
+    gap: 10px;
+  }
+  
+  .search-container {
+    flex: 0 0 auto;
+  }
+  
+  .search-input {
+    width: 200px;
+  }
+  
+  .controls-right {
+    flex: 0 0 auto;
+    gap: 10px;
+  }
+  
+  /* Make buttons more compact */
+  .history-button,
+  .edit-profile-button,
+  .refresh-button {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+  }
+  
+  /* Compact auto-refresh controls */
+  .auto-refresh-controls {
+    gap: 5px;
+  }
+  
+  .auto-refresh {
+    font-size: 0.85rem;
+  }
+  
+  .refresh-interval-select {
+    padding: 4px 8px;
+    font-size: 0.85rem;
+  }
+  
+  /* More compact stat cards */
+  .stat-card {
+    padding: 3px 6px;
+    gap: 5px;
+  }
+  
+  .stat-card h3 {
+    font-size: 0.65rem;
+  }
+  
+  .stat-card .value {
+    font-size: 0.9rem;
+  }
 }
 
 .stat-card {
@@ -741,6 +953,59 @@ body {
   max-width: 500px;
   width: 90%;
   border: 2px solid #4fbdba;
+}
+
+/* Notes Modal Styles */
+.notes-modal {
+  max-width: 600px;
+}
+
+.modal-subtitle {
+  color: #8b92a9;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.notes-textarea {
+  width: 100%;
+  background: #0f1626;
+  border: 1px solid #2c3e50;
+  border-radius: 6px;
+  padding: 12px;
+  color: #ffffff;
+  font-size: 1rem;
+  resize: vertical;
+  margin-bottom: 20px;
+}
+
+.notes-textarea:focus {
+  outline: none;
+  border-color: #4fbdba;
+}
+
+/* Edit Notes Button */
+.edit-notes-button {
+  background: transparent;
+  border: 1px solid #2c3e50;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 1rem;
+}
+
+.edit-notes-button:hover {
+  background: rgba(79, 189, 186, 0.1);
+  border-color: #4fbdba;
+}
+
+.edit-notes-button.has-note {
+  border-color: #4fbdba;
+  background: rgba(79, 189, 186, 0.05);
+}
+
+.notes-cell {
+  text-align: center;
 }
 
 .modal-content h3 {
@@ -862,13 +1127,73 @@ body {
   border-radius: 8px;
 }
 
+/* Historical Task Detail View */
+.task-detail-view.historical {
+  background: linear-gradient(135deg, #2a1f3e 0%, #1a1f2e 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.task-detail-view.historical .task-detail-header {
+  background: rgba(139, 92, 246, 0.1);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.task-detail-view.historical .task-number {
+  background: #6b3ba0;
+}
+
+/* History Tasks View Styles */
+.history-tasks-view {
+  background: linear-gradient(135deg, #2a1f3e 0%, #1a1f2e 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.history-tasks-header {
+  padding: 30px 20px;
+  background: rgba(139, 92, 246, 0.1);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.history-tasks-view .table {
+  background: rgba(0, 0, 0, 0.2);
+  margin: 0 20px;
+}
+
+.history-tasks-view .stat-card {
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.history-tasks-view .stats-grid {
+  margin: 20px;
+}
+
+.history-tasks-view .pagination {
+  margin: 0 20px 20px 20px;
+}
+
+.history-tasks-view .empty-tasks {
+  margin: 20px;
+}
+
 .task-detail-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: 30px 20px;
   border-bottom: 1px solid #2c3e50;
   background: rgba(0, 0, 0, 0.2);
+  margin-bottom: 30px;
 }
 
 .task-detail-header h2 {
@@ -905,6 +1230,82 @@ body {
 
 .back-button:hover {
   background: #34495e;
+}
+
+/* History View Styles */
+.history-view {
+  background: linear-gradient(135deg, #2a1f3e 0%, #1a1f2e 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* History View Header */
+.history-view-header {
+  padding: 30px 20px;
+  background: rgba(139, 92, 246, 0.1);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.history-view-header h2 {
+  margin: 0;
+  color: #e9d5ff;
+  font-size: 24px;
+}
+
+.history-view .table {
+  background: rgba(0, 0, 0, 0.2);
+  margin: 0 20px;
+}
+
+.history-view .status-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(139, 92, 246, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.status-count {
+  font-weight: 600;
+}
+
+.status-item.completed {
+  color: #4ade80;
+}
+
+.status-item.in-progress {
+  color: #f59e0b;
+}
+
+.status-item.pending {
+  color: #8b92a9;
+}
+
+.status-divider {
+  color: #4a5568;
+  margin: 0 4px;
+}
+
+.history-view .pagination {
+  margin: 0 20px 20px 20px;
 }
 
 .task-detail-content {
@@ -1055,12 +1456,12 @@ body {
 
 .dependency-badge {
   display: inline-block;
-  background: #2563eb;
+  background: #0f4c75;
   color: #ffffff;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
   cursor: pointer;
   transition: all 0.2s;
   user-select: none;
@@ -2640,6 +3041,8 @@ body {
 /* Language Selector Styles */
 .language-selector {
   position: relative;
+  z-index: 2147483646;
+  isolation: isolate;
 }
 
 .language-selector-button {
@@ -2675,12 +3078,12 @@ body {
   top: 100%;
   right: 0;
   margin-top: 4px;
-  background: #16213e;
+  background: #0a0f1e;
   border: 1px solid #34495e;
   border-radius: 6px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
   overflow: hidden;
-  z-index: 999999;
+  z-index: 2147483647;
   min-width: 160px;
 }
 
@@ -2689,6 +3092,7 @@ body {
   padding: 12px 16px;
   background: transparent;
   border: none;
+  pointer-events: auto;
   color: #ecf0f1;
   cursor: pointer;
   display: flex;

@@ -130,12 +130,15 @@ function HistoryTasksView({
 
   // If a task is selected, show the detail view
   if (selectedTask) {
+    const taskIndex = tasks.findIndex(t => t.id === selectedTask.id);
     return (
       <TaskDetailView 
         task={selectedTask}
+        taskIndex={taskIndex}
         allTasks={tasks}
         onBack={() => setSelectedTask(null)}
         projectRoot={null} // History doesn't have project root context
+        isHistorical={true} // Indicate this is from history
       />
     );
   }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 
-function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex, allTasks }) {
+function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex, allTasks, isHistorical = false }) {
   const { t } = useLanguage();
   if (!task) return null;
 
@@ -33,14 +33,14 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
   };
 
   return (
-    <div className="task-detail-view">
+    <div className={`task-detail-view ${isHistorical ? 'historical' : ''}`}>
       <div className="task-detail-header">
         <h2>
           <span className="task-number">TASK {taskIndex + 1}</span>
           {task.name}
         </h2>
         <button className="back-button" onClick={onBack}>
-          ← Back to Tasks
+          ← {isHistorical ? 'Back to Task History' : 'Back to Tasks'}
         </button>
       </div>
       

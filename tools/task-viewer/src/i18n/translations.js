@@ -113,7 +113,7 @@ export const translations = {
     
     // Project management
     readme: "Readme",
-    addTab: "Add Tab",
+    addTab: "Add Project",
     history: "History",
     viewProjectHistory: "View project history",
     totalTasks: "Total Tasks",
@@ -128,6 +128,7 @@ export const translations = {
     projectHistory: "Project History",
     dateTime: "Date/Time",
     taskCount: "Task Count",
+    notes: "Notes",
     statusSummary: "Status Summary",
     viewTasks: "View Tasks",
     noHistoryFound: "No History Found",
@@ -148,22 +149,22 @@ export const translations = {
     refreshTemplateData: "Refresh template data",
     searchTasksPlaceholder: "🔍 Search tasks...",
     searchTasksTitle: "Search and filter tasks by any text content",
-    refreshCurrentProfile: "Refresh current profile data - reload tasks from file",
+    refreshCurrentProfile: "Refresh current project data - reload tasks from file",
     
-    // Profile management
+    // Project management
     editProjectSettings: "Edit Project Settings",
-    chooseProfileTitle: "Choose a profile from the dropdown above",
-    selectProfileToViewTasks: "Select a profile to view tasks",
-    noProfilesAvailable: "No profiles available",
-    noProfilesClickAddTab: "No profiles available. Click \"Add Tab\" to create one.",
+    chooseProfileTitle: "Choose a project from the dropdown above",
+    selectProfileToViewTasks: "Select a project to view tasks",
+    noProfilesAvailable: "No projects available",
+    noProfilesClickAddTab: "No projects available. Click \"Add Project\" to create one.",
     loadingTasksFromFile: "Loading tasks from file",
     loadingTasks: "Loading tasks... ⏳",
     
-    // Add/Edit Profile forms
-    addNewProfile: "Add New Profile",
-    profileName: "Profile Name",
+    // Add/Edit Project forms
+    addNewProfile: "Add New Project",
+    profileName: "Project Name",
     profileNamePlaceholder: "e.g., Team Alpha Tasks",
-    profileNameTitle: "Enter a descriptive name for this profile",
+    profileNameTitle: "Enter a descriptive name for this project",
     taskFolderPath: "Task Folder Path",
     taskFolderPathPlaceholder: "/path/to/shrimp_data_folder",
     taskFolderPathTitle: "Enter the path to your shrimp data folder containing tasks.json",
@@ -176,31 +177,32 @@ export const translations = {
     projectRootTitle: "Enter the absolute path to the project root directory",
     projectRootHint: "This enables clickable file links that open in VS Code",
     optional: "optional",
-    addProfile: "Add Profile",
+    addProfile: "Add Project",
     cancelAndCloseDialog: "Cancel and close this dialog",
+    addProject: "Add Project",
     
-    // Edit Profile specific
+    // Edit Project specific
     projectRoot: "Project Root",
     taskPath: "Task Path",
-    editProfileNameTitle: "Edit the profile name",
+    editProfileNameTitle: "Edit the project name",
     projectRootEditPlaceholder: "e.g., /home/user/projects/my-project",
     projectRootEditTitle: "Set the project root path to enable VS Code file links",
     projectRootEditHint: "Set this to enable clickable VS Code links for task files",
     taskPathPlaceholder: "/path/to/shrimp_data_folder/tasks.json",
-    taskPathTitle: "Edit the path to the tasks.json file for this profile",
+    taskPathTitle: "Edit the path to the tasks.json file for this project",
     taskPathHint: "Path to the tasks.json file containing the project's task data",
     saveChanges: "Save Changes",
     
     // Toast messages with parameters
-    profileAddedSuccess: "Profile \"{name}\" added successfully!",
-    profileRemovedSuccess: "Profile \"{name}\" removed successfully!",
+    profileAddedSuccess: "Project \"{name}\" added successfully!",
+    profileRemovedSuccess: "Project \"{name}\" removed successfully!",
     templateSavedSuccess: "Template \"{name}\" saved successfully!",
     templateResetSuccess: "Template \"{name}\" reset to default!",
     templateDuplicatedSuccess: "Template duplicated as \"{name}\"!",
     rememberToRestartClaude: "💡 Remember to restart Claude Code after setting environment variables",
     
     // Confirmation dialogs
-    confirmRemoveProfile: "Are you sure you want to remove this profile? This action cannot be undone.",
+    confirmRemoveProfile: "Are you sure you want to remove this project? This action cannot be undone.",
     confirmResetTemplate: "Are you sure you want to reset {name} to default? This will remove any customizations.",
     
     // Template activation
@@ -220,7 +222,7 @@ export const translations = {
     created: "Created",
     updated: "Updated",
     dependencies: "Dependencies",
-    noTasksFound: "No tasks found in this profile",
+    noTasksFound: "No tasks found in this project",
     noDescriptionProvided: "No description provided",
     viewTask: "View task",
     clickToCopyUuid: "Click to copy UUID to clipboard",
@@ -230,7 +232,12 @@ export const translations = {
     
     // Template Editor
     saving: "Saving...",
-    saveTemplate: "Save Template"
+    saveTemplate: "Save Template",
+    
+    // Project Settings
+    projectSettings: "Project Settings",
+    settingsSaved: "Settings saved successfully",
+    settings: "Settings"
   },
   
   zh: {
@@ -347,7 +354,7 @@ export const translations = {
     
     // Project management
     readme: "说明文档",
-    addTab: "添加标签",
+    addTab: "添加项目",
     history: "历史记录",
     viewProjectHistory: "查看项目历史记录",
     totalTasks: "任务总数",
@@ -362,6 +369,7 @@ export const translations = {
     projectHistory: "项目历史",
     dateTime: "日期/时间",
     taskCount: "任务数量",
+    notes: "备注",
     statusSummary: "状态摘要",
     viewTasks: "查看任务",
     noHistoryFound: "未找到历史记录",
@@ -382,22 +390,22 @@ export const translations = {
     refreshTemplateData: "刷新模板数据",
     searchTasksPlaceholder: "🔍 搜索任务...",
     searchTasksTitle: "按任何文本内容搜索和筛选任务",
-    refreshCurrentProfile: "刷新当前配置文件数据 - 从文件重新加载任务",
+    refreshCurrentProfile: "刷新当前项目数据 - 从文件重新加载任务",
     
-    // Profile management
+    // Project management
     editProjectSettings: "编辑项目设置",
-    chooseProfileTitle: "从上面的下拉菜单中选择配置文件",
-    selectProfileToViewTasks: "选择配置文件以查看任务",
-    noProfilesAvailable: "没有可用的配置文件",
-    noProfilesClickAddTab: "没有可用的配置文件。点击\"添加标签\"创建一个。",
+    chooseProfileTitle: "从上面的下拉菜单中选择项目",
+    selectProfileToViewTasks: "选择项目以查看任务",
+    noProfilesAvailable: "没有可用的项目",
+    noProfilesClickAddTab: "没有可用的项目。点击\"添加项目\"创建一个。",
     loadingTasksFromFile: "从文件加载任务",
     loadingTasks: "加载任务中... ⏳",
     
-    // Add/Edit Profile forms
-    addNewProfile: "添加新配置文件",
-    profileName: "配置文件名称",
+    // Add/Edit Project forms
+    addNewProfile: "添加新项目",
+    profileName: "项目名称",
     profileNamePlaceholder: "例如，团队 Alpha 任务",
-    profileNameTitle: "为此配置文件输入描述性名称",
+    profileNameTitle: "为此项目输入描述性名称",
     taskFolderPath: "任务文件夹路径",
     taskFolderPathPlaceholder: "/path/to/shrimp_data_folder",
     taskFolderPathTitle: "输入包含 tasks.json 的虾米数据文件夹路径",
@@ -410,31 +418,32 @@ export const translations = {
     projectRootTitle: "输入项目根目录的绝对路径",
     projectRootHint: "这启用了在 VS Code 中打开的可点击文件链接",
     optional: "可选",
-    addProfile: "添加配置文件",
+    addProfile: "添加项目",
     cancelAndCloseDialog: "取消并关闭对话框",
+    addProject: "添加项目",
     
-    // Edit Profile specific
+    // Edit Project specific
     projectRoot: "项目根目录",
     taskPath: "任务路径",
-    editProfileNameTitle: "编辑配置文件名称",
+    editProfileNameTitle: "编辑项目名称",
     projectRootEditPlaceholder: "例如，/home/user/projects/my-project",
     projectRootEditTitle: "设置项目根路径以启用 VS Code 文件链接",
     projectRootEditHint: "设置此项以启用任务文件的可点击 VS Code 链接",
     taskPathPlaceholder: "/path/to/shrimp_data_folder/tasks.json",
-    taskPathTitle: "编辑此配置文件的 tasks.json 文件路径",
+    taskPathTitle: "编辑此项目的 tasks.json 文件路径",
     taskPathHint: "包含项目任务数据的 tasks.json 文件路径",
     saveChanges: "保存更改",
     
     // Toast messages with parameters
-    profileAddedSuccess: "配置文件\"{name}\"添加成功！",
-    profileRemovedSuccess: "配置文件\"{name}\"删除成功！",
+    profileAddedSuccess: "项目\"{name}\"添加成功！",
+    profileRemovedSuccess: "项目\"{name}\"删除成功！",
     templateSavedSuccess: "模板\"{name}\"保存成功！",
     templateResetSuccess: "模板\"{name}\"重置为默认！",
     templateDuplicatedSuccess: "模板复制为\"{name}\"！",
     rememberToRestartClaude: "💡 记住在设置环境变量后重启 Claude Code",
     
     // Confirmation dialogs
-    confirmRemoveProfile: "您确定要删除此配置文件吗？此操作无法撤消。",
+    confirmRemoveProfile: "您确定要删除此项目吗？此操作无法撤消。",
     confirmResetTemplate: "您确定要将 {name} 重置为默认吗？这将删除任何自定义设置。",
     
     // Template activation
@@ -454,7 +463,7 @@ export const translations = {
     created: "创建时间",
     updated: "更新时间",
     dependencies: "依赖项",
-    noTasksFound: "此配置文件中未找到任务",
+    noTasksFound: "此项目中未找到任务",
     noDescriptionProvided: "未提供描述",
     viewTask: "查看任务",
     clickToCopyUuid: "点击复制 UUID 到剪贴板",
@@ -464,7 +473,12 @@ export const translations = {
     
     // Template Editor
     saving: "保存中...",
-    saveTemplate: "保存模板"
+    saveTemplate: "保存模板",
+    
+    // Project Settings
+    projectSettings: "项目设置",
+    settingsSaved: "设置保存成功",
+    settings: "设置"
   },
   
   es: {
@@ -581,7 +595,7 @@ export const translations = {
     
     // Project management
     readme: "Léeme",
-    addTab: "Agregar Pestaña",
+    addTab: "Agregar Proyecto",
     history: "Historial",
     viewProjectHistory: "Ver historial del proyecto",
     totalTasks: "Total de Tareas",
@@ -596,6 +610,7 @@ export const translations = {
     projectHistory: "Historial del Proyecto",
     dateTime: "Fecha/Hora",
     taskCount: "Cantidad de Tareas",
+    notes: "Notas",
     statusSummary: "Resumen de Estado",
     viewTasks: "Ver Tareas",
     noHistoryFound: "No se Encontró Historial",
@@ -616,22 +631,22 @@ export const translations = {
     refreshTemplateData: "Actualizar datos de plantillas",
     searchTasksPlaceholder: "🔍 Buscar tareas...",
     searchTasksTitle: "Buscar y filtrar tareas por cualquier contenido de texto",
-    refreshCurrentProfile: "Actualizar datos del perfil actual - recargar tareas desde archivo",
+    refreshCurrentProfile: "Actualizar datos del proyecto actual - recargar tareas desde archivo",
     
-    // Profile management
+    // Project management
     editProjectSettings: "Editar Configuración del Proyecto",
-    chooseProfileTitle: "Elige un perfil del menú desplegable de arriba",
-    selectProfileToViewTasks: "Selecciona un perfil para ver las tareas",
-    noProfilesAvailable: "No hay perfiles disponibles",
-    noProfilesClickAddTab: "No hay perfiles disponibles. Haz clic en \"Agregar Pestaña\" para crear uno.",
+    chooseProfileTitle: "Elige un proyecto del menú desplegable de arriba",
+    selectProfileToViewTasks: "Selecciona un proyecto para ver las tareas",
+    noProfilesAvailable: "No hay proyectos disponibles",
+    noProfilesClickAddTab: "No hay proyectos disponibles. Haz clic en \"Agregar Proyecto\" para crear uno.",
     loadingTasksFromFile: "Cargando tareas desde archivo",
     loadingTasks: "Cargando tareas... ⏳",
     
-    // Add/Edit Profile forms
-    addNewProfile: "Agregar Nuevo Perfil",
-    profileName: "Nombre del Perfil",
+    // Add/Edit Project forms
+    addNewProfile: "Agregar Nuevo Proyecto",
+    profileName: "Nombre del Proyecto",
     profileNamePlaceholder: "ej., Tareas del Equipo Alpha",
-    profileNameTitle: "Ingresa un nombre descriptivo para este perfil",
+    profileNameTitle: "Ingresa un nombre descriptivo para este proyecto",
     taskFolderPath: "Ruta de la Carpeta de Tareas",
     taskFolderPathPlaceholder: "/ruta/a/carpeta_datos_shrimp",
     taskFolderPathTitle: "Ingresa la ruta a tu carpeta de datos shrimp que contiene tasks.json",
@@ -644,31 +659,32 @@ export const translations = {
     projectRootTitle: "Ingresa la ruta absoluta al directorio raíz del proyecto",
     projectRootHint: "Esto habilita enlaces de archivos clicables que se abren en VS Code",
     optional: "opcional",
-    addProfile: "Agregar Perfil",
+    addProfile: "Agregar Proyecto",
     cancelAndCloseDialog: "Cancelar y cerrar diálogo",
+    addProject: "Agregar Proyecto",
     
-    // Edit Profile specific
+    // Edit Project specific
     projectRoot: "Raíz del Proyecto",
     taskPath: "Ruta de Tareas",
-    editProfileNameTitle: "Editar el nombre del perfil",
+    editProfileNameTitle: "Editar el nombre del proyecto",
     projectRootEditPlaceholder: "ej., /home/usuario/proyectos/mi-proyecto",
     projectRootEditTitle: "Establece la ruta raíz del proyecto para habilitar enlaces de archivos VS Code",
     projectRootEditHint: "Establece esto para habilitar enlaces VS Code clicables para archivos de tareas",
     taskPathPlaceholder: "/ruta/a/carpeta_datos_shrimp/tasks.json",
-    taskPathTitle: "Editar la ruta al archivo tasks.json para este perfil",
+    taskPathTitle: "Editar la ruta al archivo tasks.json para este proyecto",
     taskPathHint: "Ruta al archivo tasks.json que contiene los datos de tareas del proyecto",
     saveChanges: "Guardar Cambios",
     
     // Toast messages with parameters
-    profileAddedSuccess: "¡Perfil \"{name}\" agregado exitosamente!",
-    profileRemovedSuccess: "¡Perfil \"{name}\" eliminado exitosamente!",
+    profileAddedSuccess: "¡Proyecto \"{name}\" agregado exitosamente!",
+    profileRemovedSuccess: "¡Proyecto \"{name}\" eliminado exitosamente!",
     templateSavedSuccess: "¡Plantilla \"{name}\" guardada exitosamente!",
     templateResetSuccess: "¡Plantilla \"{name}\" restablecida a predeterminada!",
     templateDuplicatedSuccess: "¡Plantilla duplicada como \"{name}\"!",
     rememberToRestartClaude: "💡 Recuerda reiniciar Claude Code después de establecer variables de entorno",
     
     // Confirmation dialogs
-    confirmRemoveProfile: "¿Estás seguro de que quieres eliminar este perfil? Esta acción no se puede deshacer.",
+    confirmRemoveProfile: "¿Estás seguro de que quieres eliminar este proyecto? Esta acción no se puede deshacer.",
     confirmResetTemplate: "¿Estás seguro de que quieres restablecer {name} a predeterminado? Esto eliminará cualquier personalización.",
     
     // Template activation
@@ -688,7 +704,7 @@ export const translations = {
     created: "Creado",
     updated: "Actualizado",
     dependencies: "Dependencias",
-    noTasksFound: "No se encontraron tareas en este perfil",
+    noTasksFound: "No se encontraron tareas en este proyecto",
     noDescriptionProvided: "No se proporcionó descripción",
     viewTask: "Ver tarea",
     clickToCopyUuid: "Haz clic para copiar UUID al portapapeles",
@@ -698,7 +714,12 @@ export const translations = {
     
     // Template Editor
     saving: "Guardando...",
-    saveTemplate: "Guardar Plantilla"
+    saveTemplate: "Guardar Plantilla",
+    
+    // Project Settings
+    projectSettings: "Configuración del Proyecto",
+    settingsSaved: "Configuración guardada exitosamente",
+    settings: "Configuración"
   }
 };
 

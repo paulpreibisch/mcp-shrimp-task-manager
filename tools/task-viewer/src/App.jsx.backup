@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import TaskTable from './components/TaskTable';
 import ReleaseNotes from './components/ReleaseNotes';
 import Help from './components/Help';
@@ -13,7 +13,6 @@ import ToastContainer from './components/ToastContainer';
 import LanguageSelector from './components/LanguageSelector';
 import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
 import { parseUrlState, updateUrl, pushUrlState, getInitialUrlState, cleanUrlStateForTab } from './utils/urlStateSync';
-import NestedTabs from './components/NestedTabs';
 
 function AppContent() {
   const { t, currentLanguage } = useLanguage();
@@ -27,14 +26,8 @@ function AppContent() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [autoRefresh, setAutoRefresh] = useState(() => {
-    const saved = localStorage.getItem('autoRefresh');
-    return saved !== null ? saved === 'true' : true;
-  });
-  const [refreshInterval, setRefreshInterval] = useState(() => {
-    const saved = localStorage.getItem('refreshInterval');
-    return saved !== null ? Number(saved) : 30;
-  });
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(5);
   const [globalFilter, setGlobalFilter] = useState('');
   const [showAddProfile, setShowAddProfile] = useState(false);
   const [draggedTabIndex, setDraggedTabIndex] = useState(null);
@@ -45,7 +38,7 @@ function AppContent() {
   const [isInDetailView, setIsInDetailView] = useState(false);
   const [forceResetDetailView, setForceResetDetailView] = useState(0);
   
-  // Outer tab state
+  // Outer tab state (new)
   const [selectedOuterTab, setSelectedOuterTab] = useState(initialUrlState.tab || 'projects'); // 'projects', 'release-notes', 'readme', 'templates'
   
   // Template management states
@@ -91,7 +84,7 @@ function AppContent() {
     if (autoRefresh && selectedProfile) {
       interval = setInterval(() => {
         console.log(`Auto-refreshing tasks every ${refreshInterval}s...`);
-        loadTasks(selectedProfile, true); // Force refresh for auto-refresh
+        loadTasks(selectedProfile);
       }, refreshInterval * 1000);
     }
     return () => {
@@ -164,15 +157,6 @@ function AppContent() {
     }
     localStorage.setItem('selectedOuterTab', selectedOuterTab);
   }, [selectedProfile, selectedOuterTab]);
-  
-  // Save auto-refresh settings to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem('autoRefresh', autoRefresh.toString());
-  }, [autoRefresh]);
-  
-  useEffect(() => {
-    localStorage.setItem('refreshInterval', refreshInterval.toString());
-  }, [refreshInterval]);
   
   // Update URL when history view changes
   useEffect(() => {
@@ -247,31 +231,12 @@ function AppContent() {
     }
   };
 
-  // Cache for loaded tasks to avoid redundant API calls
-  const tasksCache = useMemo(() => new Map(), []);
-  const loadingRef = useRef(false);
-  
-  const loadTasks = async (profileId, forceRefresh = false) => {
+  const loadTasks = async (profileId) => {
     if (!profileId) {
       setTasks([]);
       return;
     }
 
-    // Prevent multiple simultaneous loads
-    if (loadingRef.current) {
-      console.log('Load already in progress, skipping...');
-      return;
-    }
-
-    // Check cache first unless force refresh
-    if (!forceRefresh && tasksCache.has(profileId)) {
-      const cachedData = tasksCache.get(profileId);
-      setTasks(cachedData.tasks);
-      setProjectRoot(cachedData.projectRoot);
-      return;
-    }
-
-    loadingRef.current = true;
     setLoading(true);
     setError('');
 
@@ -283,13 +248,10 @@ function AppContent() {
       
       const data = await response.json();
       console.log('Received tasks data:', data.tasks?.length, 'tasks');
-      
-      // Cache the data
-      tasksCache.set(profileId, {
-        tasks: data.tasks || [],
-        projectRoot: data.projectRoot || null
-      });
-      
+      const task880f = data.tasks?.find(t => t.id === '880f4dd8-a603-4bb9-8d4d-5033887d0e0f');
+      if (task880f) {
+        console.log('Task 880f4dd8 status from API:', task880f.status);
+      }
       setTasks(data.tasks || []);
       setProjectRoot(data.projectRoot || null);
     } catch (err) {
@@ -297,7 +259,6 @@ function AppContent() {
       setTasks([]);
     } finally {
       setLoading(false);
-      loadingRef.current = false;
     }
   };
 
@@ -864,350 +825,479 @@ function AppContent() {
         </div>
       </header>
 
-        <NestedTabs 
-          profiles={profiles}
-          selectedProfile={selectedProfile}
-          handleProfileChange={handleProfileChange}
-          handleRemoveProfile={handleRemoveProfile}
-          setShowAddProfile={setShowAddProfile}
-          projectInnerTab={projectInnerTab}
-          setProjectInnerTab={(tab) => {
-            setProjectInnerTab(tab);
-            if (tab === 'history' && !historyData.length && selectedProfile) {
-              loadHistory(selectedProfile);
-            }
-            // Update URL
-            pushUrlState({
-              tab: 'projects',
-              profile: selectedProfile,
-              projectTab: tab,
-              lang: currentLanguage
-            });
-          }}
-          t={t}
-          selectedOuterTab={selectedOuterTab}
-          onOuterTabChange={handleOuterTabChange}
-          draggedTabIndex={draggedTabIndex}
-          dragOverIndex={dragOverIndex}
-          handleDragStart={handleDragStart}
-          handleDragOver={handleDragOver}
-          handleDragEnd={handleDragEnd}
-          handleDrop={handleDrop}
-          loading={loading}
-          error={error}
-          children={{
-            tasks: !selectedProfile && profiles.length > 0 ? (
-              <div className="content-container" name="no-profile-container">
-                <div className="loading" name="no-profile-message" title="Choose a profile from the dropdown above">Select a profile to view tasks</div>
+      <div className="controls" name="main-controls-section">
+        <div className="tab-border-line" name="tab-border-separator"></div>
+        <div className="profile-controls" name="profile-selection-controls">
+          {/* Outer tabs */}
+          <div className="outer-tabs" name="outer-tabs-container">
+            <div className="tabs-list" name="outer-tabs-list" style={{ display: 'flex', width: '100%' }}>
+              <div 
+                className={`tab ${selectedOuterTab === 'projects' ? 'active' : ''}`}
+                name="projects-tab"
+                onClick={() => handleOuterTabChange('projects')}
+                title="View project profiles"
+              >
+                <span className="tab-name">📁 {t('projects')}</span>
               </div>
-            ) : profiles.length === 0 ? (
-              <div className="content-container" name="no-profile-container">
-                <div className="loading" name="no-profile-message" title={t('noProfilesAvailable')}>{t('noProfilesClickAddTab')}</div>
+              <div 
+                className={`tab ${selectedOuterTab === 'release-notes' ? 'active' : ''}`}
+                name="release-notes-tab"
+                onClick={() => handleOuterTabChange('release-notes')}
+                title="View release notes"
+              >
+                <span className="tab-name">📋 {t('releaseNotes')}</span>
               </div>
-            ) : loading && selectedProfile ? (
-              <div className="content-container" name="loading-container">
-                <div className="loading" name="loading-indicator" title="Loading tasks from file">Loading tasks... ⏳</div>
+              <div 
+                className={`tab ${selectedOuterTab === 'readme' ? 'active' : ''}`}
+                name="readme-tab"
+                onClick={() => handleOuterTabChange('readme')}
+                title="View README documentation"
+              >
+                <span className="tab-name">ℹ️ {t('readme')}</span>
               </div>
-            ) : error ? (
-              <div className="error" name="error-message-display" title="Error information">{error}</div>
-            ) : (
-              <div className="content-container" name="main-content-area">
-                <div className="stats-and-search-container" name="stats-and-search-row">
-                  <div className="search-container" name="task-search-controls">
-                    <input
-                      type="text"
-                      name="task-search-input"
-                      className="search-input"
-                      placeholder={t('searchTasksPlaceholder')}
-                      value={globalFilter}
-                      onChange={(e) => setGlobalFilter(e.target.value)}
-                      title="Search and filter tasks by any text content"
-                    />
-                  </div>
-
-                  <div className="stats-grid" name="task-statistics-display">
-                    <div className="stat-card" name="total-tasks-counter" title="Total number of tasks in this profile">
-                      <h3>{t('totalTasks')}</h3>
-                      <div className="value">{stats.total}</div>
-                    </div>
-                    <div className="stat-card" name="completed-tasks-counter" title="Number of completed tasks">
-                      <h3>{t('completed')}</h3>
-                      <div className="value">{stats.completed}</div>
-                    </div>
-                    <div className="stat-card" name="in-progress-tasks-counter" title="Number of tasks currently in progress">
-                      <h3>{t('inProgress')}</h3>
-                      <div className="value">{stats.inProgress}</div>
-                    </div>
-                    <div className="stat-card" name="pending-tasks-counter" title="Number of pending tasks">
-                      <h3>{t('pending')}</h3>
-                      <div className="value">{stats.pending}</div>
-                    </div>
-                  </div>
-
-                  <div className="controls-right" name="right-side-controls">
+              <div 
+                className={`tab ${selectedOuterTab === 'templates' ? 'active' : ''}`}
+                name="templates-tab"
+                onClick={() => handleOuterTabChange('templates')}
+                title="Manage prompt templates"
+              >
+                <span className="tab-name">🎨 {t('templates')}</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Inner profile tabs - only visible when projects tab is selected */}
+          {selectedOuterTab === 'projects' && (
+            <div className="profile-tabs" name="profile-tabs-container">
+              <div className="tabs-list inner-tabs" name="profile-tabs-list" style={{ display: 'flex', width: '100%' }}>
+                {profiles.map((profile, index) => (
+                  <div 
+                    key={profile.id} 
+                    className={`tab ${selectedProfile === profile.id ? 'active' : ''} ${draggedTabIndex === index ? 'dragging' : ''} ${dragOverIndex === index ? 'drag-over' : ''}`}
+                    name={`profile-tab-${profile.id}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    onDrop={(e) => handleDrop(e, index)}
+                    onClick={() => handleProfileChange(profile.id)}
+                    title={`Switch to ${profile.name} profile - Drag to reorder tabs`}
+                  >
+                    <span className="tab-name">{profile.name}</span>
                     <button 
-                      name="refresh-profile-button"
-                      className="refresh-button profile-refresh"
-                      onClick={() => loadTasks(selectedProfile, true)} // Force refresh on manual click
-                      disabled={loading || !selectedProfile}
-                      title="Refresh current profile data - reload tasks from file"
+                      className="tab-close-btn"
+                      name={`close-tab-${profile.id}-button`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveProfile(profile.id);
+                      }}
+                      title={`Close ${profile.name} tab and remove profile`}
                     >
-                      {loading ? '⏳' : '🔄'}
+                      ×
                     </button>
+                  </div>
+                ))}
+                <button 
+                  className="add-tab-btn"
+                  name="add-new-tab-button"
+                  onClick={() => setShowAddProfile(true)}
+                  title="Add a new project"
+                >
+                  + {t('addProject')}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
-                    <div className="auto-refresh-controls" name="auto-refresh-controls" title="Configure automatic task refresh">
-                      <label className="auto-refresh" name="auto-refresh-toggle">
-                        <input 
-                          type="checkbox"
-                          name="auto-refresh-checkbox"
-                          checked={autoRefresh}
-                          onChange={(e) => setAutoRefresh(e.target.checked)}
-                          title={`Enable automatic refresh every ${refreshInterval} seconds`}
-                        />
-                        {t('autoRefresh')}
-                      </label>
-                      
-                      <select 
-                        className="refresh-interval-select"
-                        name="refresh-interval-selector"
-                        value={refreshInterval}
-                        onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                        disabled={!autoRefresh}
-                        title="Set how often to automatically refresh task data"
-                      >
-                        <option value={5}>5s</option>
-                        <option value={10}>10s</option>
-                        <option value={15}>15s</option>
-                        <option value={30}>30s</option>
-                        <option value={60}>1m</option>
-                        <option value={120}>2m</option>
-                        <option value={300}>5m</option>
-                      </select>
-                    </div>
+      {selectedOuterTab === 'release-notes' ? (
+        <div className="content-container" name="release-notes-content-area">
+          <ReleaseNotes />
+        </div>
+      ) : selectedOuterTab === 'readme' ? (
+        <div className="content-container" name="help-content-area">
+          <Help />
+        </div>
+      ) : selectedOuterTab === 'templates' ? (
+        <div className="content-container" name="templates-content-area">
+          {templateView === 'list' ? (
+            <>
+              <div className="stats-and-search-container" name="templates-stats-and-search-row">
+                <div className="search-container" name="template-search-controls">
+                  <input
+                    type="text"
+                    name="template-search-input"
+                    className="search-input"
+                    placeholder={t('searchTemplatesPlaceholder')}
+                    value={globalFilter}
+                    onChange={(e) => setGlobalFilter(e.target.value)}
+                    title="Search and filter templates by function name or description"
+                  />
+                </div>
+
+                <div className="stats-grid" name="template-statistics-display">
+                  <div className="stat-card" name="total-templates-counter" title="Total number of templates">
+                    <h3>Total Templates</h3>
+                    <div className="value">{templates.length}</div>
+                  </div>
+                  <div className="stat-card" name="default-templates-counter" title="Number of default templates">
+                    <h3>Default</h3>
+                    <div className="value">{templates.filter(t => t.status === 'default').length}</div>
+                  </div>
+                  <div className="stat-card" name="custom-templates-counter" title="Number of custom templates">
+                    <h3>Custom</h3>
+                    <div className="value">{templates.filter(t => t.status === 'custom').length}</div>
+                  </div>
+                  <div className="stat-card" name="env-override-templates-counter" title="Number of environment overridden templates">
+                    <h3>Env Override</h3>
+                    <div className="value">{templates.filter(t => t.status.includes('env')).length}</div>
                   </div>
                 </div>
 
-                <TaskTable 
-                  data={tasks} 
-                  globalFilter={globalFilter}
-                  onGlobalFilterChange={setGlobalFilter}
-                  projectRoot={projectRoot}
-                  onDetailViewChange={setIsInDetailView}
-                  resetDetailView={forceResetDetailView}
+                <div className="controls-right" name="template-controls-right">
+                  <button 
+                    name="refresh-templates-button"
+                    className="refresh-button template-refresh"
+                    onClick={() => loadTemplates()}
+                    disabled={templatesLoading}
+                    title="Refresh template data"
+                  >
+                    {templatesLoading ? '⏳' : '🔄'}
+                  </button>
+                </div>
+              </div>
+
+              <TemplateManagement 
+                data={templates}
+                globalFilter={globalFilter}
+                onGlobalFilterChange={setGlobalFilter}
+                loading={templatesLoading}
+                error={templatesError}
+                onEditTemplate={handleEditTemplate}
+                onResetTemplate={handleResetTemplate}
+                onDuplicateTemplate={handleDuplicateTemplate}
+                onPreviewTemplate={handlePreviewTemplate}
+                onActivateTemplate={handleActivateTemplate}
+              />
+              
+              {templatesError && (
+                <div className="error" name="templates-error-message" title="Template error information">{templatesError}</div>
+              )}
+            </>
+          ) : templateView === 'edit' ? (
+            // Template Editor View
+            <TemplateEditor
+              template={editingTemplate}
+              onSave={handleSaveTemplate}
+              onCancel={handleCancelTemplateEdit}
+              loading={templateEditorLoading}
+              error={templatesError}
+              onActivate={handleActivateTemplate}
+            />
+          ) : templateView === 'preview' ? (
+            // Template Preview View
+            <TemplatePreview
+              template={previewingTemplate}
+              onBack={() => {
+                setTemplateView('list');
+                setPreviewingTemplate(null);
+              }}
+              onActivate={handleActivateTemplate}
+              onEdit={handleEditTemplate}
+              activating={activatingTemplate}
+            />
+          ) : templateView === 'duplicate' ? (
+            // Template Duplicate View
+            <DuplicateTemplateView
+              template={duplicatingTemplate}
+              onBack={() => {
+                setTemplateView('list');
+                setDuplicatingTemplate(null);
+              }}
+              onConfirm={confirmDuplicateTemplate}
+            />
+          ) : null}
+        </div>
+      ) : selectedOuterTab === 'projects' && selectedProfile && (
+        <>
+          {/* Inner project tabs */}
+          <div className="project-inner-tabs" name="project-inner-tabs">
+            <div className="inner-tabs-list">
+              <button
+                className={`inner-tab ${projectInnerTab === 'tasks' ? 'active' : ''}`}
+                onClick={() => {
+                  setProjectInnerTab('tasks');
+                  // Update URL
+                  pushUrlState({
+                    tab: 'projects',
+                    profile: selectedProfile,
+                    projectTab: 'tasks',
+                    lang: currentLanguage
+                  });
+                }}
+              >
+                📋 {t('tasks')}
+              </button>
+              <button
+                className={`inner-tab ${projectInnerTab === 'history' ? 'active' : ''}`}
+                onClick={() => {
+                  setProjectInnerTab('history');
+                  if (!historyData.length) {
+                    loadHistory(selectedProfile);
+                  }
+                  // Update URL
+                  pushUrlState({
+                    tab: 'projects',
+                    profile: selectedProfile,
+                    projectTab: 'history',
+                    lang: currentLanguage
+                  });
+                }}
+              >
+                📚 {t('history')}
+              </button>
+              <button
+                className={`inner-tab ${projectInnerTab === 'settings' ? 'active' : ''}`}
+                onClick={() => {
+                  setProjectInnerTab('settings');
+                  // Update URL
+                  pushUrlState({
+                    tab: 'projects',
+                    profile: selectedProfile,
+                    projectTab: 'settings',
+                    lang: currentLanguage
+                  });
+                }}
+              >
+                ⚙️ {t('settings')}
+              </button>
+            </div>
+          </div>
+
+          {/* Tasks Tab Content */}
+          {projectInnerTab === 'tasks' && (
+          <div className="content-container" name="main-content-area">
+            <div className="stats-and-search-container" name="stats-and-search-row">
+              <div className="search-container" name="task-search-controls">
+                <input
+                  type="text"
+                  name="task-search-input"
+                  className="search-input"
+                  placeholder={t('searchTasksPlaceholder')}
+                  value={globalFilter}
+                  onChange={(e) => setGlobalFilter(e.target.value)}
+                  title="Search and filter tasks by any text content"
                 />
               </div>
-            ),
-            history: (
-              <div className="content-container" name="history-content-area">
-                {historyView === 'details' ? (
-                  <HistoryTasksView
-                    tasks={selectedHistoryTasks}
-                    historyEntry={selectedHistoryEntry}
-                    loading={historyLoading}
-                    error={historyError}
-                    onBack={() => {
-                      setHistoryView('list');
-                      setSelectedHistoryEntry(null);
-                      setSelectedHistoryTasks([]);
-                    }}
-                  />
-                ) : (
-                  <HistoryView
-                    data={historyData}
-                    loading={historyLoading}
-                    error={historyError}
-                    onViewTasks={loadHistoryTasks}
-                    onBack={null} // No back button needed in tab view
-                  />
-                )}
-              </div>
-            ),
-            settings: (
-              <div className="content-container" name="settings-content-area">
-                <div className="settings-panel">
-                  <h2>{t('projectSettings')}</h2>
-                  {profiles.find(p => p.id === selectedProfile) && (
-                    <form name="settings-form" onSubmit={(e) => {
-                      e.preventDefault();
-                      const formData = new FormData(e.target);
-                      const name = formData.get('name');
-                      const taskPath = formData.get('taskPath');
-                      const projectRoot = formData.get('projectRoot');
-                      
-                      // Validate task path format
-                      if (taskPath && !taskPath.trim().endsWith('.json')) {
-                        setError('Task path must point to a .json file');
-                        return;
-                      }
-                      
-                      handleUpdateProfile(selectedProfile, { 
-                        name: name.trim(),
-                        taskPath: taskPath?.trim() || null,
-                        projectRoot: projectRoot || null 
-                      });
-                      showToast(t('settingsSaved'), 'success');
-                    }}>
-                      <div className="form-group" name="profile-name-group">
-                        <label htmlFor="settingsProfileName">{t('profileName')}:</label>
-                        <input 
-                          type="text" 
-                          id="settingsProfileName"
-                          name="name"
-                          defaultValue={profiles.find(p => p.id === selectedProfile)?.name}
-                          placeholder="e.g., Team Alpha Tasks"
-                          title="Edit the profile name"
-                          required
-                        />
-                      </div>
-                      <div className="form-group" name="task-path-group">
-                        <label htmlFor="settingsTaskPath">{t('taskPath')}:</label>
-                        <input 
-                          type="text" 
-                          id="settingsTaskPath"
-                          name="taskPath"
-                          defaultValue={profiles.find(p => p.id === selectedProfile)?.taskPath || profiles.find(p => p.id === selectedProfile)?.filePath || profiles.find(p => p.id === selectedProfile)?.path || ''}
-                          placeholder={t('taskPathPlaceholder')}
-                          title={t('taskPathTitle')}
-                          required
-                        />
-                        <span className="form-hint">
-                          {t('taskPathHint')}
-                        </span>
-                      </div>
-                      <div className="form-group" name="project-root-group">
-                        <label htmlFor="settingsProjectRoot">{t('projectRoot')} ({t('optional')}):</label>
-                        <input 
-                          type="text" 
-                          id="settingsProjectRoot"
-                          name="projectRoot"
-                          defaultValue={profiles.find(p => p.id === selectedProfile)?.projectRoot || ''}
-                          placeholder={t('projectRootEditPlaceholder')}
-                          title={t('projectRootEditTitle')}
-                        />
-                        <span className="form-hint">
-                          {t('projectRootEditHint')}
-                        </span>
-                      </div>
-                      <div className="form-actions" name="settings-form-buttons">
-                        <button 
-                          type="submit" 
-                          name="submit-settings"
-                          className="primary-btn"
-                          title="Save project settings"
-                        >
-                          {t('saveChanges')}
-                        </button>
-                      </div>
-                    </form>
-                  )}
+
+              <div className="stats-grid" name="task-statistics-display">
+                <div className="stat-card" name="total-tasks-counter" title="Total number of tasks in this profile">
+                  <h3>{t('totalTasks')}</h3>
+                  <div className="value">{stats.total}</div>
+                </div>
+                <div className="stat-card" name="completed-tasks-counter" title="Number of completed tasks">
+                  <h3>{t('completed')}</h3>
+                  <div className="value">{stats.completed}</div>
+                </div>
+                <div className="stat-card" name="in-progress-tasks-counter" title="Number of tasks currently in progress">
+                  <h3>{t('inProgress')}</h3>
+                  <div className="value">{stats.inProgress}</div>
+                </div>
+                <div className="stat-card" name="pending-tasks-counter" title="Number of pending tasks">
+                  <h3>{t('pending')}</h3>
+                  <div className="value">{stats.pending}</div>
                 </div>
               </div>
-            ),
-            releaseNotes: <ReleaseNotes />,
-            readme: <Help />,
-            templates: (
-              <div className="content-container" name="templates-content-area">
-                {templateView === 'list' ? (
-                  <>
-                    <div className="stats-and-search-container" name="templates-stats-and-search-row">
-                      <div className="search-container" name="template-search-controls">
-                        <input
-                          type="text"
-                          name="template-search-input"
-                          className="search-input"
-                          placeholder={t('searchTemplatesPlaceholder')}
-                          value={globalFilter}
-                          onChange={(e) => setGlobalFilter(e.target.value)}
-                          title="Search and filter templates by function name or description"
-                        />
-                      </div>
 
-                      <div className="stats-grid" name="template-statistics-display">
-                        <div className="stat-card" name="total-templates-counter" title="Total number of templates">
-                          <h3>Total Templates</h3>
-                          <div className="value">{templates.length}</div>
-                        </div>
-                        <div className="stat-card" name="default-templates-counter" title="Number of default templates">
-                          <h3>Default</h3>
-                          <div className="value">{templates.filter(t => t.status === 'default').length}</div>
-                        </div>
-                        <div className="stat-card" name="custom-templates-counter" title="Number of custom templates">
-                          <h3>Custom</h3>
-                          <div className="value">{templates.filter(t => t.status === 'custom').length}</div>
-                        </div>
-                        <div className="stat-card" name="env-override-templates-counter" title="Number of environment overridden templates">
-                          <h3>Env Override</h3>
-                          <div className="value">{templates.filter(t => t.status.includes('env')).length}</div>
-                        </div>
-                      </div>
+              <div className="controls-right" name="right-side-controls">
+                <button 
+                  name="refresh-profile-button"
+                  className="refresh-button profile-refresh"
+                  onClick={() => loadTasks(selectedProfile)}
+                  disabled={loading || !selectedProfile}
+                  title="Refresh current profile data - reload tasks from file"
+                >
+                  {loading ? '⏳' : '🔄'}
+                </button>
 
-                      <div className="controls-right" name="template-controls-right">
-                        <button 
-                          name="refresh-templates-button"
-                          className="refresh-button template-refresh"
-                          onClick={() => loadTemplates()}
-                          disabled={templatesLoading}
-                          title="Refresh template data"
-                        >
-                          {templatesLoading ? '⏳' : '🔄'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <TemplateManagement 
-                      data={templates}
-                      globalFilter={globalFilter}
-                      onGlobalFilterChange={setGlobalFilter}
-                      loading={templatesLoading}
-                      error={templatesError}
-                      onEditTemplate={handleEditTemplate}
-                      onResetTemplate={handleResetTemplate}
-                      onDuplicateTemplate={handleDuplicateTemplate}
-                      onPreviewTemplate={handlePreviewTemplate}
-                      onActivateTemplate={handleActivateTemplate}
+                <div className="auto-refresh-controls" name="auto-refresh-controls" title="Configure automatic task refresh">
+                  <label className="auto-refresh" name="auto-refresh-toggle">
+                    <input 
+                      type="checkbox"
+                      name="auto-refresh-checkbox"
+                      checked={autoRefresh}
+                      onChange={(e) => setAutoRefresh(e.target.checked)}
+                      title={`Enable automatic refresh every ${refreshInterval} seconds`}
                     />
-                    
-                    {templatesError && (
-                      <div className="error" name="templates-error-message" title="Template error information">{templatesError}</div>
-                    )}
-                  </>
-                ) : templateView === 'edit' ? (
-                  // Template Editor View
-                  <TemplateEditor
-                    template={editingTemplate}
-                    onSave={handleSaveTemplate}
-                    onCancel={handleCancelTemplateEdit}
-                    loading={templateEditorLoading}
-                    error={templatesError}
-                    onActivate={handleActivateTemplate}
-                  />
-                ) : templateView === 'preview' ? (
-                  // Template Preview View
-                  <TemplatePreview
-                    template={previewingTemplate}
-                    onBack={() => {
-                      setTemplateView('list');
-                      setPreviewingTemplate(null);
-                    }}
-                    onActivate={handleActivateTemplate}
-                    onEdit={handleEditTemplate}
-                    activating={activatingTemplate}
-                  />
-                ) : templateView === 'duplicate' ? (
-                  // Template Duplicate View
-                  <DuplicateTemplateView
-                    template={duplicatingTemplate}
-                    onBack={() => {
-                      setTemplateView('list');
-                      setDuplicatingTemplate(null);
-                    }}
-                    onConfirm={confirmDuplicateTemplate}
-                  />
-                ) : null}
+                    {t('autoRefresh')}
+                  </label>
+                  
+                  <select 
+                    className="refresh-interval-select"
+                    name="refresh-interval-selector"
+                    value={refreshInterval}
+                    onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                    disabled={!autoRefresh}
+                    title="Set how often to automatically refresh task data"
+                  >
+                    <option value={5}>5s</option>
+                    <option value={10}>10s</option>
+                    <option value={15}>15s</option>
+                    <option value={30}>30s</option>
+                    <option value={60}>1m</option>
+                    <option value={120}>2m</option>
+                    <option value={300}>5m</option>
+                  </select>
+                </div>
               </div>
-            )
-          }}
-        />
+            </div>
+
+            <TaskTable 
+              data={tasks} 
+              globalFilter={globalFilter}
+              onGlobalFilterChange={setGlobalFilter}
+              projectRoot={projectRoot}
+              onDetailViewChange={setIsInDetailView}
+              resetDetailView={forceResetDetailView}
+            />
+          </div>
+          )}
+
+          {/* History Tab Content */}
+          {projectInnerTab === 'history' && (
+            <div className="content-container" name="history-content-area">
+              {historyView === 'details' ? (
+                <HistoryTasksView
+                  tasks={selectedHistoryTasks}
+                  historyEntry={selectedHistoryEntry}
+                  loading={historyLoading}
+                  error={historyError}
+                  onBack={() => {
+                    setHistoryView('list');
+                    setSelectedHistoryEntry(null);
+                    setSelectedHistoryTasks([]);
+                  }}
+                />
+              ) : (
+                <HistoryView
+                  data={historyData}
+                  loading={historyLoading}
+                  error={historyError}
+                  onViewTasks={loadHistoryTasks}
+                  onBack={null} // No back button needed in tab view
+                />
+              )}
+            </div>
+          )}
+
+          {/* Settings Tab Content */}
+          {projectInnerTab === 'settings' && (
+            <div className="content-container" name="settings-content-area">
+              <div className="settings-panel">
+                <h2>{t('projectSettings')}</h2>
+                {profiles.find(p => p.id === selectedProfile) && (
+                  <form name="settings-form" onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    const name = formData.get('name');
+                    const taskPath = formData.get('taskPath');
+                    const projectRoot = formData.get('projectRoot');
+                    
+                    // Validate task path format
+                    if (taskPath && !taskPath.trim().endsWith('.json')) {
+                      setError('Task path must point to a .json file');
+                      return;
+                    }
+                    
+                    handleUpdateProfile(selectedProfile, { 
+                      name: name.trim(),
+                      taskPath: taskPath?.trim() || null,
+                      projectRoot: projectRoot || null 
+                    });
+                    showToast(t('settingsSaved'), 'success');
+                  }}>
+                    <div className="form-group" name="profile-name-group">
+                      <label htmlFor="settingsProfileName">{t('profileName')}:</label>
+                      <input 
+                        type="text" 
+                        id="settingsProfileName"
+                        name="name"
+                        defaultValue={profiles.find(p => p.id === selectedProfile)?.name}
+                        placeholder="e.g., Team Alpha Tasks"
+                        title="Edit the profile name"
+                        required
+                      />
+                    </div>
+                    <div className="form-group" name="task-path-group">
+                      <label htmlFor="settingsTaskPath">{t('taskPath')}:</label>
+                      <input 
+                        type="text" 
+                        id="settingsTaskPath"
+                        name="taskPath"
+                        defaultValue={profiles.find(p => p.id === selectedProfile)?.taskPath || profiles.find(p => p.id === selectedProfile)?.filePath || profiles.find(p => p.id === selectedProfile)?.path || ''}
+                        placeholder={t('taskPathPlaceholder')}
+                        title={t('taskPathTitle')}
+                        required
+                      />
+                      <span className="form-hint">
+                        {t('taskPathHint')}
+                      </span>
+                    </div>
+                    <div className="form-group" name="project-root-group">
+                      <label htmlFor="settingsProjectRoot">{t('projectRoot')} ({t('optional')}):</label>
+                      <input 
+                        type="text" 
+                        id="settingsProjectRoot"
+                        name="projectRoot"
+                        defaultValue={profiles.find(p => p.id === selectedProfile)?.projectRoot || ''}
+                        placeholder={t('projectRootEditPlaceholder')}
+                        title={t('projectRootEditTitle')}
+                      />
+                      <span className="form-hint">
+                        {t('projectRootEditHint')}
+                      </span>
+                    </div>
+                    <div className="form-actions" name="settings-form-buttons">
+                      <button 
+                        type="submit" 
+                        name="submit-settings"
+                        className="primary-btn"
+                        title="Save project settings"
+                      >
+                        {t('saveChanges')}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+
+      {error && selectedOuterTab === 'projects' && (
+        <div className="error" name="error-message-display" title="Error information">{error}</div>
+      )}
+
+      {selectedOuterTab === 'projects' && !selectedProfile && profiles.length > 0 && (
+        <div className="content-container" name="no-profile-container">
+          <div className="loading" name="no-profile-message" title="Choose a profile from the dropdown above">Select a profile to view tasks</div>
+        </div>
+      )}
+      
+      {selectedOuterTab === 'projects' && profiles.length === 0 && (
+        <div className="content-container" name="no-profile-container">
+          <div className="loading" name="no-profile-message" title={t('noProfilesAvailable')}>{t('noProfilesClickAddTab')}</div>
+        </div>
+      )}
+
+      {loading && selectedOuterTab === 'projects' && selectedProfile && (
+        <div className="content-container" name="loading-container">
+          <div className="loading" name="loading-indicator" title="Loading tasks from file">Loading tasks... ⏳</div>
+        </div>
+      )}
 
       {showAddProfile && (
         <div className="modal-overlay" name="add-profile-modal-overlay" onClick={() => setShowAddProfile(false)} title="Click outside to close">
@@ -1260,8 +1350,8 @@ function AppContent() {
                   type="text" 
                   id="projectRoot"
                   name="projectRoot"
-                  placeholder="/path/to/your/project/root"
-                  title="Optional: Enter the project root path for VS Code file links"
+                  placeholder="e.g., /home/user/my-project"
+                  title="Enter the absolute path to the project root directory"
                 />
                 <small className="form-hint">This enables clickable file links that open in VS Code</small>
               </div>
@@ -1288,6 +1378,8 @@ function AppContent() {
           </div>
         </div>
       )}
+
+
     </div>
   );
 }
