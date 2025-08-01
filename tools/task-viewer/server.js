@@ -22,7 +22,7 @@ const DEFAULT_TEMPLATES_DIR = path.join(PROJECT_ROOT, 'src', 'prompts', 'templat
 // Default agent data paths configuration
 const defaultAgents = [];
 
-let agents = [];
+let profiles = []; // Project profiles, not agent files
 
 // Load or create settings file
 async function loadSettings() {
@@ -40,9 +40,9 @@ async function loadSettings() {
 }
 
 // Save settings file
-async function saveSettings(agentList) {
+async function saveSettings(profileList) {
     const settings = {
-        agents: agentList,
+        agents: profileList, // Keep 'agents' key for backward compatibility with settings file
         lastUpdated: new Date().toISOString(),
         version: VERSION
     };
@@ -74,26 +74,26 @@ async function saveGlobalSettings(settings) {
     await fs.writeFile(GLOBAL_SETTINGS_FILE, JSON.stringify(settings, null, 2));
 }
 
-// Add new agent
-async function addAgent(name, filePath, projectRoot = null) {
+// Add new profile
+async function addProfile(name, filePath, projectRoot = null) {
     const id = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
-    const newAgent = { id, name, path: filePath, projectRoot };
+    const newProfile = { id, name, path: filePath, projectRoot };
     
-    const existingIndex = agents.findIndex(a => a.id === id);
+    const existingIndex = profiles.findIndex(p => p.id === id);
     if (existingIndex >= 0) {
-        agents[existingIndex] = newAgent;
+        profiles[existingIndex] = newProfile;
     } else {
-        agents.push(newAgent);
+        profiles.push(newProfile);
     }
     
-    await saveSettings(agents);
-    return newAgent;
+    await saveSettings(profiles);
+    return newProfile;
 }
 
-// Remove agent
-async function removeAgent(agentId) {
-    agents = agents.filter(a => a.id !== agentId);
-    await saveSettings(agents);
+// Remove profile
+async function removeProfile(profileId) {
+    profiles = profiles.filter(p => p.id !== profileId);
+    await saveSettings(profiles);
 }
 
 // Rename agent
@@ -352,7 +352,7 @@ async function serveStaticFile(req, res, filePath) {
 
 // Initialize and start server
 async function startServer() {
-    agents = await loadSettings();
+    profiles = await loadSettings();
     
     const server = http.createServer(async (req, res) => {
         const url = new URL(req.url, `http://${req.headers.host}`);
@@ -967,32 +967,41 @@ async function startServer() {
             if (pathParts.length === 4) {
                 // /api/agents/project/:profileId
                 const profileId = pathParts[3];
-                const agent = agents.find(a => a.id === profileId);
+                console.log('Looking for project agents for profileId:', profileId);
+                console.log('Available profiles:', profiles.map(p => ({ id: p.id, name: p.name, projectRoot: p.projectRoot })));
+                const profile = profiles.find(p => p.id === profileId);
                 
-                if (!agent) {
+                if (!profile) {
+                    console.log('Profile not found for profileId:', profileId);
                     res.writeHead(404, { 'Content-Type': 'text/plain' });
                     res.end('Profile not found');
                     return;
                 }
                 
                 try {
-                    const projectRoot = agent.projectRoot;
+                    const projectRoot = profile.projectRoot;
+                    console.log('Project root:', projectRoot);
                     if (!projectRoot) {
+                        console.log('No project root configured for profile:', profileId);
                         res.writeHead(200, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify([]));
                         return;
                     }
                     
                     const agentsDir = path.join(projectRoot, '.claude', 'agents');
+                    console.log('Looking for agents in directory:', agentsDir);
                     let agentFiles = [];
                     
                     try {
                         const files = await fs.readdir(agentsDir);
+                        console.log('Found files in agents directory:', files);
                         agentFiles = files.filter(file => 
                             file.endsWith('.md') || file.endsWith('.yaml') || file.endsWith('.yml')
                         );
+                        console.log('Filtered agent files:', agentFiles);
                     } catch (err) {
                         // Directory doesn't exist, return empty array
+                        console.log('Error reading agents directory:', err.message);
                         res.writeHead(200, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify([]));
                         return;
