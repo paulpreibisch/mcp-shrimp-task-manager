@@ -98,38 +98,38 @@ async function removeProfile(profileId) {
 
 // Rename agent
 async function renameAgent(agentId, newName) {
-    const agent = agents.find(a => a.id === agentId);
-    if (!agent) {
-        throw new Error('Agent not found');
+    const profile = profiles.find(p => p.id === agentId);
+    if (!profile) {
+        throw new Error('Profile not found');
     }
-    agent.name = newName;
-    await saveSettings(agents);
-    return agent;
+    profile.name = newName;
+    await saveSettings(profiles);
+    return profile;
 }
 
 async function updateAgent(agentId, updates) {
-    const agent = agents.find(a => a.id === agentId);
-    if (!agent) {
-        throw new Error('Agent not found');
+    const profile = profiles.find(p => p.id === agentId);
+    if (!profile) {
+        throw new Error('Profile not found');
     }
     
     // Apply updates
     if (updates.name !== undefined) {
-        agent.name = updates.name;
+        profile.name = updates.name;
     }
     if (updates.projectRoot !== undefined) {
-        agent.projectRoot = updates.projectRoot;
+        profile.projectRoot = updates.projectRoot;
     }
     if (updates.taskPath !== undefined) {
         // Update the path property (which is what the agent actually uses)
-        agent.path = updates.taskPath;
+        profile.path = updates.taskPath;
         // Also update taskPath and filePath for consistency
         agent.taskPath = updates.taskPath;
-        agent.filePath = updates.taskPath;
+        profile.filePath = updates.taskPath;
     }
     
-    await saveSettings(agents);
-    return agent;
+    await saveSettings(profiles);
+    return profile;
 }
 
 // MIME type helper
@@ -481,11 +481,11 @@ async function startServer() {
             // Handle task update
             const pathParts = url.pathname.split('/');
             const agentId = pathParts[pathParts.length - 2];
-            console.log('Update task route - agentId:', agentId, 'agents:', agents.map(a => a.id));
-            const agent = agents.find(a => a.id === agentId);
+            console.log('Update task route - profileId:', agentId, 'profiles:', profiles.map(p => p.id));
+            const profile = profiles.find(p => p.id === agentId);
             
-            if (!agent) {
-                console.error('Agent not found:', agentId, 'Available agents:', agents.map(a => a.id));
+            if (!profile) {
+                console.error('Profile not found:', agentId, 'Available profiles:', profiles.map(p => p.id));
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Profile not found');
                 return;
@@ -498,7 +498,7 @@ async function startServer() {
                     const { taskId, updates } = JSON.parse(body);
                     
                     // Read current tasks
-                    const data = await fs.readFile(agent.path, 'utf8');
+                    const data = await fs.readFile(profile.path, 'utf8');
                     const tasksData = JSON.parse(data);
                     
                     // Find and update the task
@@ -517,7 +517,7 @@ async function startServer() {
                     };
                     
                     // Write back to file
-                    await fs.writeFile(agent.path, JSON.stringify(tasksData, null, 2));
+                    await fs.writeFile(profile.path, JSON.stringify(tasksData, null, 2));
                     
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(tasksData.tasks[taskIndex]));
@@ -533,9 +533,9 @@ async function startServer() {
             const pathParts = url.pathname.split('/');
             const taskId = pathParts[pathParts.length - 2];
             const agentId = pathParts[pathParts.length - 3];
-            const agent = agents.find(a => a.id === agentId);
+            const profile = profiles.find(p => p.id === agentId);
             
-            if (!agent) {
+            if (!profile) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Profile not found');
                 return;
@@ -543,7 +543,7 @@ async function startServer() {
             
             try {
                 // Read current tasks
-                const data = await fs.readFile(agent.path, 'utf8');
+                const data = await fs.readFile(profile.path, 'utf8');
                 const tasksData = JSON.parse(data);
                 
                 // Find and remove the task
@@ -558,7 +558,7 @@ async function startServer() {
                 tasksData.tasks.splice(taskIndex, 1);
                 
                 // Write back to file
-                await fs.writeFile(agent.path, JSON.stringify(tasksData, null, 2));
+                await fs.writeFile(profile.path, JSON.stringify(tasksData, null, 2));
                 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true, message: 'Task deleted successfully' }));
@@ -570,20 +570,20 @@ async function startServer() {
             
         } else if (url.pathname.startsWith('/api/tasks/')) {
             const agentId = url.pathname.split('?')[0].split('/').pop();
-            const agent = agents.find(a => a.id === agentId);
+            const profile = profiles.find(p => p.id === agentId);
             
-            if (!agent) {
+            if (!profile) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Profile not found');
                 return;
             }
             
             try {
-                console.log(`Reading tasks from: ${agent.path}`);
-                const stats = await fs.stat(agent.path);
+                console.log(`Reading tasks from: ${profile.path}`);
+                const stats = await fs.stat(profile.path);
                 console.log(`File last modified: ${stats.mtime}`);
                 
-                const data = await fs.readFile(agent.path, 'utf8');
+                const data = await fs.readFile(profile.path, 'utf8');
                 const tasksData = JSON.parse(data);
                 
                 // Log task status for debugging
@@ -593,8 +593,8 @@ async function startServer() {
                 }
                 
                 // Add projectRoot to the response
-                if (agent.projectRoot) {
-                    tasksData.projectRoot = agent.projectRoot;
+                if (profile.projectRoot) {
+                    tasksData.projectRoot = profile.projectRoot;
                 }
                 
                 res.writeHead(200, { 
@@ -605,23 +605,23 @@ async function startServer() {
                 });
                 res.end(JSON.stringify(tasksData));
             } catch (err) {
-                console.error(`Error reading file ${agent.path}:`, err);
+                console.error(`Error reading file ${profile.path}:`, err);
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
                 res.end('Error reading task file: ' + err.message);
             }
             
         } else if (url.pathname.startsWith('/api/history/') && url.pathname.split('/').length === 4) {
             const profileId = url.pathname.split('/').pop();
-            const agent = agents.find(a => a.id === profileId);
+            const profile = profiles.find(p => p.id === profileId);
             
-            if (!agent) {
+            if (!profile) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Agent not found');
                 return;
             }
             
             try {
-                const tasksPath = agent.path || agent.filePath;
+                const tasksPath = profile.path || profile.filePath;
                 const memoryDir = path.join(path.dirname(tasksPath), 'memory');
                 
                 // Check if memory directory exists
@@ -691,9 +691,9 @@ async function startServer() {
             const pathParts = url.pathname.split('/');
             const profileId = pathParts[3];
             const filename = pathParts[4];
-            const agent = agents.find(a => a.id === profileId);
+            const profile = profiles.find(p => p.id === profileId);
             
-            if (!agent) {
+            if (!profile) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Agent not found');
                 return;
@@ -707,7 +707,7 @@ async function startServer() {
             }
             
             try {
-                const tasksPath = agent.path || agent.filePath;
+                const tasksPath = profile.path || profile.filePath;
                 const memoryDir = path.join(path.dirname(tasksPath), 'memory');
                 const filePath = path.join(memoryDir, filename);
                 
@@ -1107,16 +1107,16 @@ async function startServer() {
             const pathParts = url.pathname.split('/');
             const profileId = pathParts[3];
             const filename = pathParts[4];
-            const agent = agents.find(a => a.id === profileId);
+            const profile = profiles.find(p => p.id === profileId);
             
-            if (!agent) {
+            if (!profile) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Profile not found');
                 return;
             }
             
             try {
-                const projectRoot = agent.projectRoot;
+                const projectRoot = profile.projectRoot;
                 if (!projectRoot) {
                     res.writeHead(404, { 'Content-Type': 'text/plain' });
                     res.end('Project root not configured for this profile');
@@ -1142,9 +1142,9 @@ async function startServer() {
             const pathParts = url.pathname.split('/');
             const profileId = pathParts[3];
             const filename = pathParts[4];
-            const agent = agents.find(a => a.id === profileId);
+            const profile = profiles.find(p => p.id === profileId);
             
-            if (!agent) {
+            if (!profile) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Profile not found');
                 return;
@@ -1161,7 +1161,7 @@ async function startServer() {
                         return;
                     }
                     
-                    const projectRoot = agent.projectRoot;
+                    const projectRoot = profile.projectRoot;
                     if (!projectRoot) {
                         res.writeHead(404, { 'Content-Type': 'text/plain' });
                         res.end('Project root not configured for this profile');
@@ -1229,11 +1229,11 @@ async function startServer() {
         console.log(`\nSettings file: ${SETTINGS_FILE}`);
         console.log('    ');
         console.log('Available profiles:');
-        if (agents.length === 0) {
+        if (profiles.length === 0) {
             console.log('  - No profiles configured. Add profiles via the web interface.');
         } else {
-            agents.forEach(agent => {
-                console.log(`  - ${agent.name} (${agent.path})`);
+            profiles.forEach(profile => {
+                console.log(`  - ${profile.name} (${profile.path})`);
             });
         }
         console.log('\n🎯 Features:');
