@@ -12,12 +12,34 @@ import Tooltip from './Tooltip';
 import { useLanguage } from '../i18n/LanguageContext';
 import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
 
-function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId, onTaskSaved }) {
+function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask }) {
   const { t } = useLanguage();
   const [selectedTask, setSelectedTask] = useState(null);
   
   // Generate task number mapping
   const taskNumberMap = useMemo(() => generateTaskNumbers(data), [data]);
+  
+  // Notify parent when entering/exiting edit mode
+  useEffect(() => {
+    if (selectedTask) {
+      if (selectedTask.editMode) {
+        // Entering edit mode
+        if (onDetailViewChange) {
+          onDetailViewChange(true, true);
+        }
+      } else {
+        // In detail view but not edit mode
+        if (onDetailViewChange) {
+          onDetailViewChange(true, false);
+        }
+      }
+    } else {
+      // Not in any detail view
+      if (onDetailViewChange) {
+        onDetailViewChange(false, false);
+      }
+    }
+  }, [selectedTask, onDetailViewChange]);
   
   // Reset selected task when parent requests it
   useEffect(() => {
@@ -228,23 +250,36 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           >
             🤖
           </button>
-          {row.original.status !== 'completed' && (
-            <button
-              className="edit-button action-button"
-              onClick={(e) => {
-                e.stopPropagation();
+          <button
+            className={`edit-button action-button ${row.original.status === 'completed' ? 'disabled' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (row.original.status !== 'completed') {
                 setSelectedTask({ ...row.original, editMode: true });
-              }}
-              title={`Edit task: ${row.original.id}`}
-            >
-              ✏️
-            </button>
-          )}
+              }
+            }}
+            disabled={row.original.status === 'completed'}
+            title={row.original.status === 'completed' ? 'Cannot edit completed task' : `Edit task: ${row.original.id}`}
+          >
+            ✏️
+          </button>
+          <button
+            className="delete-button action-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(t('confirmDeleteTask'))) {
+                onDeleteTask(row.original.id);
+              }
+            }}
+            title={`Delete task: ${row.original.id}`}
+          >
+            🗑️
+          </button>
         </div>
       ),
       size: 100,
     },
-  ], [data, setSelectedTask, t, taskNumberMap]);
+  ], [data, setSelectedTask, t, taskNumberMap, onDeleteTask]);
 
   const table = useReactTable({
     data,

@@ -3668,11 +3668,11 @@ body {
 }
 
 .edit-button {
-  background: #3498db;
-  color: white;
+  background: transparent;
+  color: inherit;
   border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
+  padding: 8px 12px;
+  border-radius: 4px;
   cursor: pointer;
   transition: background 0.3s;
   font-size: 14px;
@@ -3681,8 +3681,23 @@ body {
   gap: 6px;
 }
 
-.edit-button:hover {
-  background: #2980b9;
+.edit-button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.delete-button {
+  background: transparent;
+  color: inherit;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s;
+  font-size: 14px;
+}
+
+.delete-button:hover {
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .export-container {

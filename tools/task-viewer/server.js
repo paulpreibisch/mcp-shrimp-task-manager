@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 const VERSION = '2.0.0';
 const PORT = process.env.SHRIMP_VIEWER_PORT || 9998;
 const SETTINGS_FILE = path.join(os.homedir(), '.shrimp-task-viewer-settings.json');
+const GLOBAL_SETTINGS_FILE = path.join(os.homedir(), '.shrimp-task-viewer-global-settings.json');
 const TEMPLATES_DIR = path.join(os.homedir(), '.shrimp-task-viewer-templates');
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
 const DEFAULT_TEMPLATES_DIR = path.join(PROJECT_ROOT, 'src', 'prompts', 'templates_en');
@@ -46,6 +47,31 @@ async function saveSettings(agentList) {
         version: VERSION
     };
     await fs.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+}
+
+// Load or create global settings file
+async function loadGlobalSettings() {
+    try {
+        console.log('Loading global settings from:', GLOBAL_SETTINGS_FILE);
+        const data = await fs.readFile(GLOBAL_SETTINGS_FILE, 'utf8');
+        const settings = JSON.parse(data);
+        console.log('Loaded global settings:', settings);
+        return settings;
+    } catch (err) {
+        console.error('Error loading global settings:', err.message);
+        const defaultGlobalSettings = {
+            claudeFolderPath: '',
+            lastUpdated: new Date().toISOString(),
+            version: VERSION
+        };
+        await saveGlobalSettings(defaultGlobalSettings);
+        return defaultGlobalSettings;
+    }
+}
+
+// Save global settings file
+async function saveGlobalSettings(settings) {
+    await fs.writeFile(GLOBAL_SETTINGS_FILE, JSON.stringify(settings, null, 2));
 }
 
 // Add new agent
@@ -502,6 +528,46 @@ async function startServer() {
                 }
             });
             
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/delete') && req.method === 'DELETE') {
+            // Handle task delete
+            const pathParts = url.pathname.split('/');
+            const taskId = pathParts[pathParts.length - 2];
+            const agentId = pathParts[pathParts.length - 3];
+            const agent = agents.find(a => a.id === agentId);
+            
+            if (!agent) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Profile not found');
+                return;
+            }
+            
+            try {
+                // Read current tasks
+                const data = await fs.readFile(agent.path, 'utf8');
+                const tasksData = JSON.parse(data);
+                
+                // Find and remove the task
+                const taskIndex = tasksData.tasks.findIndex(t => t.id === taskId);
+                if (taskIndex === -1) {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Task not found');
+                    return;
+                }
+                
+                // Remove the task
+                tasksData.tasks.splice(taskIndex, 1);
+                
+                // Write back to file
+                await fs.writeFile(agent.path, JSON.stringify(tasksData, null, 2));
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, message: 'Task deleted successfully' }));
+            } catch (err) {
+                console.error('Error deleting task:', err);
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error deleting task: ' + err.message);
+            }
+            
         } else if (url.pathname.startsWith('/api/tasks/')) {
             const agentId = url.pathname.split('?')[0].split('/').pop();
             const agent = agents.find(a => a.id === agentId);
@@ -805,6 +871,307 @@ async function startServer() {
                 } catch (err) {
                     res.writeHead(500, { 'Content-Type': 'text/plain' });
                     res.end('Error duplicating template: ' + err.message);
+                }
+            });
+            
+        // Global settings API routes
+        } else if (url.pathname === '/api/global-settings' && req.method === 'GET') {
+            // Get global settings
+            try {
+                const settings = await loadGlobalSettings();
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(settings));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading global settings: ' + err.message);
+            }
+            
+        } else if (url.pathname === '/api/global-settings' && req.method === 'PUT') {
+            // Update global settings
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const newSettings = JSON.parse(body);
+                    newSettings.lastUpdated = new Date().toISOString();
+                    newSettings.version = VERSION;
+                    
+                    await saveGlobalSettings(newSettings);
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(newSettings));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error saving global settings: ' + err.message);
+                }
+            });
+            
+        // Agent management API routes
+        } else if (url.pathname === '/api/agents/global' && req.method === 'GET') {
+            // List global agents from Claude folder
+            try {
+                const settings = await loadGlobalSettings();
+                const claudeFolderPath = settings.claudeFolderPath;
+                
+                if (!claudeFolderPath) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify([]));
+                    return;
+                }
+                
+                const agentsDir = path.join(claudeFolderPath, 'agents');
+                let agentFiles = [];
+                
+                try {
+                    const files = await fs.readdir(agentsDir);
+                    agentFiles = files.filter(file => 
+                        file.endsWith('.md') || file.endsWith('.yaml') || file.endsWith('.yml')
+                    );
+                } catch (err) {
+                    // Directory doesn't exist, return empty array
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify([]));
+                    return;
+                }
+                
+                // Read each agent file to get content
+                const agentList = await Promise.all(agentFiles.map(async (filename) => {
+                    try {
+                        const filePath = path.join(agentsDir, filename);
+                        const content = await fs.readFile(filePath, 'utf8');
+                        return {
+                            name: filename,
+                            content: content,
+                            path: filePath
+                        };
+                    } catch (err) {
+                        return {
+                            name: filename,
+                            content: '',
+                            path: path.join(agentsDir, filename),
+                            error: err.message
+                        };
+                    }
+                }));
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(agentList));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading global agents: ' + err.message);
+            }
+            
+        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET') {
+            // List project agents from .claude/agents directory
+            const pathParts = url.pathname.split('/');
+            if (pathParts.length === 4) {
+                // /api/agents/project/:profileId
+                const profileId = pathParts[3];
+                const agent = agents.find(a => a.id === profileId);
+                
+                if (!agent) {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Profile not found');
+                    return;
+                }
+                
+                try {
+                    const projectRoot = agent.projectRoot;
+                    if (!projectRoot) {
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify([]));
+                        return;
+                    }
+                    
+                    const agentsDir = path.join(projectRoot, '.claude', 'agents');
+                    let agentFiles = [];
+                    
+                    try {
+                        const files = await fs.readdir(agentsDir);
+                        agentFiles = files.filter(file => 
+                            file.endsWith('.md') || file.endsWith('.yaml') || file.endsWith('.yml')
+                        );
+                    } catch (err) {
+                        // Directory doesn't exist, return empty array
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify([]));
+                        return;
+                    }
+                    
+                    // Read each agent file to get content
+                    const projectAgents = await Promise.all(agentFiles.map(async (filename) => {
+                        try {
+                            const filePath = path.join(agentsDir, filename);
+                            const content = await fs.readFile(filePath, 'utf8');
+                            return {
+                                name: filename,
+                                content: content,
+                                path: filePath
+                            };
+                        } catch (err) {
+                            return {
+                                name: filename,
+                                content: '',
+                                path: path.join(agentsDir, filename),
+                                error: err.message
+                            };
+                        }
+                    }));
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(projectAgents));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error loading project agents: ' + err.message);
+                }
+            }
+            
+        } else if (url.pathname.startsWith('/api/agents/global/') && req.method === 'GET') {
+            // Read specific global agent file
+            const filename = url.pathname.split('/').pop();
+            
+            try {
+                const settings = await loadGlobalSettings();
+                const claudeFolderPath = settings.claudeFolderPath;
+                
+                if (!claudeFolderPath) {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Claude folder path not configured');
+                    return;
+                }
+                
+                const filePath = path.join(claudeFolderPath, 'agents', filename);
+                const content = await fs.readFile(filePath, 'utf8');
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    name: filename,
+                    content: content,
+                    path: filePath
+                }));
+            } catch (err) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Agent file not found: ' + err.message);
+            }
+            
+        } else if (url.pathname.startsWith('/api/agents/global/') && req.method === 'PUT') {
+            // Update specific global agent file
+            const filename = url.pathname.split('/').pop();
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { content } = JSON.parse(body);
+                    if (!content && content !== '') {
+                        res.writeHead(400, { 'Content-Type': 'text/plain' });
+                        res.end('Missing content');
+                        return;
+                    }
+                    
+                    const settings = await loadGlobalSettings();
+                    const claudeFolderPath = settings.claudeFolderPath;
+                    
+                    if (!claudeFolderPath) {
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('Claude folder path not configured');
+                        return;
+                    }
+                    
+                    const filePath = path.join(claudeFolderPath, 'agents', filename);
+                    await fs.writeFile(filePath, content, 'utf8');
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        name: filename,
+                        content: content,
+                        path: filePath,
+                        message: 'Agent updated successfully'
+                    }));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error updating agent: ' + err.message);
+                }
+            });
+            
+        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET' && url.pathname.split('/').length === 5) {
+            // Read specific project agent file
+            const pathParts = url.pathname.split('/');
+            const profileId = pathParts[3];
+            const filename = pathParts[4];
+            const agent = agents.find(a => a.id === profileId);
+            
+            if (!agent) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Profile not found');
+                return;
+            }
+            
+            try {
+                const projectRoot = agent.projectRoot;
+                if (!projectRoot) {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Project root not configured for this profile');
+                    return;
+                }
+                
+                const filePath = path.join(projectRoot, '.claude', 'agents', filename);
+                const content = await fs.readFile(filePath, 'utf8');
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    name: filename,
+                    content: content,
+                    path: filePath
+                }));
+            } catch (err) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Agent file not found: ' + err.message);
+            }
+            
+        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'PUT' && url.pathname.split('/').length === 5) {
+            // Update specific project agent file
+            const pathParts = url.pathname.split('/');
+            const profileId = pathParts[3];
+            const filename = pathParts[4];
+            const agent = agents.find(a => a.id === profileId);
+            
+            if (!agent) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Profile not found');
+                return;
+            }
+            
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { content } = JSON.parse(body);
+                    if (!content && content !== '') {
+                        res.writeHead(400, { 'Content-Type': 'text/plain' });
+                        res.end('Missing content');
+                        return;
+                    }
+                    
+                    const projectRoot = agent.projectRoot;
+                    if (!projectRoot) {
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('Project root not configured for this profile');
+                        return;
+                    }
+                    
+                    const filePath = path.join(projectRoot, '.claude', 'agents', filename);
+                    await fs.writeFile(filePath, content, 'utf8');
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        name: filename,
+                        content: content,
+                        path: filePath,
+                        message: 'Project agent updated successfully'
+                    }));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error updating project agent: ' + err.message);
                 }
             });
             

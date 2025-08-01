@@ -1,0 +1,242 @@
+import React, { useState, useEffect } from 'react';
+import MDEditor from '@uiw/react-md-editor';
+import '@uiw/react-md-editor/markdown-editor.css';
+import '@uiw/react-markdown-preview/markdown.css';
+import { useLanguage } from '../i18n/LanguageContext';
+
+function AgentEditor({ 
+  agent, 
+  onSave, 
+  onBack,
+  isGlobal = false,
+  profileId = null,
+  showToast,
+  loading = false, 
+  error = '' 
+}) {
+  const { t } = useLanguage();
+  const [content, setContent] = useState('');
+  const [initialContent, setInitialContent] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  // Fetch agent content on mount
+  useEffect(() => {
+    if (!agent) return;
+    
+    const fetchAgentContent = async () => {
+      setIsLoading(true);
+      setLoadError('');
+      
+      try {
+        const endpoint = isGlobal 
+          ? `/api/agents/global/${encodeURIComponent(agent.name)}`
+          : `/api/agents/project/${profileId}/${encodeURIComponent(agent.name)}`;
+          
+        const response = await fetch(endpoint);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load agent: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const agentContent = data.content || '';
+        setContent(agentContent);
+        setInitialContent(agentContent);
+      } catch (err) {
+        console.error('Error loading agent:', err);
+        setLoadError('Failed to load agent content: ' + err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAgentContent();
+  }, [agent, isGlobal, profileId]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!content.trim()) {
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      const endpoint = isGlobal 
+        ? `/api/agents/global/${encodeURIComponent(agent.name)}`
+        : `/api/agents/project/${profileId}/${encodeURIComponent(agent.name)}`;
+        
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: content.trim()
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to save agent: ${response.status}`);
+      }
+      
+      if (showToast) {
+        showToast(t('agentSavedSuccess') || 'Agent saved successfully', 'success');
+      }
+      
+      // Call onSave callback if provided
+      if (onSave) {
+        onSave(agent);
+      }
+      
+      // Navigate back after successful save
+      setTimeout(() => {
+        onBack?.();
+      }, 1000);
+      
+    } catch (err) {
+      console.error('Error saving agent:', err);
+      const errorMessage = 'Failed to save agent: ' + err.message;
+      if (showToast) {
+        showToast(errorMessage, 'error');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!agent) {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="template-editor-view agent-editor">
+        <div className="template-editor-header">
+          <div className="header-left">
+            <button className="back-button" onClick={onBack} title="Back to agents list">
+              ← {t('backToAgents') || 'Back to Agents'}
+            </button>
+            <h2>{t('editAgent') || 'Edit Agent'}: {agent.name}</h2>
+          </div>
+        </div>
+        <div className="loading" style={{ padding: '40px', textAlign: 'center' }}>
+          {t('loading') || 'Loading...'}
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="template-editor-view agent-editor">
+        <div className="template-editor-header">
+          <div className="header-left">
+            <button className="back-button" onClick={onBack} title="Back to agents list">
+              ← {t('backToAgents') || 'Back to Agents'}
+            </button>
+            <h2>{t('editAgent') || 'Edit Agent'}: {agent.name}</h2>
+          </div>
+        </div>
+        <div className="error" style={{ padding: '40px', textAlign: 'center' }}>
+          {loadError}
+        </div>
+      </div>
+    );
+  }
+
+  const hasChanges = content !== initialContent;
+
+  return (
+    <div className="template-editor-view agent-editor">
+      <div className="template-editor-header">
+        <div className="header-left">
+          <button className="back-button" onClick={onBack} title="Back to agents list">
+            ← {t('backToAgents') || 'Back to Agents'}
+          </button>
+          <h2>{t('editAgent') || 'Edit Agent'}: {agent.name}</h2>
+        </div>
+      </div>
+
+      <div className="template-info-bar">
+        <span className="template-source">
+          {t('type') || 'Type'}: {agent.type || 'Unknown'}
+        </span>
+        {agent.description && (
+          <span className="template-status">
+            {agent.description}
+          </span>
+        )}
+        <span className="template-path">
+          {isGlobal 
+            ? `[Claude Folder]/agents/${agent.name}`
+            : `.claude/agents/${agent.name}`}
+        </span>
+      </div>
+
+      {(error || loadError) && (
+        <div className="error template-editor-error">
+          {error || loadError}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="template-editor-form">
+        <div className="template-editor-content" data-color-mode="dark">
+          <MDEditor
+            key={agent?.name || 'agent-editor'}
+            value={content || ''}
+            onChange={(val) => setContent(val || '')}
+            preview="live"
+            height={500}
+            hideToolbar={false}
+            enableScroll={true}
+            textareaProps={{
+              placeholder: "Enter the agent content (markdown or YAML)..."
+            }}
+            previewOptions={{
+              components: {
+                code: ({inline, children, className, ...props}) => {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return !inline && match ? (
+                    <div className="code-block-wrapper">
+                      <pre className={className} {...props}>
+                        <code>{children}</code>
+                      </pre>
+                    </div>
+                  ) : (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                }
+              }
+            }}
+          />
+        </div>
+
+        <div className="form-actions">
+          <button
+            type="submit"
+            className="primary-btn"
+            disabled={loading || isSaving || !content.trim() || !hasChanges}
+          >
+            {(loading || isSaving) ? (t('saving') || 'Saving...') : (t('save') || 'Save')}
+          </button>
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={onBack}
+            disabled={loading || isSaving}
+          >
+            {t('cancel') || 'Cancel'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default AgentEditor;

@@ -26,14 +26,15 @@ const NestedTabs = ({
     'release-notes': 1,
     'readme': 2,
     'templates': 3,
-    'global-settings': 4
+    'sub-agents': 4,
+    'global-settings': 5
   };
   
   const selectedOuterIndex = tabNameToIndex[selectedOuterTab] || 0;
   
   // Handle tab change with index to name conversion
   const handleOuterTabChange = (index) => {
-    const tabNames = ['projects', 'release-notes', 'readme', 'templates', 'global-settings'];
+    const tabNames = ['projects', 'release-notes', 'readme', 'templates', 'sub-agents', 'global-settings'];
     if (onOuterTabChange) {
       onOuterTabChange(tabNames[index]);
     }
@@ -53,6 +54,9 @@ const NestedTabs = ({
         </Tab>
         <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
           <span className="tab-name">🎨 {t('templates')}</span>
+        </Tab>
+        <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
+          <span className="tab-name">🤖 {t('subAgents')}</span>
         </Tab>
         <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
           <span className="tab-name">
@@ -116,14 +120,17 @@ const NestedTabs = ({
                     <Tab.Panel key={profile.id}>
                       {/* Inner project tabs */}
                       <div className="inner-tabs-wrapper">
-                        <Tab.Group selectedIndex={projectInnerTab === 'tasks' ? 0 : projectInnerTab === 'history' ? 1 : 2} 
-                                   onChange={(index) => setProjectInnerTab(['tasks', 'history', 'settings'][index])}>
+                        <Tab.Group selectedIndex={projectInnerTab === 'tasks' ? 0 : projectInnerTab === 'history' ? 1 : projectInnerTab === 'agents' ? 2 : 3} 
+                                   onChange={(index) => setProjectInnerTab(['tasks', 'history', 'agents', 'settings'][index])}>
                           <Tab.List className="inner-tabs-list project-inner-tabs">
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
                             <span>📋 {t('tasks')}</span>
                           </Tab>
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
                             <span>📊 {t('history')}</span>
+                          </Tab>
+                          <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
+                            <span>🤖 {t('agents') || 'Agents'}</span>
                           </Tab>
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
                             <span>⚙️ {t('settings')}</span>
@@ -138,6 +145,10 @@ const NestedTabs = ({
                           <Tab.Panel>
                             {/* History content */}
                             {children.history}
+                          </Tab.Panel>
+                          <Tab.Panel>
+                            {/* Agents content */}
+                            {children.agents}
                           </Tab.Panel>
                           <Tab.Panel>
                             {/* Settings content */}
@@ -168,6 +179,11 @@ const NestedTabs = ({
         {/* Templates Panel */}
         <Tab.Panel>
           {children.templates}
+        </Tab.Panel>
+
+        {/* Sub-Agents Panel */}
+        <Tab.Panel>
+          {children.subAgents}
         </Tab.Panel>
 
         {/* Global Settings Panel */}

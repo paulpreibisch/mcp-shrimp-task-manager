@@ -246,7 +246,20 @@ export const translations = {
     claudeFolderPathPlaceholder: "e.g., ~/.config/claude",
     
     // Task messages
-    taskSavedSuccess: "Task saved successfully"
+    taskSavedSuccess: "Task saved successfully",
+    confirmDeleteTask: "Are you sure you want to delete this task?",
+    taskDeletedSuccess: "Task deleted successfully",
+    deleteTask: "Delete task",
+    
+    // Agent functionality
+    subAgents: "Sub-Agents",
+    agents: "Agents", 
+    agentName: "Agent Name",
+    type: "Type",
+    viewAgent: "View Agent",
+    editAgent: "Edit Agent",
+    noAgentsFound: "No agents found",
+    agentSavedSuccess: "Agent saved successfully"
   },
   
   zh: {
@@ -496,7 +509,20 @@ export const translations = {
     claudeFolderPathPlaceholder: "例如：~/.config/claude",
     
     // Task messages
-    taskSavedSuccess: "任务保存成功"
+    taskSavedSuccess: "任务保存成功",
+    confirmDeleteTask: "您确定要删除此任务吗？",
+    taskDeletedSuccess: "任务删除成功",
+    deleteTask: "删除任务",
+    
+    // Agent functionality
+    subAgents: "子代理",
+    agents: "代理",
+    agentName: "代理名称", 
+    type: "类型",
+    viewAgent: "查看代理",
+    editAgent: "编辑代理",
+    noAgentsFound: "未找到代理",
+    agentSavedSuccess: "代理保存成功"
   },
   
   es: {
@@ -746,7 +772,20 @@ export const translations = {
     claudeFolderPathPlaceholder: "p.ej., ~/.config/claude",
     
     // Task messages
-    taskSavedSuccess: "Tarea guardada exitosamente"
+    taskSavedSuccess: "Tarea guardada exitosamente",
+    confirmDeleteTask: "¿Está seguro de que desea eliminar esta tarea?",
+    taskDeletedSuccess: "Tarea eliminada exitosamente",
+    deleteTask: "Eliminar tarea",
+    
+    // Agent functionality
+    subAgents: "Sub-Agentes",
+    agents: "Agentes",
+    agentName: "Nombre del Agente",
+    type: "Tipo", 
+    viewAgent: "Ver Agente",
+    editAgent: "Editar Agente",
+    noAgentsFound: "No se encontraron agentes",
+    agentSavedSuccess: "Agente guardado exitosamente"
   }
 };
 

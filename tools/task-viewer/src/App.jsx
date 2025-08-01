@@ -10,6 +10,8 @@ import DuplicateTemplateView from './components/DuplicateTemplateView';
 import HistoryView from './components/HistoryView';
 import HistoryTasksView from './components/HistoryTasksView';
 import GlobalSettingsView from './components/GlobalSettingsView';
+import SubAgentsView from './components/SubAgentsView';
+import ProjectAgentsView from './components/ProjectAgentsView';
 import ToastContainer from './components/ToastContainer';
 import LanguageSelector from './components/LanguageSelector';
 import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
@@ -1005,6 +1007,24 @@ function AppContent() {
                     await loadTasks(selectedProfile, true);
                     showToast(t('taskSavedSuccess'), 'success');
                   }}
+                  onDeleteTask={async (taskId) => {
+                    try {
+                      const response = await fetch(`/api/tasks/${selectedProfile}/${taskId}/delete`, {
+                        method: 'DELETE'
+                      });
+                      
+                      if (!response.ok) {
+                        throw new Error('Failed to delete task');
+                      }
+                      
+                      // Refresh tasks after delete
+                      await loadTasks(selectedProfile, true);
+                      showToast(t('taskDeletedSuccess'), 'success');
+                    } catch (err) {
+                      console.error('Error deleting task:', err);
+                      showToast('Failed to delete task: ' + err.message, 'error');
+                    }
+                  }}
                 />
               </div>
             ),
@@ -1032,6 +1052,13 @@ function AppContent() {
                   />
                 )}
               </div>
+            ),
+            agents: (
+              <ProjectAgentsView 
+                profileId={selectedProfile} 
+                projectRoot={projectRoot} 
+                showToast={showToast} 
+              />
             ),
             settings: (
               <div className="content-container" name="settings-content-area">
@@ -1219,6 +1246,12 @@ function AppContent() {
             ),
             globalSettings: (
               <GlobalSettingsView showToast={showToast} />
+            ),
+            subAgents: (
+              <SubAgentsView 
+                showToast={showToast} 
+                onNavigateToSettings={() => handleOuterTabChange('global-settings')}
+              />
             )
           }}
         />

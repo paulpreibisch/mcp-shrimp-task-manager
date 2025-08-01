@@ -49,7 +49,12 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
         </h2>
         <div className="header-buttons">
           {!isHistorical && onEdit && (
-            <button className="edit-button" onClick={onEdit}>
+            <button 
+              className={`edit-button ${task.status === 'completed' ? 'disabled' : ''}`}
+              onClick={task.status === 'completed' ? undefined : onEdit}
+              disabled={task.status === 'completed'}
+              title={task.status === 'completed' ? 'Cannot edit completed task' : 'Edit Task'}
+            >
               ✏️ Edit Task
             </button>
           )}
