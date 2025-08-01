@@ -65,6 +65,10 @@ function AppContent() {
   const [templateToActivate, setTemplateToActivate] = useState(null);
   const [duplicatingTemplate, setDuplicatingTemplate] = useState(null);
   
+  // Global settings state
+  const [claudeFolderPath, setClaudeFolderPath] = useState('');
+  const [globalSettingsLoaded, setGlobalSettingsLoaded] = useState(false);
+  
   // Inner project tab state (tasks, history, settings)
   const [projectInnerTab, setProjectInnerTab] = useState(initialUrlState.projectTab || 'tasks'); // 'tasks', 'history', 'settings'
   
@@ -106,6 +110,25 @@ function AppContent() {
   // Load profiles on mount
   useEffect(() => {
     loadProfiles();
+  }, []);
+
+  // Load global settings on mount
+  useEffect(() => {
+    const loadGlobalSettings = async () => {
+      try {
+        const response = await fetch('/api/global-settings');
+        if (response.ok) {
+          const settings = await response.json();
+          setClaudeFolderPath(settings.claudeFolderPath || '');
+        }
+      } catch (err) {
+        console.error('Error loading global settings:', err);
+      } finally {
+        setGlobalSettingsLoaded(true);
+      }
+    };
+    
+    loadGlobalSettings();
   }, []);
   
   // Handle browser back/forward navigation
@@ -899,6 +922,7 @@ function AppContent() {
           handleDrop={handleDrop}
           loading={loading}
           error={error}
+          claudeFolderPath={claudeFolderPath}
           children={{
             tasks: !selectedProfile && profiles.length > 0 ? (
               <div className="content-container" name="no-profile-container">
@@ -1247,11 +1271,31 @@ function AppContent() {
             globalSettings: (
               <GlobalSettingsView showToast={showToast} />
             ),
-            subAgents: (
+            subAgents: claudeFolderPath ? (
               <SubAgentsView 
                 showToast={showToast} 
                 onNavigateToSettings={() => handleOuterTabChange('global-settings')}
               />
+            ) : (
+              <div className="content-container">
+                <div className="loading">
+                  Claude folder path is not configured. Please configure it in{' '}
+                  <span 
+                    className="settings-link"
+                    onClick={() => handleOuterTabChange('global-settings')}
+                    style={{ 
+                      color: '#3498db', 
+                      cursor: 'pointer', 
+                      textDecoration: 'underline',
+                      fontWeight: 'bold'
+                    }}
+                    title="Click to go to settings"
+                  >
+                    Global Settings
+                  </span>{' '}
+                  to access Sub-Agents.
+                </div>
+              </div>
             )
           }}
         />

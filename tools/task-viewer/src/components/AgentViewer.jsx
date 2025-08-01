@@ -16,6 +16,12 @@ function AgentViewer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const getFileType = (filename) => {
+    if (filename.endsWith('.md')) return 'Markdown';
+    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) return 'YAML';
+    return 'Unknown';
+  };
+
   useEffect(() => {
     if (!agent) return;
     
@@ -75,13 +81,18 @@ function AgentViewer({
 
       <div className="template-info-bar">
         <span className="template-source">
-          {t('type') || 'Type'}: {agent.type || 'Unknown'}
+          {t('type') || 'Type'}: {getFileType(agent.name)}
         </span>
         {agent.description && (
           <span className="template-status">
             {agent.description}
           </span>
         )}
+        <span className="template-path">
+          {isGlobal 
+            ? `[Claude Folder]/agents/${agent.name}`
+            : `.claude/agents/${agent.name}`}
+        </span>
       </div>
 
       {loading ? (

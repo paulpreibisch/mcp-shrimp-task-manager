@@ -18,23 +18,25 @@ const NestedTabs = ({
   handleDragStart,
   handleDragOver,
   handleDragEnd,
-  handleDrop
+  handleDrop,
+  claudeFolderPath
 }) => {
+  // Create dynamic tab arrays based on Claude folder path configuration
+  const baseTabNames = ['projects', 'release-notes', 'readme', 'templates'];
+  const tabNames = claudeFolderPath 
+    ? [...baseTabNames, 'sub-agents', 'global-settings']
+    : [...baseTabNames, 'global-settings'];
+  
   // Convert tab name to index for HeadlessUI
-  const tabNameToIndex = {
-    'projects': 0,
-    'release-notes': 1,
-    'readme': 2,
-    'templates': 3,
-    'sub-agents': 4,
-    'global-settings': 5
-  };
+  const tabNameToIndex = tabNames.reduce((acc, name, index) => {
+    acc[name] = index;
+    return acc;
+  }, {});
   
   const selectedOuterIndex = tabNameToIndex[selectedOuterTab] || 0;
   
   // Handle tab change with index to name conversion
   const handleOuterTabChange = (index) => {
-    const tabNames = ['projects', 'release-notes', 'readme', 'templates', 'sub-agents', 'global-settings'];
     if (onOuterTabChange) {
       onOuterTabChange(tabNames[index]);
     }
@@ -55,9 +57,11 @@ const NestedTabs = ({
         <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
           <span className="tab-name">🎨 {t('templates')}</span>
         </Tab>
-        <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
-          <span className="tab-name">🤖 {t('subAgents')}</span>
-        </Tab>
+        {claudeFolderPath && (
+          <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
+            <span className="tab-name">🤖 {t('subAgents')}</span>
+          </Tab>
+        )}
         <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
           <span className="tab-name">
             <span style={{ color: '#FFD700' }}>⚙️</span> {t('settings')}
@@ -181,10 +185,12 @@ const NestedTabs = ({
           {children.templates}
         </Tab.Panel>
 
-        {/* Sub-Agents Panel */}
-        <Tab.Panel>
-          {children.subAgents}
-        </Tab.Panel>
+        {/* Sub-Agents Panel (conditional) */}
+        {claudeFolderPath && (
+          <Tab.Panel>
+            {children.subAgents}
+          </Tab.Panel>
+        )}
 
         {/* Global Settings Panel */}
         <Tab.Panel>
