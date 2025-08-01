@@ -451,6 +451,57 @@ async function startServer() {
                 }
             });
             
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/update') && req.method === 'PUT') {
+            // Handle task update
+            const pathParts = url.pathname.split('/');
+            const agentId = pathParts[pathParts.length - 2];
+            console.log('Update task route - agentId:', agentId, 'agents:', agents.map(a => a.id));
+            const agent = agents.find(a => a.id === agentId);
+            
+            if (!agent) {
+                console.error('Agent not found:', agentId, 'Available agents:', agents.map(a => a.id));
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Profile not found');
+                return;
+            }
+            
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { taskId, updates } = JSON.parse(body);
+                    
+                    // Read current tasks
+                    const data = await fs.readFile(agent.path, 'utf8');
+                    const tasksData = JSON.parse(data);
+                    
+                    // Find and update the task
+                    const taskIndex = tasksData.tasks.findIndex(t => t.id === taskId);
+                    if (taskIndex === -1) {
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('Task not found');
+                        return;
+                    }
+                    
+                    // Update task fields
+                    tasksData.tasks[taskIndex] = {
+                        ...tasksData.tasks[taskIndex],
+                        ...updates,
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    // Write back to file
+                    await fs.writeFile(agent.path, JSON.stringify(tasksData, null, 2));
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(tasksData.tasks[taskIndex]));
+                } catch (err) {
+                    console.error('Error updating task:', err);
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error updating task: ' + err.message);
+                }
+            });
+            
         } else if (url.pathname.startsWith('/api/tasks/')) {
             const agentId = url.pathname.split('?')[0].split('/').pop();
             const agent = agents.find(a => a.id === agentId);

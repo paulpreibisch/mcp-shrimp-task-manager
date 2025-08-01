@@ -12,7 +12,7 @@ import Tooltip from './Tooltip';
 import { useLanguage } from '../i18n/LanguageContext';
 import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
 
-function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView }) {
+function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId }) {
   const { t } = useLanguage();
   const [selectedTask, setSelectedTask] = useState(null);
   
@@ -31,7 +31,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   // Notify parent when detail view changes
   useEffect(() => {
     if (onDetailViewChange) {
-      onDetailViewChange(!!selectedTask);
+      onDetailViewChange(!!selectedTask, selectedTask?.editMode || false);
     }
   }, [selectedTask, onDetailViewChange]);
   // Define table columns configuration with custom cell renderers
@@ -116,8 +116,17 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
         const date = new Date(getValue());
         return (
           <div className="task-meta">
-            {date.toLocaleDateString()}<br />
-            {date.toLocaleTimeString()}
+            {date.toLocaleDateString(undefined, {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            })}<br />
+            {date.toLocaleTimeString(undefined, {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            })}
           </div>
         );
       },
@@ -130,8 +139,17 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
         const date = new Date(getValue());
         return (
           <div className="task-meta">
-            {date.toLocaleDateString()}<br />
-            {date.toLocaleTimeString()}
+            {date.toLocaleDateString(undefined, {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            })}<br />
+            {date.toLocaleTimeString(undefined, {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            })}
           </div>
         );
       },
@@ -210,6 +228,18 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           >
             🤖
           </button>
+          {row.original.status !== 'completed' && (
+            <button
+              className="edit-button action-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedTask({ ...row.original, editMode: true });
+              }}
+              title={`Edit task: ${row.original.id}`}
+            >
+              ✏️
+            </button>
+          )}
         </div>
       ),
       size: 100,
@@ -243,23 +273,54 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     );
   }
 
-  // If a task is selected, show the detail view
+  // If a task is selected, show the detail view or edit view
   if (selectedTask) {
-    return (
-      <TaskDetailView 
-        task={selectedTask} 
-        onBack={() => setSelectedTask(null)}
-        projectRoot={projectRoot}
-        onNavigateToTask={(taskId) => {
-          const targetTask = data.find(t => t.id === taskId);
-          if (targetTask) {
-            setSelectedTask(targetTask);
-          }
-        }}
-        taskIndex={data.findIndex(t => t.id === selectedTask.id)}
-        allTasks={data}
-      />
-    );
+    if (selectedTask.editMode) {
+      // Import will be added at the top
+      const TaskEditView = React.lazy(() => import('./TaskEditView'));
+      return (
+        <React.Suspense fallback={<div className="loading">Loading...</div>}>
+          <TaskEditView 
+            task={selectedTask} 
+            onBack={() => setSelectedTask(null)}
+            projectRoot={projectRoot}
+            profileId={profileId}
+            onNavigateToTask={(taskId) => {
+              const targetTask = data.find(t => t.id === taskId);
+              if (targetTask) {
+                setSelectedTask(targetTask);
+              }
+            }}
+            taskIndex={data.findIndex(t => t.id === selectedTask.id)}
+            allTasks={data}
+            onSave={async (updatedTask) => {
+              // This will trigger a re-fetch of the data
+              setSelectedTask(null);
+              // Parent component should handle refresh
+              if (onDetailViewChange) {
+                onDetailViewChange(false, false);
+              }
+            }}
+          />
+        </React.Suspense>
+      );
+    } else {
+      return (
+        <TaskDetailView 
+          task={selectedTask} 
+          onBack={() => setSelectedTask(null)}
+          projectRoot={projectRoot}
+          onNavigateToTask={(taskId) => {
+            const targetTask = data.find(t => t.id === taskId);
+            if (targetTask) {
+              setSelectedTask(targetTask);
+            }
+          }}
+          taskIndex={data.findIndex(t => t.id === selectedTask.id)}
+          allTasks={data}
+        />
+      );
+    }
   }
 
   // Otherwise, show the table

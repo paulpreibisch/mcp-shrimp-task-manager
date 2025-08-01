@@ -25,14 +25,15 @@ const NestedTabs = ({
     'projects': 0,
     'release-notes': 1,
     'readme': 2,
-    'templates': 3
+    'templates': 3,
+    'global-settings': 4
   };
   
   const selectedOuterIndex = tabNameToIndex[selectedOuterTab] || 0;
   
   // Handle tab change with index to name conversion
   const handleOuterTabChange = (index) => {
-    const tabNames = ['projects', 'release-notes', 'readme', 'templates'];
+    const tabNames = ['projects', 'release-notes', 'readme', 'templates', 'global-settings'];
     if (onOuterTabChange) {
       onOuterTabChange(tabNames[index]);
     }
@@ -52,6 +53,11 @@ const NestedTabs = ({
         </Tab>
         <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
           <span className="tab-name">🎨 {t('templates')}</span>
+        </Tab>
+        <Tab className={({ selected }) => `tab ${selected ? 'active' : ''}`}>
+          <span className="tab-name">
+            <span style={{ color: '#FFD700' }}>⚙️</span> {t('settings')}
+          </span>
         </Tab>
       </Tab.List>
 
@@ -75,15 +81,25 @@ const NestedTabs = ({
                     onDrop={(e) => handleDrop && handleDrop(e, index)}
                   >
                     <span className="tab-name">{profile.name}</span>
-                    <button 
+                    <span 
                       className="tab-close-btn"
                       onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         handleRemoveProfile(profile.id);
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleRemoveProfile(profile.id);
+                        }
                       }}
                     >
                       ×
-                    </button>
+                    </span>
                   </Tab>
                 ))}
                 <button 
@@ -152,6 +168,11 @@ const NestedTabs = ({
         {/* Templates Panel */}
         <Tab.Panel>
           {children.templates}
+        </Tab.Panel>
+
+        {/* Global Settings Panel */}
+        <Tab.Panel>
+          {children.globalSettings}
         </Tab.Panel>
       </Tab.Panels>
     </Tab.Group>

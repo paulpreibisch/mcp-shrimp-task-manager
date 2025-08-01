@@ -9,6 +9,7 @@ import ActivationDialog from './components/ActivationDialog';
 import DuplicateTemplateView from './components/DuplicateTemplateView';
 import HistoryView from './components/HistoryView';
 import HistoryTasksView from './components/HistoryTasksView';
+import GlobalSettingsView from './components/GlobalSettingsView';
 import ToastContainer from './components/ToastContainer';
 import LanguageSelector from './components/LanguageSelector';
 import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
@@ -43,6 +44,7 @@ function AppContent() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
   const [isInDetailView, setIsInDetailView] = useState(false);
+  const [isInEditMode, setIsInEditMode] = useState(false);
   const [forceResetDetailView, setForceResetDetailView] = useState(0);
   
   // Outer tab state
@@ -88,7 +90,7 @@ function AppContent() {
   // Auto-refresh interval
   useEffect(() => {
     let interval;
-    if (autoRefresh && selectedProfile) {
+    if (autoRefresh && selectedProfile && !isInEditMode && !isInDetailView) {
       interval = setInterval(() => {
         console.log(`Auto-refreshing tasks every ${refreshInterval}s...`);
         loadTasks(selectedProfile, true); // Force refresh for auto-refresh
@@ -97,7 +99,7 @@ function AppContent() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [autoRefresh, selectedProfile, refreshInterval]);
+  }, [autoRefresh, selectedProfile, refreshInterval, isInEditMode, isInDetailView]);
 
   // Load profiles on mount
   useEffect(() => {
@@ -992,8 +994,12 @@ function AppContent() {
                   globalFilter={globalFilter}
                   onGlobalFilterChange={setGlobalFilter}
                   projectRoot={projectRoot}
-                  onDetailViewChange={setIsInDetailView}
+                  onDetailViewChange={(inDetailView, inEditMode) => {
+                    setIsInDetailView(inDetailView);
+                    setIsInEditMode(inEditMode || false);
+                  }}
                   resetDetailView={forceResetDetailView}
+                  profileId={selectedProfile}
                 />
               </div>
             ),
@@ -1205,6 +1211,9 @@ function AppContent() {
                   />
                 ) : null}
               </div>
+            ),
+            globalSettings: (
+              <GlobalSettingsView showToast={showToast} />
             )
           }}
         />

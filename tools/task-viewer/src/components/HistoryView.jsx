@@ -47,25 +47,45 @@ function HistoryView({
       header: t('notes'),
       cell: ({ row }) => {
         const noteKey = `${row.original.timestamp}`;
-        const hasNote = savedNotes[noteKey];
+        const noteText = savedNotes[noteKey];
+        const hasNote = !!noteText;
+        
         return (
-          <div className="notes-cell">
-            <button
-              className={`edit-notes-button ${hasNote ? 'has-note' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditingEntry(row.original);
-                setNotesText(savedNotes[noteKey] || '');
-                setShowNotesModal(true);
-              }}
-              title={hasNote ? t('editNote') : t('addNote')}
-            >
-              {hasNote ? '📝' : '✏️'}
-            </button>
+          <div 
+            className="notes-cell"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingEntry(row.original);
+              setNotesText(savedNotes[noteKey] || '');
+              setShowNotesModal(true);
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            {hasNote ? (
+              <div 
+                className="notes-preview"
+                title={noteText}
+              >
+                {noteText.slice(0, 150)}{noteText.length > 150 ? '...' : ''}
+              </div>
+            ) : (
+              <button
+                className="edit-notes-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingEntry(row.original);
+                  setNotesText('');
+                  setShowNotesModal(true);
+                }}
+                title={t('addNote')}
+              >
+                ✏️
+              </button>
+            )}
           </div>
         );
       },
-      size: 80,
+      size: 200,
     },
     {
       accessorKey: 'taskCount',

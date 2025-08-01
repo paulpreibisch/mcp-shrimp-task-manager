@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 
-function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex, allTasks, isHistorical = false }) {
+function TaskEditView({ task, onBack, projectRoot, profileId, onNavigateToTask, taskIndex, allTasks, onSave }) {
   const { t } = useLanguage();
-  if (!task) return null;
+  const [editedTask, setEditedTask] = useState({
+    description: task.description || '',
+    notes: task.notes || '',
+    implementationGuide: task.implementationGuide || '',
+    verificationCriteria: task.verificationCriteria || ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -40,15 +47,67 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
     return icons[type] || '📄';
   };
 
+  const handleInputChange = (field, value) => {
+    setEditedTask(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    setError(null);
+    
+    console.log('Saving task with profileId:', profileId);
+    console.log('Task data:', { taskId: task.id, updates: editedTask });
+    
+    // Check if profileId is provided
+    if (!profileId) {
+      setError('Profile ID is missing. Please try again.');
+      setIsSaving(false);
+      return;
+    }
+    
+    try {
+      const url = `/api/tasks/${profileId}/update`;
+      console.log('Calling API:', url);
+      
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskId: task.id,
+          updates: editedTask
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update task');
+      }
+
+      if (onSave) {
+        onSave(editedTask);
+      }
+    } catch (err) {
+      console.error('Error saving task:', err);
+      setError('Failed to save task. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <div className={`task-detail-view ${isHistorical ? 'historical' : ''}`}>
+    <div className="task-detail-view edit-mode">
       <div className="task-detail-header">
         <h2>
           <span className="task-number">TASK {taskIndex + 1}</span>
           {task.name}
+          <span className="edit-badge">EDITING</span>
         </h2>
         <button className="back-button" onClick={onBack}>
-          ← {isHistorical ? 'Back to Task History' : 'Back to Tasks'}
+          ← Back to Tasks
         </button>
       </div>
       
@@ -75,40 +134,51 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
             <span className="detail-label">Updated:</span>
             <span className="detail-value">{formatDate(task.updatedAt)}</span>
           </div>
-          
-          {task.completedAt && (
-            <div className="detail-row">
-              <span className="detail-label">Completed:</span>
-              <span className="detail-value">{formatDate(task.completedAt)}</span>
-            </div>
-          )}
         </div>
 
         <div className="task-detail-section">
           <h3>{t('description')}</h3>
-          <div className="detail-content">{task.description || t('noDescriptionProvided')}</div>
+          <textarea
+            className="edit-textarea"
+            value={editedTask.description}
+            onChange={(e) => handleInputChange('description', e.target.value)}
+            placeholder="Enter task description..."
+            rows={4}
+          />
         </div>
 
-        {task.notes && (
-          <div className="task-detail-section">
-            <h3>Notes</h3>
-            <div className="detail-content">{task.notes}</div>
-          </div>
-        )}
+        <div className="task-detail-section">
+          <h3>Notes</h3>
+          <textarea
+            className="edit-textarea"
+            value={editedTask.notes}
+            onChange={(e) => handleInputChange('notes', e.target.value)}
+            placeholder="Enter notes..."
+            rows={3}
+          />
+        </div>
 
-        {task.implementationGuide && (
-          <div className="task-detail-section">
-            <h3>Implementation Guide</h3>
-            <div className="detail-content">{task.implementationGuide}</div>
-          </div>
-        )}
+        <div className="task-detail-section">
+          <h3>Implementation Guide</h3>
+          <textarea
+            className="edit-textarea"
+            value={editedTask.implementationGuide}
+            onChange={(e) => handleInputChange('implementationGuide', e.target.value)}
+            placeholder="Enter implementation guide..."
+            rows={6}
+          />
+        </div>
 
-        {task.verificationCriteria && (
-          <div className="task-detail-section">
-            <h3>Verification Criteria</h3>
-            <div className="detail-content">{task.verificationCriteria}</div>
-          </div>
-        )}
+        <div className="task-detail-section">
+          <h3>Verification Criteria</h3>
+          <textarea
+            className="edit-textarea"
+            value={editedTask.verificationCriteria}
+            onChange={(e) => handleInputChange('verificationCriteria', e.target.value)}
+            placeholder="Enter verification criteria..."
+            rows={4}
+          />
+        </div>
 
         {task.summary && (
           <div className="task-detail-section">
@@ -129,7 +199,6 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
             <h3>Dependencies</h3>
             <div className="dependencies-list">
               {task.dependencies.map((dep, idx) => {
-                // Handle both string IDs and object dependencies
                 let depId, depName;
                 if (typeof dep === 'string') {
                   depId = dep;
@@ -141,14 +210,8 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
                   return null;
                 }
                 
-                console.log('Dependency:', dep, 'depId:', depId);
-                console.log('All tasks:', allTasks);
-                
-                // Find the task number for this dependency
                 const depTaskIndex = allTasks ? allTasks.findIndex(t => t.id === depId) : -1;
                 const taskNumber = depTaskIndex >= 0 ? `TASK ${depTaskIndex + 1}` : 'TASK ?';
-                
-                console.log('Found task index:', depTaskIndex, 'Task number:', taskNumber);
                 
                 return (
                   <span 
@@ -176,11 +239,9 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
                     <div 
                       className="file-path monospace file-link"
                       onClick={(e) => {
-                        // Copy the full file path to clipboard
                         const fullPath = projectRoot ? `${projectRoot}/${file.path}` : file.path;
                         navigator.clipboard.writeText(fullPath);
                         
-                        // Show feedback
                         const element = e.currentTarget;
                         element.classList.add('copied');
                         setTimeout(() => {
@@ -205,9 +266,29 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
             </div>
           </div>
         )}
+
+        <div className="edit-actions">
+          {error && (
+            <div className="error-message">{error}</div>
+          )}
+          <button 
+            className="save-button"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </button>
+          <button 
+            className="cancel-button"
+            onClick={onBack}
+            disabled={isSaving}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-export default TaskDetailView;
+export default TaskEditView;
