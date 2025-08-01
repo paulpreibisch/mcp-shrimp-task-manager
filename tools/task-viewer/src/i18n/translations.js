@@ -243,7 +243,10 @@ export const translations = {
     globalSettings: "Global Settings",
     claudeFolderPath: "Claude Folder Path",
     claudeFolderPathDesc: "If you specify your Claude folder path, you will have access to sub-agent and hook settings",
-    claudeFolderPathPlaceholder: "e.g., ~/.config/claude"
+    claudeFolderPathPlaceholder: "e.g., ~/.config/claude",
+    
+    // Task messages
+    taskSavedSuccess: "Task saved successfully"
   },
   
   zh: {
@@ -490,7 +493,10 @@ export const translations = {
     globalSettings: "全局设置",
     claudeFolderPath: "Claude 文件夹路径",
     claudeFolderPathDesc: "如果您指定 Claude 文件夹路径，您将能够访问子代理和钩子设置",
-    claudeFolderPathPlaceholder: "例如：~/.config/claude"
+    claudeFolderPathPlaceholder: "例如：~/.config/claude",
+    
+    // Task messages
+    taskSavedSuccess: "任务保存成功"
   },
   
   es: {
@@ -737,7 +743,10 @@ export const translations = {
     globalSettings: "Configuración Global",
     claudeFolderPath: "Ruta de la Carpeta Claude",
     claudeFolderPathDesc: "Si especifica la ruta de su carpeta Claude, tendrá acceso a la configuración de sub-agentes y hooks",
-    claudeFolderPathPlaceholder: "p.ej., ~/.config/claude"
+    claudeFolderPathPlaceholder: "p.ej., ~/.config/claude",
+    
+    // Task messages
+    taskSavedSuccess: "Tarea guardada exitosamente"
   }
 };
 

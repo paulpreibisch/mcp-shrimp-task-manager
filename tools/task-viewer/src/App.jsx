@@ -1000,6 +1000,11 @@ function AppContent() {
                   }}
                   resetDetailView={forceResetDetailView}
                   profileId={selectedProfile}
+                  onTaskSaved={async () => {
+                    // Force refresh tasks after save
+                    await loadTasks(selectedProfile, true);
+                    showToast(t('taskSavedSuccess'), 'success');
+                  }}
                 />
               </div>
             ),

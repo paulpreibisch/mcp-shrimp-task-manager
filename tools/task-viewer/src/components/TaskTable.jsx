@@ -12,7 +12,7 @@ import Tooltip from './Tooltip';
 import { useLanguage } from '../i18n/LanguageContext';
 import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
 
-function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId }) {
+function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId, onTaskSaved }) {
   const { t } = useLanguage();
   const [selectedTask, setSelectedTask] = useState(null);
   
@@ -294,11 +294,15 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             taskIndex={data.findIndex(t => t.id === selectedTask.id)}
             allTasks={data}
             onSave={async (updatedTask) => {
-              // This will trigger a re-fetch of the data
+              // Close the edit view immediately
               setSelectedTask(null);
-              // Parent component should handle refresh
+              // Notify parent to refresh data
               if (onDetailViewChange) {
                 onDetailViewChange(false, false);
+              }
+              // Trigger refresh from parent
+              if (onTaskSaved) {
+                await onTaskSaved();
               }
             }}
           />
@@ -318,6 +322,9 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           }}
           taskIndex={data.findIndex(t => t.id === selectedTask.id)}
           allTasks={data}
+          onEdit={() => {
+            setSelectedTask({ ...selectedTask, editMode: true });
+          }}
         />
       );
     }
