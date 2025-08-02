@@ -115,17 +115,17 @@ async function updateProject(projectId, updates) {
     
     // Apply updates
     if (updates.name !== undefined) {
-        profile.name = updates.name;
+        project.name = updates.name;
     }
     if (updates.projectRoot !== undefined) {
-        profile.projectRoot = updates.projectRoot;
+        project.projectRoot = updates.projectRoot;
     }
     if (updates.taskPath !== undefined) {
-        // Update the path property (which is what the agent actually uses)
-        profile.path = updates.taskPath;
+        // Update the path property (which is what the project actually uses)
+        project.path = updates.taskPath;
         // Also update taskPath and filePath for consistency
-        agent.taskPath = updates.taskPath;
-        profile.filePath = updates.taskPath;
+        project.taskPath = updates.taskPath;
+        project.filePath = updates.taskPath;
     }
     
     await saveSettings(projects);
@@ -498,7 +498,7 @@ async function startServer() {
                     const { taskId, updates } = JSON.parse(body);
                     
                     // Read current tasks
-                    const data = await fs.readFile(profile.path, 'utf8');
+                    const data = await fs.readFile(project.path, 'utf8');
                     const tasksData = JSON.parse(data);
                     
                     // Find and update the task
@@ -517,7 +517,7 @@ async function startServer() {
                     };
                     
                     // Write back to file
-                    await fs.writeFile(profile.path, JSON.stringify(tasksData, null, 2));
+                    await fs.writeFile(project.path, JSON.stringify(tasksData, null, 2));
                     
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(tasksData.tasks[taskIndex]));
@@ -543,7 +543,7 @@ async function startServer() {
             
             try {
                 // Read current tasks
-                const data = await fs.readFile(profile.path, 'utf8');
+                const data = await fs.readFile(project.path, 'utf8');
                 const tasksData = JSON.parse(data);
                 
                 // Find and remove the task
@@ -558,7 +558,7 @@ async function startServer() {
                 tasksData.tasks.splice(taskIndex, 1);
                 
                 // Write back to file
-                await fs.writeFile(profile.path, JSON.stringify(tasksData, null, 2));
+                await fs.writeFile(project.path, JSON.stringify(tasksData, null, 2));
                 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true, message: 'Task deleted successfully' }));
@@ -579,11 +579,11 @@ async function startServer() {
             }
             
             try {
-                console.log(`Reading tasks from: ${profile.path}`);
-                const stats = await fs.stat(profile.path);
+                console.log(`Reading tasks from: ${project.path}`);
+                const stats = await fs.stat(project.path);
                 console.log(`File last modified: ${stats.mtime}`);
                 
-                const data = await fs.readFile(profile.path, 'utf8');
+                const data = await fs.readFile(project.path, 'utf8');
                 const tasksData = JSON.parse(data);
                 
                 // Log task status for debugging
@@ -593,8 +593,8 @@ async function startServer() {
                 }
                 
                 // Add projectRoot to the response
-                if (profile.projectRoot) {
-                    tasksData.projectRoot = profile.projectRoot;
+                if (project.projectRoot) {
+                    tasksData.projectRoot = project.projectRoot;
                 }
                 
                 res.writeHead(200, { 
@@ -605,7 +605,7 @@ async function startServer() {
                 });
                 res.end(JSON.stringify(tasksData));
             } catch (err) {
-                console.error(`Error reading file ${profile.path}:`, err);
+                console.error(`Error reading file ${project.path}:`, err);
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
                 res.end('Error reading task file: ' + err.message);
             }
@@ -621,7 +621,7 @@ async function startServer() {
             }
             
             try {
-                const tasksPath = profile.path || profile.filePath;
+                const tasksPath = project.path || project.filePath;
                 const memoryDir = path.join(path.dirname(tasksPath), 'memory');
                 
                 // Check if memory directory exists
@@ -707,7 +707,7 @@ async function startServer() {
             }
             
             try {
-                const tasksPath = profile.path || profile.filePath;
+                const tasksPath = project.path || project.filePath;
                 const memoryDir = path.join(path.dirname(tasksPath), 'memory');
                 const filePath = path.join(memoryDir, filename);
                 
@@ -978,7 +978,7 @@ async function startServer() {
             }
             
             try {
-                const projectRoot = profile.projectRoot;
+                const projectRoot = project.projectRoot;
                 console.log('Project root:', projectRoot);
                 if (!projectRoot) {
                     console.log('No project root configured for project:', projectId);
@@ -1114,7 +1114,7 @@ async function startServer() {
             }
             
             try {
-                const projectRoot = profile.projectRoot;
+                const projectRoot = project.projectRoot;
                 if (!projectRoot) {
                     res.writeHead(404, { 'Content-Type': 'text/plain' });
                     res.end('Project root not configured for this profile');
@@ -1159,7 +1159,7 @@ async function startServer() {
                         return;
                     }
                     
-                    const projectRoot = profile.projectRoot;
+                    const projectRoot = project.projectRoot;
                     if (!projectRoot) {
                         res.writeHead(404, { 'Content-Type': 'text/plain' });
                         res.end('Project root not configured for this profile');
