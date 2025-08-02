@@ -11,7 +11,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import AgentViewer from './AgentViewer';
 import AgentEditor from './AgentEditor';
 
-function ProjectAgentsView({ profileId, projectRoot, showToast }) {
+function ProjectAgentsView({ profileId, projectRoot, showToast, refreshTrigger }) {
   const { t } = useLanguage();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -26,6 +26,14 @@ function ProjectAgentsView({ profileId, projectRoot, showToast }) {
       loadAgents();
     }
   }, [profileId]);
+
+  // Reset viewing/editing states when tab is clicked (refreshTrigger changes)
+  useEffect(() => {
+    if (refreshTrigger) {
+      setViewingAgent(null);
+      setEditingAgent(null);
+    }
+  }, [refreshTrigger]);
 
   const loadAgents = async () => {
     if (!profileId) {

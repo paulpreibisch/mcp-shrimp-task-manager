@@ -71,6 +71,7 @@ function AppContent() {
   
   // Inner project tab state (tasks, history, settings)
   const [projectInnerTab, setProjectInnerTab] = useState(initialUrlState.projectTab || 'tasks'); // 'tasks', 'history', 'settings'
+  const [agentsTabRefresh, setAgentsTabRefresh] = useState(0); // Trigger for refreshing agents view
   
   // History management states
   const [historyView, setHistoryView] = useState(initialUrlState.history || ''); // 'list' or 'details' or '' for normal view
@@ -905,6 +906,10 @@ function AppContent() {
             if (tab === 'history' && !historyData.length && selectedProfile) {
               loadHistory(selectedProfile);
             }
+            // Trigger refresh for agents tab to reset viewing state
+            if (tab === 'agents') {
+              setAgentsTabRefresh(prev => prev + 1);
+            }
             // Update URL
             pushUrlState({
               tab: 'projects',
@@ -1083,7 +1088,8 @@ function AppContent() {
               <ProjectAgentsView 
                 profileId={selectedProfile} 
                 projectRoot={projectRoot} 
-                showToast={showToast} 
+                showToast={showToast}
+                refreshTrigger={agentsTabRefresh}
               />
             ),
             settings: (
