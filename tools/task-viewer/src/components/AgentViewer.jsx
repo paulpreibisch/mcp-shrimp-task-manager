@@ -17,13 +17,16 @@ function AgentViewer({
   const [error, setError] = useState('');
 
   const getFileType = (filename) => {
-    if (filename.endsWith('.md')) return 'Markdown';
-    if (filename.endsWith('.yaml') || filename.endsWith('.yml')) return 'YAML';
+    if (!filename) return 'Unknown';
+    if (filename.toLowerCase().endsWith('.md')) return 'Markdown';
+    if (filename.toLowerCase().endsWith('.yaml') || filename.toLowerCase().endsWith('.yml')) return 'YAML';
     return 'Unknown';
   };
 
   useEffect(() => {
     if (!agent) return;
+    console.log('Agent object:', agent);
+    console.log('Agent name:', agent.name);
     
     const fetchAgentContent = async () => {
       setLoading(true);

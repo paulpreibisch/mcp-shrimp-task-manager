@@ -369,7 +369,8 @@ function ProjectAgentsView({ profileId, projectRoot, showToast }) {
             <tr 
               key={row.id}
               className="clickable-row template-row"
-              title="Agent row - use action buttons to view or edit"
+              onClick={() => setViewingAgent(row.original)}
+              title="Click to view agent details"
             >
               {row.getVisibleCells().map(cell => (
                 <td key={cell.id}>

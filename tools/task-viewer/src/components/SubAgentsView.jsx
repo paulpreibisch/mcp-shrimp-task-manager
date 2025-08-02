@@ -215,118 +215,114 @@ function SubAgentsView({ showToast, onNavigateToSettings, refreshTrigger }) {
     );
   }
 
-  // Handle editing agent
+  // Handle editing agent with AgentEditor component
   if (editingAgent) {
     return (
-      <div className="agent-editor">
-        <div className="editor-header">
-          <button 
-            className="back-button"
-            onClick={() => setEditingAgent(null)}
-          >
-            ← Back to Agents
-          </button>
-          <h2>✏️ Edit {editingAgent.name.replace(/\.(md|yaml|yml)$/, '')}</h2>
-        </div>
-        <div className="editor-content">
-          <textarea
-            className="content-editor"
-            defaultValue={editingAgent.content || ''}
-            placeholder="Enter agent content..."
-            rows={20}
-            style={{ width: '100%', fontFamily: 'monospace' }}
-          />
-          <div className="editor-actions">
-            <button 
-              className="primary-btn"
-              onClick={() => {
-                // TODO: Implement save functionality
-                showToast && showToast('Save functionality not implemented yet', 'info');
-              }}
-            >
-              Save
-            </button>
-            <button 
-              className="secondary-btn"
-              onClick={() => setEditingAgent(null)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
+      <AgentEditor
+        agent={editingAgent}
+        onBack={() => setEditingAgent(null)}
+        onSave={() => {
+          loadAgents(); // Refresh the list after save
+        }}
+        isGlobal={true}
+        profileId={null}
+        showToast={showToast}
+      />
     );
   }
 
   if (loading || !settingsLoaded) {
-    if (!settingsLoaded) {
-      return (
-        <div className="loading">
-          Loading settings... ⏳
-        </div>
-      );
-    }
     const agentsPath = claudeFolderPath ? `${claudeFolderPath}/agents` : 'Claude folder/agents';
     return (
-      <div className="loading">
-        Loading agents from {agentsPath}... ⏳
+      <div className="template-management-view">
+        <div className="template-management-header">
+          <div className="header-content">
+            <div className="header-text">
+              <h2>🤖 Global Sub-Agents</h2>
+              <p>Loading agents from your Claude folder configuration...</p>
+            </div>
+          </div>
+        </div>
+        <div className="loading">
+          {!settingsLoaded ? 'Loading settings... ⏳' : `Loading agents from ${agentsPath}... ⏳`}
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="error">
-        {error}
+      <div className="template-management-view">
+        <div className="template-management-header">
+          <div className="header-content">
+            <div className="header-text">
+              <h2>🤖 Global Sub-Agents</h2>
+              <p>Manage sub-agents from your Claude folder configuration</p>
+            </div>
+          </div>
+        </div>
+        <div className="error">
+          {error}
+        </div>
       </div>
     );
   }
 
   if (data.length === 0) {
-    if (!claudeFolderPath) {
-      return (
-        <div className="loading">
-          Claude folder path is not configured. Please configure it in{' '}
-          <span 
-            className="settings-link"
-            onClick={onNavigateToSettings}
-            style={{ 
-              color: '#3498db', 
-              cursor: 'pointer', 
-              textDecoration: 'underline',
-              fontWeight: 'bold'
-            }}
-            title="Click to go to settings"
-          >
-            settings
-          </span>.
-        </div>
-      );
-    }
-    
-    const agentsPath = `${claudeFolderPath}/agents`;
+    const agentsPath = claudeFolderPath ? `${claudeFolderPath}/agents` : 'Claude folder/agents';
     return (
-      <div className="loading">
-        No agents found in {agentsPath}. Make sure this directory exists and contains .md or .yaml agent files, or update the Claude folder path in{' '}
-        <span 
-          className="settings-link"
-          onClick={onNavigateToSettings}
-          style={{ 
-            color: '#3498db', 
-            cursor: 'pointer', 
-            textDecoration: 'underline',
-            fontWeight: 'bold'
-          }}
-          title="Click to go to settings"
-        >
-          settings
-        </span>.
+      <div className="template-management-view">
+        <div className="template-management-header">
+          <div className="header-content">
+            <div className="header-text">
+              <h2>🤖 Global Sub-Agents</h2>
+              <p>Manage sub-agents from your Claude folder configuration</p>
+            </div>
+          </div>
+        </div>
+        <div className="loading">
+          {!claudeFolderPath ? (
+            <>
+              Claude folder path is not configured. Please configure it in{' '}
+              <span 
+                className="settings-link"
+                onClick={onNavigateToSettings}
+                style={{ 
+                  color: '#3498db', 
+                  cursor: 'pointer', 
+                  textDecoration: 'underline',
+                  fontWeight: 'bold'
+                }}
+                title="Click to go to settings"
+              >
+                settings
+              </span>.
+            </>
+          ) : (
+            <>
+              No agents found in {agentsPath}. Make sure this directory exists and contains .md or .yaml agent files, or update the Claude folder path in{' '}
+              <span 
+                className="settings-link"
+                onClick={onNavigateToSettings}
+                style={{ 
+                  color: '#3498db', 
+                  cursor: 'pointer', 
+                  textDecoration: 'underline',
+                  fontWeight: 'bold'
+                }}
+                title="Click to go to settings"
+              >
+                settings
+              </span>.
+            </>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="template-management-view">
       <div className="template-management-header">
         <div className="header-content">
           <div className="header-text">
@@ -459,7 +455,7 @@ function SubAgentsView({ showToast, onNavigateToSettings, refreshTrigger }) {
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
