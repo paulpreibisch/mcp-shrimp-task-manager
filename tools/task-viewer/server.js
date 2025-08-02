@@ -689,8 +689,8 @@ async function startServer() {
         } else if (url.pathname.startsWith('/api/history/') && url.pathname.split('/').length === 5) {
             // Handle /api/history/{projectId}/{filename}
             const pathParts = url.pathname.split('/');
-            const projectId = pathParts[3];
-            const filename = pathParts[4];
+            const projectId = pathParts[4];
+            const filename = pathParts[5];
             const project = projects.find(p => p.id === projectId);
             
             if (!project) {
@@ -1103,8 +1103,8 @@ async function startServer() {
         } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET' && url.pathname.split('/').length === 6) {
             // Read specific project agent file
             const pathParts = url.pathname.split('/');
-            const projectId = pathParts[3];
-            const filename = pathParts[4];
+            const projectId = pathParts[4];
+            const filename = pathParts[5];
             const project = projects.find(p => p.id === projectId);
             
             if (!project) {
@@ -1138,8 +1138,8 @@ async function startServer() {
         } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'PUT' && url.pathname.split('/').length === 6) {
             // Update specific project agent file
             const pathParts = url.pathname.split('/');
-            const projectId = pathParts[3];
-            const filename = pathParts[4];
+            const projectId = pathParts[4];
+            const filename = pathParts[5];
             const project = projects.find(p => p.id === projectId);
             
             if (!project) {
