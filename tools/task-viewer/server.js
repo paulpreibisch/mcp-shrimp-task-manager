@@ -22,7 +22,7 @@ const DEFAULT_TEMPLATES_DIR = path.join(PROJECT_ROOT, 'src', 'prompts', 'templat
 // Default agent data paths configuration
 const defaultAgents = [];
 
-let profiles = []; // Project profiles, not agent files
+let projects = []; // Project list
 
 // Load or create settings file
 async function loadSettings() {
@@ -31,7 +31,7 @@ async function loadSettings() {
         const data = await fs.readFile(SETTINGS_FILE, 'utf8');
         const settings = JSON.parse(data);
         console.log('Loaded settings:', settings);
-        return settings.profiles || settings.agents || []; // Support both new 'profiles' and old 'agents' key
+        return settings.projects || settings.profiles || settings.agents || []; // Support new 'projects' and old keys for backward compatibility
     } catch (err) {
         console.error('Error loading settings:', err.message);
         await saveSettings(defaultAgents);
@@ -40,9 +40,9 @@ async function loadSettings() {
 }
 
 // Save settings file
-async function saveSettings(profileList) {
+async function saveSettings(projectList) {
     const settings = {
-        profiles: profileList, // Changed from 'agents' to 'profiles' for clarity
+        projects: projectList, // Changed from 'agents' to 'projects' for clarity
         lastUpdated: new Date().toISOString(),
         version: VERSION
     };
@@ -74,43 +74,43 @@ async function saveGlobalSettings(settings) {
     await fs.writeFile(GLOBAL_SETTINGS_FILE, JSON.stringify(settings, null, 2));
 }
 
-// Add new profile
-async function addProfile(name, filePath, projectRoot = null) {
+// Add new project
+async function addProject(name, filePath, projectRoot = null) {
     const id = name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
     const newProfile = { id, name, path: filePath, projectRoot };
     
-    const existingIndex = profiles.findIndex(p => p.id === id);
+    const existingIndex = projects.findIndex(p => p.id === id);
     if (existingIndex >= 0) {
-        profiles[existingIndex] = newProfile;
+        projects[existingIndex] = newProfile;
     } else {
-        profiles.push(newProfile);
+        projects.push(newProfile);
     }
     
-    await saveSettings(profiles);
+    await saveSettings(projects);
     return newProfile;
 }
 
-// Remove profile
-async function removeProfile(profileId) {
-    profiles = profiles.filter(p => p.id !== profileId);
-    await saveSettings(profiles);
+// Remove project
+async function removeProject(projectId) {
+    projects = projects.filter(p => p.id !== projectId);
+    await saveSettings(projects);
 }
 
 // Rename agent
-async function renameAgent(agentId, newName) {
-    const profile = profiles.find(p => p.id === agentId);
-    if (!profile) {
-        throw new Error('Profile not found');
+async function renameProject(projectId, newName) {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) {
+        throw new Error('Project not found');
     }
-    profile.name = newName;
-    await saveSettings(profiles);
-    return profile;
+    project.name = newName;
+    await saveSettings(projects);
+    return project;
 }
 
-async function updateAgent(agentId, updates) {
-    const profile = profiles.find(p => p.id === agentId);
-    if (!profile) {
-        throw new Error('Profile not found');
+async function updateProject(projectId, updates) {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) {
+        throw new Error('Project not found');
     }
     
     // Apply updates
@@ -128,8 +128,8 @@ async function updateAgent(agentId, updates) {
         profile.filePath = updates.taskPath;
     }
     
-    await saveSettings(profiles);
-    return profile;
+    await saveSettings(projects);
+    return project;
 }
 
 // MIME type helper
@@ -352,7 +352,7 @@ async function serveStaticFile(req, res, filePath) {
 
 // Initialize and start server
 async function startServer() {
-    profiles = await loadSettings();
+    projects = await loadSettings();
     
     const server = http.createServer(async (req, res) => {
         const url = new URL(req.url, `http://${req.headers.host}`);
@@ -371,9 +371,9 @@ async function startServer() {
         // API routes
         if (url.pathname === '/api/agents' && req.method === 'GET') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(profiles));
+            res.end(JSON.stringify(projects));
             
-        } else if (url.pathname === '/api/add-profile' && req.method === 'POST') {
+        } else if (url.pathname === '/api/add-project' && req.method === 'POST') {
             // Handle JSON or form data
             let body = '';
             req.on('data', chunk => body += chunk.toString());
@@ -406,7 +406,7 @@ async function startServer() {
                     
                     // If a file path is provided, use it directly
                     if (filePath) {
-                        const agent = await addAgent(name, filePath, projectRoot);
+                        const project = await addProject(name, filePath, projectRoot);
                         res.writeHead(200, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify(agent));
                     } else if (taskFileContent) {
@@ -429,19 +429,19 @@ async function startServer() {
                 }
             });
             
-        } else if (url.pathname.startsWith('/api/remove-profile/') && req.method === 'DELETE') {
-            const agentId = url.pathname.split('/').pop();
+        } else if (url.pathname.startsWith('/api/remove-project/') && req.method === 'DELETE') {
+            const projectId = url.pathname.split('/').pop();
             try {
-                await removeAgent(agentId);
+                await removeProject(projectId);
                 res.writeHead(200, { 'Content-Type': 'text/plain' });
-                res.end('Profile removed');
+                res.end('Project removed');
             } catch (err) {
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
                 res.end('Internal server error: ' + err.message);
             }
             
-        } else if (url.pathname.startsWith('/api/rename-profile/') && req.method === 'PUT') {
-            const agentId = url.pathname.split('/').pop();
+        } else if (url.pathname.startsWith('/api/rename-project/') && req.method === 'PUT') {
+            const projectId = url.pathname.split('/').pop();
             let body = '';
             req.on('data', chunk => body += chunk.toString());
             req.on('end', async () => {
@@ -452,7 +452,7 @@ async function startServer() {
                         res.end('Missing name');
                         return;
                     }
-                    const agent = await renameAgent(agentId, name);
+                    const project = await renameProject(projectId, name);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(agent));
                 } catch (err) {
@@ -461,14 +461,14 @@ async function startServer() {
                 }
             });
             
-        } else if (url.pathname.startsWith('/api/update-profile/') && req.method === 'PUT') {
-            const agentId = url.pathname.split('/').pop();
+        } else if (url.pathname.startsWith('/api/update-project/') && req.method === 'PUT') {
+            const projectId = url.pathname.split('/').pop();
             let body = '';
             req.on('data', chunk => body += chunk.toString());
             req.on('end', async () => {
                 try {
                     const updates = JSON.parse(body);
-                    const agent = await updateAgent(agentId, updates);
+                    const project = await updateProject(projectId, updates);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(agent));
                 } catch (err) {
@@ -480,14 +480,14 @@ async function startServer() {
         } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/update') && req.method === 'PUT') {
             // Handle task update
             const pathParts = url.pathname.split('/');
-            const agentId = pathParts[pathParts.length - 2];
-            console.log('Update task route - profileId:', agentId, 'profiles:', profiles.map(p => p.id));
-            const profile = profiles.find(p => p.id === agentId);
+            const projectId = pathParts[pathParts.length - 2];
+            console.log('Update task route - projectId:', projectId, 'projects:', projects.map(p => p.id));
+            const project = projects.find(p => p.id === projectId);
             
-            if (!profile) {
-                console.error('Profile not found:', agentId, 'Available profiles:', profiles.map(p => p.id));
+            if (!project) {
+                console.error('Project not found:', projectId, 'Available projects:', projects.map(p => p.id));
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
-                res.end('Profile not found');
+                res.end('Project not found');
                 return;
             }
             
@@ -532,12 +532,12 @@ async function startServer() {
             // Handle task delete
             const pathParts = url.pathname.split('/');
             const taskId = pathParts[pathParts.length - 2];
-            const agentId = pathParts[pathParts.length - 3];
-            const profile = profiles.find(p => p.id === agentId);
+            const projectId = pathParts[pathParts.length - 3];
+            const project = projects.find(p => p.id === projectId);
             
-            if (!profile) {
+            if (!project) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
-                res.end('Profile not found');
+                res.end('Project not found');
                 return;
             }
             
@@ -569,12 +569,12 @@ async function startServer() {
             }
             
         } else if (url.pathname.startsWith('/api/tasks/')) {
-            const agentId = url.pathname.split('?')[0].split('/').pop();
-            const profile = profiles.find(p => p.id === agentId);
+            const projectId = url.pathname.split('?')[0].split('/').pop();
+            const project = projects.find(p => p.id === projectId);
             
-            if (!profile) {
+            if (!project) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
-                res.end('Profile not found');
+                res.end('Project not found');
                 return;
             }
             
@@ -611,10 +611,10 @@ async function startServer() {
             }
             
         } else if (url.pathname.startsWith('/api/history/') && url.pathname.split('/').length === 4) {
-            const profileId = url.pathname.split('/').pop();
-            const profile = profiles.find(p => p.id === profileId);
+            const projectId = url.pathname.split('/').pop();
+            const project = projects.find(p => p.id === projectId);
             
-            if (!profile) {
+            if (!project) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Agent not found');
                 return;
@@ -687,13 +687,13 @@ async function startServer() {
             }
             
         } else if (url.pathname.startsWith('/api/history/') && url.pathname.split('/').length === 5) {
-            // Handle /api/history/{profileId}/{filename}
+            // Handle /api/history/{projectId}/{filename}
             const pathParts = url.pathname.split('/');
-            const profileId = pathParts[3];
+            const projectId = pathParts[3];
             const filename = pathParts[4];
-            const profile = profiles.find(p => p.id === profileId);
+            const project = projects.find(p => p.id === projectId);
             
-            if (!profile) {
+            if (!project) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('Agent not found');
                 return;
@@ -964,16 +964,16 @@ async function startServer() {
         } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET' && url.pathname.split('/').length === 4) {
             // List project agents from .claude/agents directory
             const pathParts = url.pathname.split('/');
-            // /api/agents/project/:profileId
-            const profileId = pathParts[3];
-            console.log('Looking for project agents for profileId:', profileId);
-            console.log('Available profiles:', profiles.map(p => ({ id: p.id, name: p.name, projectRoot: p.projectRoot })));
-            const profile = profiles.find(p => p.id === profileId);
+            // /api/agents/project/:projectId
+            const projectId = pathParts[3];
+            console.log('Looking for project agents for projectId:', projectId);
+            console.log('Available projects:', projects.map(p => ({ id: p.id, name: p.name, projectRoot: p.projectRoot })));
+            const project = projects.find(p => p.id === projectId);
             
-            if (!profile) {
-                console.log('Profile not found for profileId:', profileId);
+            if (!project) {
+                console.log('Project not found for projectId:', projectId);
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
-                res.end('Profile not found');
+                res.end('Project not found');
                 return;
             }
             
@@ -981,7 +981,7 @@ async function startServer() {
                 const projectRoot = profile.projectRoot;
                 console.log('Project root:', projectRoot);
                 if (!projectRoot) {
-                    console.log('No project root configured for profile:', profileId);
+                    console.log('No project root configured for project:', projectId);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify([]));
                     return;
@@ -1103,13 +1103,13 @@ async function startServer() {
         } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET' && url.pathname.split('/').length === 5) {
             // Read specific project agent file
             const pathParts = url.pathname.split('/');
-            const profileId = pathParts[3];
+            const projectId = pathParts[3];
             const filename = pathParts[4];
-            const profile = profiles.find(p => p.id === profileId);
+            const project = projects.find(p => p.id === projectId);
             
-            if (!profile) {
+            if (!project) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
-                res.end('Profile not found');
+                res.end('Project not found');
                 return;
             }
             
@@ -1138,13 +1138,13 @@ async function startServer() {
         } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'PUT' && url.pathname.split('/').length === 5) {
             // Update specific project agent file
             const pathParts = url.pathname.split('/');
-            const profileId = pathParts[3];
+            const projectId = pathParts[3];
             const filename = pathParts[4];
-            const profile = profiles.find(p => p.id === profileId);
+            const project = projects.find(p => p.id === projectId);
             
-            if (!profile) {
+            if (!project) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
-                res.end('Profile not found');
+                res.end('Project not found');
                 return;
             }
             
@@ -1226,12 +1226,12 @@ async function startServer() {
         console.log(`Also accessible at: http://127.0.0.1:${PORT}`);
         console.log(`\nSettings file: ${SETTINGS_FILE}`);
         console.log('    ');
-        console.log('Available profiles:');
-        if (profiles.length === 0) {
-            console.log('  - No profiles configured. Add profiles via the web interface.');
+        console.log('Available projects:');
+        if (projects.length === 0) {
+            console.log('  - No projects configured. Add projects via the web interface.');
         } else {
-            profiles.forEach(profile => {
-                console.log(`  - ${profile.name} (${profile.path})`);
+            projects.forEach(project => {
+                console.log(`  - ${project.name} (${project.path})`);
             });
         }
         console.log('\n🎯 Features:');
