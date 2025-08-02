@@ -72,6 +72,7 @@ function AppContent() {
   // Inner project tab state (tasks, history, settings)
   const [projectInnerTab, setProjectInnerTab] = useState(initialUrlState.projectTab || 'tasks'); // 'tasks', 'history', 'settings'
   const [agentsTabRefresh, setAgentsTabRefresh] = useState(0); // Trigger for refreshing agents view
+  const [tasksTabRefresh, setTasksTabRefresh] = useState(0); // Trigger for refreshing tasks view
   
   // History management states
   const [historyView, setHistoryView] = useState(initialUrlState.history || ''); // 'list' or 'details' or '' for normal view
@@ -910,6 +911,11 @@ function AppContent() {
             if (tab === 'agents') {
               setAgentsTabRefresh(prev => prev + 1);
             }
+            // Trigger refresh for tasks tab to reset viewing state
+            if (tab === 'tasks') {
+              setTasksTabRefresh(prev => prev + 1);
+              setForceResetDetailView(prev => prev + 1); // Reset task detail view
+            }
             // Update URL
             pushUrlState({
               tab: 'projects',
@@ -1027,9 +1033,29 @@ function AppContent() {
                   globalFilter={globalFilter}
                   onGlobalFilterChange={setGlobalFilter}
                   projectRoot={projectRoot}
-                  onDetailViewChange={(inDetailView, inEditMode) => {
+                  onDetailViewChange={(inDetailView, inEditMode, taskId) => {
                     setIsInDetailView(inDetailView);
                     setIsInEditMode(inEditMode || false);
+                    
+                    // Update URL when viewing/editing task
+                    if (inDetailView && taskId) {
+                      pushUrlState({
+                        tab: 'projects',
+                        profile: selectedProfile,
+                        projectTab: 'tasks',
+                        taskView: inEditMode ? 'edit' : 'view',
+                        taskId: taskId,
+                        lang: currentLanguage
+                      });
+                    } else {
+                      // Clear task state when going back to list
+                      pushUrlState({
+                        tab: 'projects',
+                        profile: selectedProfile,
+                        projectTab: 'tasks',
+                        lang: currentLanguage
+                      });
+                    }
                   }}
                   resetDetailView={forceResetDetailView}
                   profileId={selectedProfile}

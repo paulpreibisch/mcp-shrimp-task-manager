@@ -25,7 +25,10 @@ export function parseUrlState() {
     templateId: params.get('template-id'),
     // Agent view state
     agentView: params.get('agent-view'),
-    agentId: params.get('agent-id')
+    agentId: params.get('agent-id'),
+    // Task view state
+    taskView: params.get('task-view'),
+    taskId: params.get('task-id')
   };
 }
 
@@ -71,6 +74,14 @@ export function updateUrl(state) {
     params.set('agent-view', state.agentView);
     if (state.agentId) {
       params.set('agent-id', state.agentId);
+    }
+  }
+  
+  // Add task view state
+  if (state.projectTab === 'tasks' && state.taskView) {
+    params.set('task-view', state.taskView);
+    if (state.taskId) {
+      params.set('task-id', state.taskId);
     }
   }
   
@@ -125,6 +136,14 @@ export function pushUrlState(state) {
     params.set('agent-view', state.agentView);
     if (state.agentId) {
       params.set('agent-id', state.agentId);
+    }
+  }
+  
+  // Add task view state
+  if (state.projectTab === 'tasks' && state.taskView) {
+    params.set('task-view', state.taskView);
+    if (state.taskId) {
+      params.set('task-id', state.taskId);
     }
   }
   

@@ -25,18 +25,18 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
       if (selectedTask.editMode) {
         // Entering edit mode
         if (onDetailViewChange) {
-          onDetailViewChange(true, true);
+          onDetailViewChange(true, true, selectedTask?.id);
         }
       } else {
         // In detail view but not edit mode
         if (onDetailViewChange) {
-          onDetailViewChange(true, false);
+          onDetailViewChange(true, false, selectedTask?.id);
         }
       }
     } else {
       // Not in any detail view
       if (onDetailViewChange) {
-        onDetailViewChange(false, false);
+        onDetailViewChange(false, false, null);
       }
     }
   }, [selectedTask, onDetailViewChange]);
@@ -53,7 +53,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   // Notify parent when detail view changes
   useEffect(() => {
     if (onDetailViewChange) {
-      onDetailViewChange(!!selectedTask, selectedTask?.editMode || false);
+      onDetailViewChange(!!selectedTask, selectedTask?.editMode || false, selectedTask?.id || null);
     }
   }, [selectedTask, onDetailViewChange]);
   // Define table columns configuration with custom cell renderers
@@ -333,7 +333,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
               setSelectedTask(null);
               // Notify parent to refresh data
               if (onDetailViewChange) {
-                onDetailViewChange(false, false);
+                onDetailViewChange(false, false, null);
               }
               // Trigger refresh from parent
               if (onTaskSaved) {
