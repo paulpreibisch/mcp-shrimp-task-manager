@@ -371,7 +371,7 @@ async function startServer() {
         // API routes
         if (url.pathname === '/api/agents' && req.method === 'GET') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify(agents));
+            res.end(JSON.stringify(profiles));
             
         } else if (url.pathname === '/api/add-profile' && req.method === 'POST') {
             // Handle JSON or form data
