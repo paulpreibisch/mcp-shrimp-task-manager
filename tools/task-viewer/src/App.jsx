@@ -350,9 +350,11 @@ function AppContent() {
       setSelectedHistoryTasks([]);
     }
     
+    // Clear any stuck loading state and force reload
+    loadingRef.current = false;
     setSelectedProfile(profileId);
     setGlobalFilter(''); // Clear search when switching profiles
-    loadTasks(profileId);
+    loadTasks(profileId, true); // Force refresh to bypass cache
     
     // Update URL when profile changes
     const urlState = {
