@@ -410,7 +410,19 @@ async function startServer() {
         }
         
         // API routes
-        if (url.pathname === '/api/agents' && req.method === 'GET') {
+        if (url.pathname === '/api/check-env' && req.method === 'GET') {
+            // Check for environment variable
+            const envVarName = 'OPEN_AI_KEY_SHRIMP_TASK_VIEWER';
+            const isSet = !!process.env[envVarName];
+            console.log(`Checking env var ${envVarName}: ${isSet ? 'SET' : 'NOT SET'}`);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ 
+                envVarName,
+                isSet,
+                value: isSet ? '***HIDDEN***' : null 
+            }));
+            
+        } else if (url.pathname === '/api/agents' && req.method === 'GET') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(projects));
             
@@ -449,7 +461,7 @@ async function startServer() {
                     if (filePath) {
                         const project = await addProject(name, filePath, projectRoot);
                         res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify(agent));
+                        res.end(JSON.stringify(project));
                     } else if (taskFileContent) {
                         // Save the file content to a temporary location
                         const tempDir = path.join(os.tmpdir(), 'shrimp-task-viewer');
@@ -457,9 +469,9 @@ async function startServer() {
                         const tempFilePath = path.join(tempDir, `${Date.now()}-tasks.json`);
                         await fs.writeFile(tempFilePath, taskFileContent);
                         
-                        const agent = await addAgent(name, tempFilePath, projectRoot);
+                        const project = await addProject(name, tempFilePath, projectRoot);
                         res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify(agent));
+                        res.end(JSON.stringify(project));
                     } else {
                         res.writeHead(400, { 'Content-Type': 'text/plain' });
                         res.end('Missing taskFile or filePath');
@@ -495,7 +507,7 @@ async function startServer() {
                     }
                     const project = await renameProject(projectId, name);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(agent));
+                    res.end(JSON.stringify(project));
                 } catch (err) {
                     res.writeHead(500, { 'Content-Type': 'text/plain' });
                     res.end('Internal server error: ' + err.message);
@@ -511,7 +523,7 @@ async function startServer() {
                     const updates = JSON.parse(body);
                     const project = await updateProject(projectId, updates);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(agent));
+                    res.end(JSON.stringify(project));
                 } catch (err) {
                     res.writeHead(500, { 'Content-Type': 'text/plain' });
                     res.end('Internal server error: ' + err.message);
@@ -621,6 +633,28 @@ async function startServer() {
             
             try {
                 console.log(`Reading tasks from: ${project.path}`);
+                
+                // Check if file exists
+                try {
+                    await fs.access(project.path);
+                } catch (accessErr) {
+                    // File doesn't exist - return empty tasks with helpful message
+                    console.log(`Tasks file doesn't exist yet: ${project.path}`);
+                    const emptyResponse = {
+                        tasks: [],
+                        projectRoot: project.projectRoot || null,
+                        message: "No tasks found. The tasks.json file hasn't been created yet. Run shrimp in this folder to generate tasks."
+                    };
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-store, no-cache, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    });
+                    res.end(JSON.stringify(emptyResponse));
+                    return;
+                }
+                
                 const stats = await fs.stat(project.path);
                 console.log(`File last modified: ${stats.mtime}`);
                 
@@ -1236,6 +1270,133 @@ async function startServer() {
                     res.end('Error updating project agent: ' + err.message);
                 }
             });
+            
+        } else if (url.pathname.startsWith('/api/agents/combined/') && req.method === 'GET') {
+            // Get combined list of global and project agents
+            const profileId = url.pathname.split('/').pop();
+            const project = projects.find(p => p.id === profileId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            try {
+                // Load global agents
+                const settings = await loadGlobalSettings();
+                const claudeFolderPath = settings.claudeFolderPath;
+                let globalAgents = [];
+                
+                if (claudeFolderPath) {
+                    const agentsDir = path.join(claudeFolderPath, 'agents');
+                    try {
+                        const files = await fs.readdir(agentsDir);
+                        const agentFiles = files.filter(file => 
+                            file.endsWith('.md') || file.endsWith('.yaml') || file.endsWith('.yml')
+                        );
+                        
+                        globalAgents = await Promise.all(agentFiles.map(async (filename) => {
+                            try {
+                                const filePath = path.join(agentsDir, filename);
+                                const content = await fs.readFile(filePath, 'utf8');
+                                const metadata = parseAgentMetadata(content);
+                                return {
+                                    name: filename,
+                                    type: 'global',
+                                    content: content,
+                                    path: filePath,
+                                    metadata: metadata
+                                };
+                            } catch (err) {
+                                return {
+                                    name: filename,
+                                    type: 'global',
+                                    content: '',
+                                    path: path.join(agentsDir, filename),
+                                    error: err.message,
+                                    metadata: parseAgentMetadata('')
+                                };
+                            }
+                        }));
+                    } catch (err) {
+                        // Directory doesn't exist, continue with empty global agents
+                        console.log('Global agents directory not found:', err.message);
+                    }
+                }
+                
+                // Load project agents
+                let projectAgents = [];
+                const projectRoot = project.projectRoot;
+                
+                if (projectRoot) {
+                    const agentsDir = path.join(projectRoot, '.claude', 'agents');
+                    try {
+                        const files = await fs.readdir(agentsDir);
+                        const agentFiles = files.filter(file => 
+                            file.endsWith('.md') || file.endsWith('.yaml') || file.endsWith('.yml')
+                        );
+                        
+                        projectAgents = await Promise.all(agentFiles.map(async (filename) => {
+                            try {
+                                const filePath = path.join(agentsDir, filename);
+                                const content = await fs.readFile(filePath, 'utf8');
+                                const metadata = parseAgentMetadata(content);
+                                return {
+                                    name: filename,
+                                    type: 'project',
+                                    content: content,
+                                    path: filePath,
+                                    metadata: metadata
+                                };
+                            } catch (err) {
+                                return {
+                                    name: filename,
+                                    type: 'project',
+                                    content: '',
+                                    path: path.join(agentsDir, filename),
+                                    error: err.message,
+                                    metadata: parseAgentMetadata('')
+                                };
+                            }
+                        }));
+                    } catch (err) {
+                        // Directory doesn't exist, continue with empty project agents
+                        console.log('Project agents directory not found:', err.message);
+                    }
+                }
+                
+                // Combine and deduplicate agents
+                // Project agents take precedence over global agents with the same name
+                const agentMap = new Map();
+                
+                // Add global agents first
+                globalAgents.forEach(agent => {
+                    agentMap.set(agent.name, agent);
+                });
+                
+                // Add/override with project agents
+                projectAgents.forEach(agent => {
+                    agentMap.set(agent.name, agent);
+                });
+                
+                // Convert map back to array and return agent objects with metadata
+                const combinedAgents = Array.from(agentMap.values()).map(agent => ({
+                    name: agent.name,
+                    description: agent.metadata?.description || '',
+                    type: agent.type,
+                    tools: agent.metadata?.tools || [],
+                    color: agent.metadata?.color || null
+                }));
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(combinedAgents));
+                
+            } catch (err) {
+                console.error('Error loading combined agents:', err);
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading combined agents: ' + err.message);
+            }
             
         } else if (url.pathname.startsWith('/releases/')) {
             // Serve release files (markdown and images)

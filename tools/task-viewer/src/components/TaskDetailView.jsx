@@ -74,6 +74,11 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
           </div>
           
           <div className="detail-row">
+            <span className="detail-label">Agent:</span>
+            <span className="detail-value">{task.agent || 'No agent assigned'}</span>
+          </div>
+          
+          <div className="detail-row">
             <span className="detail-label">ID:</span>
             <span className="detail-value monospace">{task.id}</span>
           </div>

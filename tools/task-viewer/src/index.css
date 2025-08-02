@@ -714,6 +714,33 @@ body {
   font-size: 1.1rem;
 }
 
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #95a5a6;
+}
+
+.empty-state-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #bdc3c7;
+  margin-bottom: 10px;
+}
+
+.empty-state-message {
+  font-size: 1.1rem;
+  color: #95a5a6;
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
 .error {
   background: #e74c3c;
   color: white;
@@ -3172,7 +3199,7 @@ body {
   position: fixed;
   top: 20px;
   right: 20px;
-  z-index: 10000;
+  z-index: 2147483647;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -4096,6 +4123,88 @@ body {
 .edit-textarea::placeholder {
   color: #6b7280;
   opacity: 0.7;
+}
+
+.agent-select {
+  width: 100%;
+  background: #0f1419;
+  border: 1px solid #2c3e50;
+  border-radius: 4px;
+  color: #e1e4e8;
+  padding: 12px;
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  cursor: pointer;
+}
+
+.agent-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.agent-select option {
+  background: #0f1419;
+  color: #e1e4e8;
+  padding: 8px;
+}
+
+/* Agent column in table */
+.agent-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agent-table-select {
+  width: 100%;
+  background: #0f1419;
+  border: 1px solid #2c3e50;
+  border-radius: 4px;
+  color: #e1e4e8;
+  padding: 6px 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.agent-table-select:hover:not(:disabled) {
+  border-color: #3498db;
+}
+
+.agent-table-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
+.agent-table-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.agent-table-select option {
+  background: #0f1419;
+  color: #e1e4e8;
+}
+
+.saving-indicator {
+  font-size: 0.9rem;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .edit-actions {

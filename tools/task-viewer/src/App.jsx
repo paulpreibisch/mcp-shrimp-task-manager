@@ -113,6 +113,8 @@ function AppContent() {
   useEffect(() => {
     loadProfiles();
   }, []);
+  
+  // Note: Environment variable checking is now handled in GlobalSettingsView component
 
   // Load global settings on mount
   useEffect(() => {
@@ -313,6 +315,13 @@ function AppContent() {
       const data = await response.json();
       console.log('Received tasks data:', data.tasks?.length, 'tasks');
       
+      // Check if there's a message about missing tasks.json
+      if (data.message && data.tasks?.length === 0) {
+        setError('');  // Clear any previous errors
+        // Show informative message instead of error
+        showToast(data.message, 'info', 7000);
+      }
+      
       // Cache the data
       tasksCache.set(profileId, {
         tasks: data.tasks || [],
@@ -418,6 +427,7 @@ function AppContent() {
           filePath,
           projectRoot: projectRoot || null
         });
+        console.log('Sending profile with file path:', { name, filePath, projectRoot });
       } else {
         // File upload method
         const taskFileContent = await file.text();
@@ -426,9 +436,12 @@ function AppContent() {
           taskFile: taskFileContent,
           projectRoot: projectRoot || null
         });
+        console.log('Sending profile with file content');
       }
 
-      const response = await fetch('/api/add-profile', {
+      console.log('Request body:', body);
+
+      const response = await fetch('/api/add-project', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -437,10 +450,18 @@ function AppContent() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add profile');
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to add profile');
       }
 
-      const newProfile = await response.json();
+      const responseText = await response.text();
+      let newProfile;
+      try {
+        newProfile = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error('Failed to parse response:', responseText);
+        throw new Error('Invalid response format from server');
+      }
       console.log('New profile created:', newProfile);
       
       // Show success toast
@@ -473,7 +494,7 @@ function AppContent() {
     }
     
     try {
-      const response = await fetch(`/api/remove-profile/${profileId}`, {
+      const response = await fetch(`/api/remove-project/${profileId}`, {
         method: 'DELETE'
       });
 
@@ -504,7 +525,7 @@ function AppContent() {
 
   const handleUpdateProfile = async (profileId, updates) => {
     try {
-      const response = await fetch(`/api/update-profile/${profileId}`, {
+      const response = await fetch(`/api/update-project/${profileId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)

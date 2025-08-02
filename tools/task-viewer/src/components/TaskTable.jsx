@@ -15,9 +15,30 @@ import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTa
 function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask }) {
   const { t } = useLanguage();
   const [selectedTask, setSelectedTask] = useState(null);
+  const [availableAgents, setAvailableAgents] = useState([]);
+  const [savingAgents, setSavingAgents] = useState({});
   
   // Generate task number mapping
   const taskNumberMap = useMemo(() => generateTaskNumbers(data), [data]);
+  
+  // Load available agents on mount
+  useEffect(() => {
+    const loadAgents = async () => {
+      if (!profileId) return;
+      
+      try {
+        const response = await fetch(`/api/agents/combined/${profileId}`);
+        if (response.ok) {
+          const agents = await response.json();
+          setAvailableAgents(agents);
+        }
+      } catch (err) {
+        console.error('Error loading agents:', err);
+      }
+    };
+    
+    loadAgents();
+  }, [profileId]);
   
   // Notify parent when entering/exiting edit mode
   useEffect(() => {
@@ -132,31 +153,75 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
       size: 120,
     },
     {
-      accessorKey: 'createdAt',
-      header: t('created'),
-      cell: ({ getValue }) => {
-        const date = new Date(getValue());
+      accessorKey: 'agent',
+      header: 'Agent',
+      cell: ({ row }) => {
+        const currentAgent = row.original.agent || '';
+        const taskId = row.original.id;
+        const isSaving = savingAgents[taskId] || false;
+        
         return (
-          <div className="task-meta">
-            {date.toLocaleDateString(undefined, {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit'
-            })}<br />
-            {date.toLocaleTimeString(undefined, {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true
-            })}
+          <div className="agent-cell">
+            <select
+              className="agent-table-select"
+              value={currentAgent}
+              onChange={async (e) => {
+                e.stopPropagation();
+                const newAgent = e.target.value;
+                
+                // Update saving state
+                setSavingAgents(prev => ({ ...prev, [taskId]: true }));
+                
+                try {
+                  const response = await fetch(`/api/tasks/${profileId}/update`, {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      taskId: taskId,
+                      updates: { agent: newAgent }
+                    })
+                  });
+                  
+                  if (response.ok) {
+                    // Refresh task data
+                    if (onTaskSaved) {
+                      await onTaskSaved();
+                    }
+                  } else {
+                    console.error('Failed to update agent');
+                  }
+                } catch (err) {
+                  console.error('Error updating agent:', err);
+                } finally {
+                  // Clear saving state
+                  setSavingAgents(prev => {
+                    const newState = { ...prev };
+                    delete newState[taskId];
+                    return newState;
+                  });
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              disabled={isSaving}
+            >
+              <option value="">No agent</option>
+              {availableAgents.map((agent) => (
+                <option key={agent.name} value={agent.name}>
+                  {agent.name}
+                </option>
+              ))}
+            </select>
+            {isSaving && <span className="saving-indicator">💾</span>}
           </div>
         );
       },
-      size: 120,
+      size: 150,
     },
     {
-      accessorKey: 'updatedAt',
-      header: t('updated'),
+      accessorKey: 'createdAt',
+      header: t('created'),
       cell: ({ getValue }) => {
         const date = new Date(getValue());
         return (
@@ -279,7 +344,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
       ),
       size: 100,
     },
-  ], [data, setSelectedTask, t, taskNumberMap, onDeleteTask]);
+  ], [data, setSelectedTask, t, taskNumberMap, onDeleteTask, availableAgents, savingAgents, profileId, onTaskSaved]);
 
   const table = useReactTable({
     data,
@@ -302,8 +367,12 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
 
   if (data.length === 0) {
     return (
-      <div className="loading">
-        {t('noTasksFound')}
+      <div className="empty-state">
+        <div className="empty-state-icon">📋</div>
+        <div className="empty-state-title">{t('noTasksFound')}</div>
+        <div className="empty-state-message">
+          {t('noTasksMessage')}
+        </div>
       </div>
     );
   }

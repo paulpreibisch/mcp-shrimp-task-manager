@@ -41,6 +41,7 @@ export interface Task {
   updatedAt: Date; // 任務最後更新的時間戳
   completedAt?: Date; // 任務完成的時間戳（僅適用於已完成的任務）
   summary?: string; // 任務完成摘要，簡潔描述實施結果和重要決策（僅適用於已完成的任務）
+  agent?: string; // Optional agent assignment for task execution
   relatedFiles?: RelatedFile[]; // 與任務相關的文件列表（選填）
 
   // 新增欄位：保存完整的技術分析結果

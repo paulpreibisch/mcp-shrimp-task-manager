@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 
 function TaskEditView({ task, onBack, projectRoot, profileId, onNavigateToTask, taskIndex, allTasks, onSave }) {
@@ -7,10 +7,31 @@ function TaskEditView({ task, onBack, projectRoot, profileId, onNavigateToTask, 
     description: task.description || '',
     notes: task.notes || '',
     implementationGuide: task.implementationGuide || '',
-    verificationCriteria: task.verificationCriteria || ''
+    verificationCriteria: task.verificationCriteria || '',
+    agent: task.agent || ''
   });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [availableAgents, setAvailableAgents] = useState([]);
+
+  // Load available agents on mount
+  useEffect(() => {
+    const loadAgents = async () => {
+      if (!profileId) return;
+      
+      try {
+        const response = await fetch(`/api/agents/combined/${profileId}`);
+        if (response.ok) {
+          const agents = await response.json();
+          setAvailableAgents(agents);
+        }
+      } catch (err) {
+        console.error('Error loading agents:', err);
+      }
+    };
+    
+    loadAgents();
+  }, [profileId]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -178,6 +199,26 @@ function TaskEditView({ task, onBack, projectRoot, profileId, onNavigateToTask, 
             placeholder="Enter verification criteria..."
             rows={4}
           />
+        </div>
+
+        <div className="task-detail-section">
+          <h3>Assigned Agent</h3>
+          <select
+            className="agent-select"
+            value={editedTask.agent}
+            onChange={(e) => handleInputChange('agent', e.target.value)}
+          >
+            <option value="">No agent assigned</option>
+            {availableAgents.map((agent) => {
+              // Remove file extension from agent name for display and value
+              const agentBaseName = agent.name.replace(/\.(md|yaml|yml)$/, '');
+              return (
+                <option key={agent.name} value={agentBaseName}>
+                  {agentBaseName} {agent.description ? `- ${agent.description.substring(0, 100)}${agent.description.length > 100 ? '...' : ''}` : ''}
+                </option>
+              );
+            })}
+          </select>
         </div>
 
         {task.summary && (

@@ -140,6 +140,7 @@ export const translations = {
     noDependencies: "None",
     created: "Created",
     noTasksFound: "No Tasks Found",
+    noTasksMessage: "The tasks.json file hasn't been created yet. Run shrimp in this folder to generate tasks.",
     noTasksInHistory: "This history snapshot contains no tasks",
     taskRowTitle: "Task details from historical snapshot",
     

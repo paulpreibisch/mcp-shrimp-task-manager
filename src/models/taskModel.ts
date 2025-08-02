@@ -85,7 +85,8 @@ export async function createTask(
   description: string,
   notes?: string,
   dependencies: string[] = [],
-  relatedFiles?: RelatedFile[]
+  relatedFiles?: RelatedFile[],
+  agent?: string
 ): Promise<Task> {
   const tasks = await readTasks();
 
@@ -103,6 +104,7 @@ export async function createTask(
     createdAt: new Date(),
     updatedAt: new Date(),
     relatedFiles,
+    agent,
   };
 
   tasks.push(newTask);
@@ -182,6 +184,7 @@ export async function updateTaskContent(
     dependencies?: string[];
     implementationGuide?: string;
     verificationCriteria?: string;
+    agent?: string;
   }
 ): Promise<{ success: boolean; message: string; task?: Task }> {
   // 獲取任務並檢查是否存在
@@ -227,6 +230,10 @@ export async function updateTaskContent(
 
   if (updates.verificationCriteria !== undefined) {
     updateObj.verificationCriteria = updates.verificationCriteria;
+  }
+
+  if (updates.agent !== undefined) {
+    updateObj.agent = updates.agent;
   }
 
   // 如果沒有要更新的內容，提前返回
@@ -289,6 +296,7 @@ export async function batchCreateOrUpdateTasks(
     relatedFiles?: RelatedFile[];
     implementationGuide?: string; // 新增：實現指南
     verificationCriteria?: string; // 新增：驗證標準
+    agent?: string; // 新增：代理分配
   }>,
   updateMode: "append" | "overwrite" | "selective" | "clearAllTasks", // 必填參數，指定任務更新策略
   globalAnalysisResult?: string // 新增：全局分析結果
@@ -372,6 +380,8 @@ export async function batchCreateOrUpdateTasks(
           verificationCriteria: taskData.verificationCriteria,
           // 新增：保存全局分析結果（如果有）
           analysisResult: globalAnalysisResult,
+          // 新增：保存代理分配（如果有）
+          agent: taskData.agent,
         };
 
         // 處理相關文件（如果有）
@@ -408,6 +418,8 @@ export async function batchCreateOrUpdateTasks(
         verificationCriteria: taskData.verificationCriteria,
         // 新增：保存全局分析結果（如果有）
         analysisResult: globalAnalysisResult,
+        // 新增：保存代理分配（如果有）
+        agent: taskData.agent,
       };
 
       newTasks.push(newTask);

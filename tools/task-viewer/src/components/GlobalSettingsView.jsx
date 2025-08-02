@@ -6,11 +6,26 @@ function GlobalSettingsView({ showToast }) {
   const [claudeFolderPath, setClaudeFolderPath] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [envVarStatus, setEnvVarStatus] = useState({ isSet: false, checking: true });
 
   // Load settings from server on mount
   useEffect(() => {
     loadGlobalSettings();
+    checkEnvVar();
   }, []);
+
+  const checkEnvVar = async () => {
+    try {
+      const response = await fetch('/api/check-env');
+      if (response.ok) {
+        const data = await response.json();
+        setEnvVarStatus({ isSet: data.isSet, checking: false });
+      }
+    } catch (err) {
+      console.error('Error checking environment variable:', err);
+      setEnvVarStatus({ isSet: false, checking: false });
+    }
+  };
 
   const loadGlobalSettings = async () => {
     setLoading(true);
@@ -95,6 +110,44 @@ function GlobalSettingsView({ showToast }) {
             <span className="form-hint">
               {t('claudeFolderPathDesc')}
             </span>
+          </div>
+
+          <div className="form-group">
+            <label>OpenAI API Key Environment Variable:</label>
+            <div className="env-var-status">
+              <code>OPEN_AI_KEY_SHRIMP_TASK_VIEWER</code>
+              <span 
+                className={`env-status-badge ${envVarStatus.isSet ? 'env-set' : 'env-not-set'}`}
+                style={{
+                  marginLeft: '10px',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  backgroundColor: envVarStatus.checking ? '#94a3b8' : (envVarStatus.isSet ? '#22c55e' : '#ef4444'),
+                  color: 'white'
+                }}
+              >
+                {envVarStatus.checking ? 'Checking...' : (envVarStatus.isSet ? '✓ Environment variable detected' : '✗ Not set')}
+              </span>
+            </div>
+            {!envVarStatus.isSet && !envVarStatus.checking && (
+              <div className="form-hint" style={{ marginTop: '10px' }}>
+                <p><strong>To set this environment variable:</strong></p>
+                <p>For bash:</p>
+                <code style={{ display: 'block', padding: '8px', backgroundColor: '#1e293b', color: '#e2e8f0', borderRadius: '4px', marginBottom: '8px', fontFamily: 'monospace' }}>
+                  {`echo 'export OPEN_AI_KEY_SHRIMP_TASK_VIEWER="your-api-key-here"' >> ~/.bashrc && source ~/.bashrc`}
+                </code>
+                <p>For zsh:</p>
+                <code style={{ display: 'block', padding: '8px', backgroundColor: '#1e293b', color: '#e2e8f0', borderRadius: '4px', fontFamily: 'monospace' }}>
+                  {`echo 'export OPEN_AI_KEY_SHRIMP_TASK_VIEWER="your-api-key-here"' >> ~/.zshrc && source ~/.zshrc`}
+                </code>
+                <p style={{ marginTop: '8px', fontSize: '12px', opacity: 0.8 }}>
+                  After setting the variable, restart your terminal application completely (not just the server) or run:<br/>
+                  <code style={{ backgroundColor: '#334155', padding: '2px 4px', borderRadius: '2px' }}>source ~/.zshrc && npm start</code>
+                </p>
+              </div>
+            )}
           </div>
           
           <div className="form-actions">
