@@ -961,11 +961,11 @@ async function startServer() {
                 res.end('Error loading global agents: ' + err.message);
             }
             
-        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET' && url.pathname.split('/').length === 4) {
+        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET' && url.pathname.split('/').length === 5) {
             // List project agents from .claude/agents directory
             const pathParts = url.pathname.split('/');
             // /api/agents/project/:projectId
-            const projectId = pathParts[3];
+            const projectId = pathParts[4];
             console.log('Looking for project agents for projectId:', projectId);
             console.log('Available projects:', projects.map(p => ({ id: p.id, name: p.name, projectRoot: p.projectRoot })));
             const project = projects.find(p => p.id === projectId);
@@ -1100,7 +1100,7 @@ async function startServer() {
                 }
             });
             
-        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET' && url.pathname.split('/').length === 5) {
+        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET' && url.pathname.split('/').length === 6) {
             // Read specific project agent file
             const pathParts = url.pathname.split('/');
             const projectId = pathParts[3];
@@ -1135,7 +1135,7 @@ async function startServer() {
                 res.end('Agent file not found: ' + err.message);
             }
             
-        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'PUT' && url.pathname.split('/').length === 5) {
+        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'PUT' && url.pathname.split('/').length === 6) {
             // Update specific project agent file
             const pathParts = url.pathname.split('/');
             const projectId = pathParts[3];
