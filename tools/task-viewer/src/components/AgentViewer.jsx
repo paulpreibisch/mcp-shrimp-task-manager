@@ -25,8 +25,6 @@ function AgentViewer({
 
   useEffect(() => {
     if (!agent) return;
-    console.log('Agent object:', agent);
-    console.log('Agent name:', agent.name);
     
     const fetchAgentContent = async () => {
       setLoading(true);

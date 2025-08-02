@@ -11,7 +11,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import AgentViewer from './AgentViewer';
 import AgentEditor from './AgentEditor';
 
-function ProjectAgentsView({ profileId, projectRoot, showToast, refreshTrigger }) {
+function ProjectAgentsView({ profileId, projectRoot, showToast, refreshTrigger, onAgentViewChange }) {
   const { t } = useLanguage();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -149,6 +149,7 @@ function ProjectAgentsView({ profileId, projectRoot, showToast, refreshTrigger }
             onClick={(e) => {
               e.stopPropagation();
               setViewingAgent(row.original);
+              onAgentViewChange?.('view', row.original.name);
             }}
             title={t('viewAgent') || 'View agent'}
           >
@@ -159,6 +160,7 @@ function ProjectAgentsView({ profileId, projectRoot, showToast, refreshTrigger }
             onClick={(e) => {
               e.stopPropagation();
               setEditingAgent(row.original);
+              onAgentViewChange?.('edit', row.original.name);
             }}
             title={t('editAgent') || 'Edit agent'}
           >
@@ -194,10 +196,14 @@ function ProjectAgentsView({ profileId, projectRoot, showToast, refreshTrigger }
     return (
       <AgentViewer
         agent={viewingAgent}
-        onBack={() => setViewingAgent(null)}
+        onBack={() => {
+          setViewingAgent(null);
+          onAgentViewChange?.(null, null);
+        }}
         onEdit={(agent) => {
           setViewingAgent(null);
           setEditingAgent(agent);
+          onAgentViewChange?.('edit', agent.name);
         }}
         isGlobal={false}
         profileId={profileId}
@@ -210,7 +216,10 @@ function ProjectAgentsView({ profileId, projectRoot, showToast, refreshTrigger }
     return (
       <AgentEditor
         agent={editingAgent}
-        onBack={() => setEditingAgent(null)}
+        onBack={() => {
+          setEditingAgent(null);
+          onAgentViewChange?.(null, null);
+        }}
         onSave={() => {
           loadAgents(); // Refresh the list after save
         }}
@@ -377,7 +386,10 @@ function ProjectAgentsView({ profileId, projectRoot, showToast, refreshTrigger }
             <tr 
               key={row.id}
               className="clickable-row template-row"
-              onClick={() => setViewingAgent(row.original)}
+              onClick={() => {
+                setViewingAgent(row.original);
+                onAgentViewChange?.('view', row.original.name);
+              }}
               title="Click to view agent details"
             >
               {row.getVisibleCells().map(cell => (

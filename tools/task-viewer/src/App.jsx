@@ -1090,6 +1090,27 @@ function AppContent() {
                 projectRoot={projectRoot} 
                 showToast={showToast}
                 refreshTrigger={agentsTabRefresh}
+                onAgentViewChange={(view, agentId) => {
+                  // Update URL when viewing/editing agent
+                  if (view && agentId) {
+                    pushUrlState({
+                      tab: 'projects',
+                      profile: selectedProfile,
+                      projectTab: 'agents',
+                      agentView: view,
+                      agentId: agentId,
+                      lang: currentLanguage
+                    });
+                  } else {
+                    // Clear agent state when going back to list
+                    pushUrlState({
+                      tab: 'projects',
+                      profile: selectedProfile,
+                      projectTab: 'agents',
+                      lang: currentLanguage
+                    });
+                  }
+                }}
               />
             ),
             settings: (
