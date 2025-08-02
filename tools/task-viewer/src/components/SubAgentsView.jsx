@@ -8,6 +8,8 @@ import {
   flexRender,
 } from '@tanstack/react-table';
 import { useLanguage } from '../i18n/LanguageContext';
+import AgentViewer from './AgentViewer';
+import AgentEditor from './AgentEditor';
 
 function SubAgentsView({ showToast, onNavigateToSettings, refreshTrigger }) {
   const { t } = useLanguage();
@@ -197,23 +199,19 @@ function SubAgentsView({ showToast, onNavigateToSettings, refreshTrigger }) {
     },
   });
 
-  // Handle viewing agent
+  // Handle viewing agent with AgentViewer component
   if (viewingAgent) {
     return (
-      <div className="agent-viewer">
-        <div className="viewer-header">
-          <button 
-            className="back-button"
-            onClick={() => setViewingAgent(null)}
-          >
-            ← Back to Agents
-          </button>
-          <h2>📄 {viewingAgent.name.replace(/\.(md|yaml|yml)$/, '')}</h2>
-        </div>
-        <div className="content-viewer">
-          <pre>{viewingAgent.content || 'No content available'}</pre>
-        </div>
-      </div>
+      <AgentViewer
+        agent={viewingAgent}
+        onBack={() => setViewingAgent(null)}
+        onEdit={(agent) => {
+          setViewingAgent(null);
+          setEditingAgent(agent);
+        }}
+        isGlobal={true}
+        profileId={null}
+      />
     );
   }
 

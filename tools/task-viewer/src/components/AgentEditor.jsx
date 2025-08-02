@@ -117,10 +117,12 @@ function AgentEditor({
       <div className="template-editor-view agent-editor">
         <div className="template-editor-header">
           <div className="header-left">
+            <h2>{t('editAgent') || 'Edit Agent'}: {agent.name}</h2>
+          </div>
+          <div className="header-actions">
             <button className="back-button" onClick={onBack} title="Back to agents list">
               ← {t('backToAgents') || 'Back to Agents'}
             </button>
-            <h2>{t('editAgent') || 'Edit Agent'}: {agent.name}</h2>
           </div>
         </div>
         <div className="loading" style={{ padding: '40px', textAlign: 'center' }}>
@@ -135,10 +137,12 @@ function AgentEditor({
       <div className="template-editor-view agent-editor">
         <div className="template-editor-header">
           <div className="header-left">
+            <h2>{t('editAgent') || 'Edit Agent'}: {agent.name}</h2>
+          </div>
+          <div className="header-actions">
             <button className="back-button" onClick={onBack} title="Back to agents list">
               ← {t('backToAgents') || 'Back to Agents'}
             </button>
-            <h2>{t('editAgent') || 'Edit Agent'}: {agent.name}</h2>
           </div>
         </div>
         <div className="error" style={{ padding: '40px', textAlign: 'center' }}>

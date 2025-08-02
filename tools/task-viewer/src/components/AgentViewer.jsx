@@ -61,9 +61,6 @@ function AgentViewer({
     <div className="template-preview-view agent-viewer">
       <div className="template-preview-header">
         <div className="header-left">
-          <button className="back-button" onClick={onBack} title="Back to agents list">
-            ← {t('backToAgents') || 'Back to Agents'}
-          </button>
           <h2>{t('viewAgent') || 'View Agent'}: {agent.name}</h2>
         </div>
         <div className="header-actions">
@@ -76,6 +73,9 @@ function AgentViewer({
               ✏️ {t('editAgent') || 'Edit Agent'}
             </button>
           )}
+          <button className="back-button" onClick={onBack} title="Back to agents list">
+            ← {t('backToAgents') || 'Back to Agents'}
+          </button>
         </div>
       </div>
 
