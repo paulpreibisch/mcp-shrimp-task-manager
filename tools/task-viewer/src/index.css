@@ -1944,6 +1944,35 @@ body {
   color: white;
 }
 
+.status-markdown {
+  background: #27ae60;
+  color: white;
+}
+
+.status-yaml {
+  background: #e67e22;
+  color: white;
+}
+
+/* Tools list styling */
+.tools-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.tool-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #34495e;
+  color: #ecf0f1;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 /* Template Editor View Styles */
 .template-editor-view {
   display: flex;

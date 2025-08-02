@@ -24,6 +24,47 @@ const defaultAgents = [];
 
 let projects = []; // Project list
 
+// Parse YAML frontmatter from agent file content
+function parseAgentMetadata(content) {
+    const metadata = {
+        name: '',
+        description: '',
+        tools: [],
+        color: null
+    };
+    
+    if (!content) return metadata;
+    
+    // Check if content starts with YAML frontmatter
+    const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n/;
+    const match = content.match(frontmatterRegex);
+    
+    if (match) {
+        const yamlContent = match[1];
+        // Simple YAML parsing for the fields we need
+        const lines = yamlContent.split('\n');
+        
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('name:')) {
+                metadata.name = trimmedLine.substring(5).trim().replace(/^["']|["']$/g, '');
+            } else if (trimmedLine.startsWith('description:')) {
+                metadata.description = trimmedLine.substring(12).trim().replace(/^["']|["']$/g, '');
+            } else if (trimmedLine.startsWith('tools:')) {
+                const toolsStr = trimmedLine.substring(6).trim();
+                if (toolsStr) {
+                    // Split by comma and trim each tool name
+                    metadata.tools = toolsStr.split(',').map(t => t.trim()).filter(t => t.length > 0);
+                }
+            } else if (trimmedLine.startsWith('color:')) {
+                metadata.color = trimmedLine.substring(6).trim().replace(/^["']|["']$/g, '');
+            }
+        }
+    }
+    
+    return metadata;
+}
+
 // Load or create settings file
 async function loadSettings() {
     try {
@@ -939,17 +980,20 @@ async function startServer() {
                     try {
                         const filePath = path.join(agentsDir, filename);
                         const content = await fs.readFile(filePath, 'utf8');
+                        const metadata = parseAgentMetadata(content);
                         return {
                             name: filename,
                             content: content,
-                            path: filePath
+                            path: filePath,
+                            metadata: metadata
                         };
                     } catch (err) {
                         return {
                             name: filename,
                             content: '',
                             path: path.join(agentsDir, filename),
-                            error: err.message
+                            error: err.message,
+                            metadata: parseAgentMetadata('')
                         };
                     }
                 }));
@@ -1011,17 +1055,26 @@ async function startServer() {
                     try {
                         const filePath = path.join(agentsDir, filename);
                         const content = await fs.readFile(filePath, 'utf8');
+                        const metadata = parseAgentMetadata(content);
+                        // Debug logging for project agents
+                        console.log(`Parsing ${filename}:`, {
+                            tools: metadata.tools,
+                            toolsLength: metadata.tools.length,
+                            firstLine: content.split('\n')[0]
+                        });
                         return {
                             name: filename,
                             content: content,
-                            path: filePath
+                            path: filePath,
+                            metadata: metadata
                         };
                     } catch (err) {
                         return {
                             name: filename,
                             content: '',
                             path: path.join(agentsDir, filename),
-                            error: err.message
+                            error: err.message,
+                            metadata: parseAgentMetadata('')
                         };
                     }
                 }));
@@ -1054,7 +1107,8 @@ async function startServer() {
                 res.end(JSON.stringify({
                     name: filename,
                     content: content,
-                    path: filePath
+                    path: filePath,
+                    metadata: parseAgentMetadata(content)
                 }));
             } catch (err) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -1128,7 +1182,8 @@ async function startServer() {
                 res.end(JSON.stringify({
                     name: filename,
                     content: content,
-                    path: filePath
+                    path: filePath,
+                    metadata: parseAgentMetadata(content)
                 }));
             } catch (err) {
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
