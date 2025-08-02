@@ -31,7 +31,7 @@ async function loadSettings() {
         const data = await fs.readFile(SETTINGS_FILE, 'utf8');
         const settings = JSON.parse(data);
         console.log('Loaded settings:', settings);
-        return settings.agents || [];
+        return settings.profiles || settings.agents || []; // Support both new 'profiles' and old 'agents' key
     } catch (err) {
         console.error('Error loading settings:', err.message);
         await saveSettings(defaultAgents);
@@ -42,7 +42,7 @@ async function loadSettings() {
 // Save settings file
 async function saveSettings(profileList) {
     const settings = {
-        agents: profileList, // Keep 'agents' key for backward compatibility with settings file
+        profiles: profileList, // Changed from 'agents' to 'profiles' for clarity
         lastUpdated: new Date().toISOString(),
         version: VERSION
     };
@@ -961,78 +961,76 @@ async function startServer() {
                 res.end('Error loading global agents: ' + err.message);
             }
             
-        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET') {
+        } else if (url.pathname.startsWith('/api/agents/project/') && req.method === 'GET' && url.pathname.split('/').length === 4) {
             // List project agents from .claude/agents directory
             const pathParts = url.pathname.split('/');
-            if (pathParts.length === 4) {
-                // /api/agents/project/:profileId
-                const profileId = pathParts[3];
-                console.log('Looking for project agents for profileId:', profileId);
-                console.log('Available profiles:', profiles.map(p => ({ id: p.id, name: p.name, projectRoot: p.projectRoot })));
-                const profile = profiles.find(p => p.id === profileId);
-                
-                if (!profile) {
-                    console.log('Profile not found for profileId:', profileId);
-                    res.writeHead(404, { 'Content-Type': 'text/plain' });
-                    res.end('Profile not found');
+            // /api/agents/project/:profileId
+            const profileId = pathParts[3];
+            console.log('Looking for project agents for profileId:', profileId);
+            console.log('Available profiles:', profiles.map(p => ({ id: p.id, name: p.name, projectRoot: p.projectRoot })));
+            const profile = profiles.find(p => p.id === profileId);
+            
+            if (!profile) {
+                console.log('Profile not found for profileId:', profileId);
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Profile not found');
+                return;
+            }
+            
+            try {
+                const projectRoot = profile.projectRoot;
+                console.log('Project root:', projectRoot);
+                if (!projectRoot) {
+                    console.log('No project root configured for profile:', profileId);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify([]));
                     return;
                 }
                 
+                const agentsDir = path.join(projectRoot, '.claude', 'agents');
+                console.log('Looking for agents in directory:', agentsDir);
+                let agentFiles = [];
+                
                 try {
-                    const projectRoot = profile.projectRoot;
-                    console.log('Project root:', projectRoot);
-                    if (!projectRoot) {
-                        console.log('No project root configured for profile:', profileId);
-                        res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify([]));
-                        return;
-                    }
-                    
-                    const agentsDir = path.join(projectRoot, '.claude', 'agents');
-                    console.log('Looking for agents in directory:', agentsDir);
-                    let agentFiles = [];
-                    
-                    try {
-                        const files = await fs.readdir(agentsDir);
-                        console.log('Found files in agents directory:', files);
-                        agentFiles = files.filter(file => 
-                            file.endsWith('.md') || file.endsWith('.yaml') || file.endsWith('.yml')
-                        );
-                        console.log('Filtered agent files:', agentFiles);
-                    } catch (err) {
-                        // Directory doesn't exist, return empty array
-                        console.log('Error reading agents directory:', err.message);
-                        res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify([]));
-                        return;
-                    }
-                    
-                    // Read each agent file to get content
-                    const projectAgents = await Promise.all(agentFiles.map(async (filename) => {
-                        try {
-                            const filePath = path.join(agentsDir, filename);
-                            const content = await fs.readFile(filePath, 'utf8');
-                            return {
-                                name: filename,
-                                content: content,
-                                path: filePath
-                            };
-                        } catch (err) {
-                            return {
-                                name: filename,
-                                content: '',
-                                path: path.join(agentsDir, filename),
-                                error: err.message
-                            };
-                        }
-                    }));
-                    
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(projectAgents));
+                    const files = await fs.readdir(agentsDir);
+                    console.log('Found files in agents directory:', files);
+                    agentFiles = files.filter(file => 
+                        file.endsWith('.md') || file.endsWith('.yaml') || file.endsWith('.yml')
+                    );
+                    console.log('Filtered agent files:', agentFiles);
                 } catch (err) {
-                    res.writeHead(500, { 'Content-Type': 'text/plain' });
-                    res.end('Error loading project agents: ' + err.message);
+                    // Directory doesn't exist, return empty array
+                    console.log('Error reading agents directory:', err.message);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify([]));
+                    return;
                 }
+                
+                // Read each agent file to get content
+                const projectAgents = await Promise.all(agentFiles.map(async (filename) => {
+                    try {
+                        const filePath = path.join(agentsDir, filename);
+                        const content = await fs.readFile(filePath, 'utf8');
+                        return {
+                            name: filename,
+                            content: content,
+                            path: filePath
+                        };
+                    } catch (err) {
+                        return {
+                            name: filename,
+                            content: '',
+                            path: path.join(agentsDir, filename),
+                            error: err.message
+                        };
+                    }
+                }));
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(projectAgents));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading project agents: ' + err.message);
             }
             
         } else if (url.pathname.startsWith('/api/agents/global/') && req.method === 'GET') {
