@@ -94,17 +94,20 @@ function AgentInfoModal({ agent, isOpen, onClose, availableAgents = [], onSelect
   
   return (
     <div className="modal-overlay agent-info-modal-overlay" onClick={onClose}>
-      <div className="modal-with-nav">
+      <div className="modal-with-nav" onClick={(e) => e.stopPropagation()}>
         <button 
           className="agent-nav-button agent-nav-prev" 
-          onClick={handlePrevious}
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePrevious();
+          }}
           title="Previous agent"
           disabled={availableAgents.length <= 1}
         >
           ◀
         </button>
         
-        <div className="modal-content agent-info-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-content agent-info-modal">
           <div className="modal-header">
             <h3>
               <span className="agent-icon">🤖</span>
@@ -175,7 +178,10 @@ function AgentInfoModal({ agent, isOpen, onClose, availableAgents = [], onSelect
       
       <button 
         className="agent-nav-button agent-nav-next" 
-        onClick={handleNext}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleNext();
+        }}
         title="Next agent"
         disabled={availableAgents.length <= 1}
       >
