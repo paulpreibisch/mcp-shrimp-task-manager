@@ -790,6 +790,11 @@ function AppContent() {
       
       const data = await response.json();
       setHistoryData(data.history || []);
+      
+      // Show message if no history found
+      if (data.message && data.history?.length === 0) {
+        showToast(data.message, 'info', 7000);
+      }
     } catch (err) {
       setHistoryError('❌ Error loading history: ' + err.message);
       setHistoryData([]);

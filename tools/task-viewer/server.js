@@ -699,17 +699,26 @@ async function startServer() {
                 const tasksPath = project.path || project.filePath;
                 const memoryDir = path.join(path.dirname(tasksPath), 'memory');
                 
+                console.log(`[History] Looking for memory directory at: ${memoryDir}`);
+                console.log(`[History] Tasks path: ${tasksPath}`);
+                
                 // Check if memory directory exists
                 const memoryExists = await fs.access(memoryDir).then(() => true).catch(() => false);
                 if (!memoryExists) {
+                    console.log(`[History] Memory directory does not exist at: ${memoryDir}`);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ history: [] }));
+                    res.end(JSON.stringify({ 
+                        history: [],
+                        message: `No history found. Memory directory expected at: ${memoryDir}`
+                    }));
                     return;
                 }
                 
                 // Read memory files
                 const files = await fs.readdir(memoryDir);
                 const memoryFiles = files.filter(f => f.startsWith('tasks_memory_') && f.endsWith('.json'));
+                
+                console.log(`[History] Found ${memoryFiles.length} memory files in ${memoryDir}`);
                 
                 const historyData = await Promise.all(memoryFiles.map(async (filename) => {
                     try {

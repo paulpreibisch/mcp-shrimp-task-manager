@@ -127,13 +127,25 @@ const NestedTabs = ({
                         <Tab.Group selectedIndex={projectInnerTab === 'tasks' ? 0 : projectInnerTab === 'history' ? 1 : projectInnerTab === 'agents' ? 2 : 3} 
                                    onChange={(index) => setProjectInnerTab(['tasks', 'history', 'agents', 'settings'][index])}>
                           <Tab.List className="inner-tabs-list project-inner-tabs">
-                          <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
+                          <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}
+                               onClick={() => {
+                                 // If already on tasks tab, force refresh to reset view
+                                 if (projectInnerTab === 'tasks') {
+                                   setProjectInnerTab('tasks');
+                                 }
+                               }}>
                             <span>📋 {t('tasks')}</span>
                           </Tab>
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
                             <span>📊 {t('history')}</span>
                           </Tab>
-                          <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
+                          <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}
+                               onClick={() => {
+                                 // If already on agents tab, force refresh to reset view
+                                 if (projectInnerTab === 'agents') {
+                                   setProjectInnerTab('agents');
+                                 }
+                               }}>
                             <span>🤖 {t('agents') || 'Agents'}</span>
                           </Tab>
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
