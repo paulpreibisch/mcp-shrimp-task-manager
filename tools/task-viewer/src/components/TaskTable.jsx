@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-table';
 import TaskDetailView from './TaskDetailView';
 import Tooltip from './Tooltip';
+import AgentInfoModal from './AgentInfoModal';
 import { useLanguage } from '../i18n/LanguageContext';
 import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
 
@@ -17,6 +18,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   const [selectedTask, setSelectedTask] = useState(null);
   const [availableAgents, setAvailableAgents] = useState([]);
   const [savingAgents, setSavingAgents] = useState({});
+  const [agentModalInfo, setAgentModalInfo] = useState({ isOpen: false, agent: null });
   
   // Generate task number mapping
   const taskNumberMap = useMemo(() => generateTaskNumbers(data), [data]);
@@ -161,7 +163,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
         const isSaving = savingAgents[taskId] || false;
         
         return (
-          <div className="agent-cell">
+          <div className="agent-cell-wrapper">
             <select
               className="agent-table-select"
               value={currentAgent}
@@ -213,6 +215,19 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
                 </option>
               ))}
             </select>
+            <button
+              className="agent-info-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentAgent && currentAgent !== '') {
+                  setAgentModalInfo({ isOpen: true, agent: currentAgent });
+                }
+              }}
+              disabled={!currentAgent || currentAgent === ''}
+              title={currentAgent ? `View info for ${currentAgent}` : 'Select an agent first'}
+            >
+              👁️
+            </button>
             {isSaving && <span className="saving-indicator">💾</span>}
           </div>
         );
@@ -527,6 +542,12 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           </button>
         </div>
       </div>
+      
+      <AgentInfoModal
+        agent={agentModalInfo.agent}
+        isOpen={agentModalInfo.isOpen}
+        onClose={() => setAgentModalInfo({ isOpen: false, agent: null })}
+      />
     </>
   );
 }
