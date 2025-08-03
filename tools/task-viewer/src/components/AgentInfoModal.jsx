@@ -142,16 +142,6 @@ function AgentInfoModal({ agent, isOpen, onClose, availableAgents = [], onSelect
             </div>
           )}
           
-          {agentInfo.tools && agentInfo.tools.length > 0 && (
-            <div className="agent-tools-section">
-              <h4>{t('availableTools') || 'Available Tools'}</h4>
-              <div className="tools-list">
-                {agentInfo.tools.map((tool, index) => (
-                  <span key={index} className="tool-badge">{tool}</span>
-                ))}
-              </div>
-            </div>
-          )}
           </div>
           
           <button 
@@ -165,12 +155,29 @@ function AgentInfoModal({ agent, isOpen, onClose, availableAgents = [], onSelect
         </div>
         
         <div className="modal-footer">
-          <button className="secondary-btn" onClick={onClose}>
-            {t('close') || 'Close'}
-          </button>
-          <button className="primary-btn" onClick={handleUpdate}>
-            {t('update') || 'Update Selection'}
-          </button>
+          <div className="footer-tools-section">
+            {agentInfo.tools && agentInfo.tools.length > 0 ? (
+              <>
+                <span className="tools-label">{t('tools') || 'Tools'}:</span>
+                <div className="footer-tools-list">
+                  {agentInfo.tools.map((tool, index) => (
+                    <span key={index} className="footer-tool-badge">{tool}</span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <span className="no-tools-label">No specific tools</span>
+            )}
+          </div>
+          
+          <div className="footer-buttons">
+            <button className="secondary-btn" onClick={onClose}>
+              {t('close') || 'Close'}
+            </button>
+            <button className="primary-btn" onClick={handleUpdate}>
+              {t('update') || 'Update Selection'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
