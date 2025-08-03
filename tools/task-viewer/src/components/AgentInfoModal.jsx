@@ -1,14 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 
-function AgentInfoModal({ agent, isOpen, onClose }) {
+function AgentInfoModal({ agent, isOpen, onClose, availableAgents = [], onSelectAgent }) {
   const { t } = useLanguage();
+  const [currentAgentIndex, setCurrentAgentIndex] = useState(0);
   
-  if (!isOpen || !agent) return null;
+  // Initialize current agent index when modal opens or agent changes
+  useEffect(() => {
+    if (isOpen && agent && availableAgents.length > 0) {
+      const agentName = typeof agent === 'string' ? agent : agent.name;
+      const index = availableAgents.findIndex(a => a.name === agentName);
+      if (index >= 0) {
+        setCurrentAgentIndex(index);
+      }
+    }
+  }, [isOpen, agent, availableAgents]);
   
-  // Handle both agent objects and agent names
-  const agentName = typeof agent === 'string' ? agent : agent.name;
-  const agentData = typeof agent === 'object' ? agent : null;
+  if (!isOpen || !availableAgents || availableAgents.length === 0) return null;
+  
+  // Get current agent data
+  const currentAgent = availableAgents[currentAgentIndex] || availableAgents[0];
+  const agentName = currentAgent.name;
+  const agentData = currentAgent;
   
   // Get agent details - this could be expanded to fetch from a data source
   const getAgentDescription = (name) => {
@@ -59,6 +72,26 @@ function AgentInfoModal({ agent, isOpen, onClose }) {
   
   const agentInfo = agentData || getAgentDescription(agentName);
   
+  // Navigation handlers
+  const handlePrevious = () => {
+    setCurrentAgentIndex((prev) => 
+      prev === 0 ? availableAgents.length - 1 : prev - 1
+    );
+  };
+  
+  const handleNext = () => {
+    setCurrentAgentIndex((prev) => 
+      prev === availableAgents.length - 1 ? 0 : prev + 1
+    );
+  };
+  
+  const handleUpdate = () => {
+    if (onSelectAgent && currentAgent) {
+      onSelectAgent(currentAgent.name);
+      onClose();
+    }
+  };
+  
   return (
     <div className="modal-overlay agent-info-modal-overlay" onClick={onClose}>
       <div className="modal-content agent-info-modal" onClick={(e) => e.stopPropagation()}>
@@ -66,17 +99,30 @@ function AgentInfoModal({ agent, isOpen, onClose }) {
           <h3>
             <span className="agent-icon">🤖</span>
             {agentInfo.title || agentName}
+            <span className="agent-counter">
+              ({currentAgentIndex + 1} of {availableAgents.length})
+            </span>
           </h3>
           <button className="modal-close-btn" onClick={onClose} title="Close">
             ×
           </button>
         </div>
         
-        <div className="modal-body">
-          <div className="agent-description-section">
-            <h4>{t('description') || 'Description'}</h4>
-            <p>{agentInfo.description}</p>
-          </div>
+        <div className="modal-body-wrapper">
+          <button 
+            className="agent-nav-button agent-nav-prev" 
+            onClick={handlePrevious}
+            title="Previous agent"
+            disabled={availableAgents.length <= 1}
+          >
+            ◀
+          </button>
+          
+          <div className="modal-body">
+            <div className="agent-description-section">
+              <h4>{t('description') || 'Description'}</h4>
+              <p>{agentInfo.description}</p>
+            </div>
           
           {agentInfo.capabilities && agentInfo.capabilities.length > 0 && (
             <div className="agent-capabilities-section">
@@ -106,11 +152,24 @@ function AgentInfoModal({ agent, isOpen, onClose }) {
               </div>
             </div>
           )}
+          </div>
+          
+          <button 
+            className="agent-nav-button agent-nav-next" 
+            onClick={handleNext}
+            title="Next agent"
+            disabled={availableAgents.length <= 1}
+          >
+            ▶
+          </button>
         </div>
         
         <div className="modal-footer">
-          <button className="primary-btn" onClick={onClose}>
+          <button className="secondary-btn" onClick={onClose}>
             {t('close') || 'Close'}
+          </button>
+          <button className="primary-btn" onClick={handleUpdate}>
+            {t('update') || 'Update Selection'}
           </button>
         </div>
       </div>

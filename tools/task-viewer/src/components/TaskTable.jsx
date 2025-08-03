@@ -18,7 +18,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   const [selectedTask, setSelectedTask] = useState(null);
   const [availableAgents, setAvailableAgents] = useState([]);
   const [savingAgents, setSavingAgents] = useState({});
-  const [agentModalInfo, setAgentModalInfo] = useState({ isOpen: false, agent: null });
+  const [agentModalInfo, setAgentModalInfo] = useState({ isOpen: false, agent: null, taskId: null });
   
   // Generate task number mapping
   const taskNumberMap = useMemo(() => generateTaskNumbers(data), [data]);
@@ -238,7 +238,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
                 if (currentAgent && currentAgent !== '') {
                   // Pass the full agent object if available, otherwise just the name
                   const agentData = availableAgents.find(a => a.name === currentAgent) || currentAgent;
-                  setAgentModalInfo({ isOpen: true, agent: agentData });
+                  setAgentModalInfo({ isOpen: true, agent: agentData, taskId: taskId });
                 }
               }}
               disabled={!currentAgent || currentAgent === ''}
@@ -564,7 +564,46 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
       <AgentInfoModal
         agent={agentModalInfo.agent}
         isOpen={agentModalInfo.isOpen}
-        onClose={() => setAgentModalInfo({ isOpen: false, agent: null })}
+        onClose={() => setAgentModalInfo({ isOpen: false, agent: null, taskId: null })}
+        availableAgents={availableAgents}
+        onSelectAgent={async (agentName) => {
+          // Find the task that triggered the modal
+          if (agentModalInfo.taskId) {
+            // Update saving state
+            setSavingAgents(prev => ({ ...prev, [agentModalInfo.taskId]: true }));
+            
+            try {
+              const response = await fetch(`/api/tasks/${profileId}/update`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  taskId: agentModalInfo.taskId,
+                  updates: { agent: agentName }
+                })
+              });
+              
+              if (response.ok) {
+                // Refresh task data
+                if (onTaskSaved) {
+                  await onTaskSaved();
+                }
+              } else {
+                console.error('Failed to update agent');
+              }
+            } catch (err) {
+              console.error('Error updating agent:', err);
+            } finally {
+              // Clear saving state
+              setSavingAgents(prev => {
+                const newState = { ...prev };
+                delete newState[agentModalInfo.taskId];
+                return newState;
+              });
+            }
+          }
+        }}
       />
     </>
   );
