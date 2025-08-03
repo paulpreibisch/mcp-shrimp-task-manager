@@ -167,6 +167,18 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             <select
               className="agent-table-select"
               value={currentAgent}
+              style={(() => {
+                // Find the selected agent's color
+                const selectedAgent = availableAgents.find(a => a.name === currentAgent);
+                if (selectedAgent?.color) {
+                  return {
+                    backgroundColor: selectedAgent.color,
+                    color: '#ffffff', // White text for better contrast
+                    borderColor: selectedAgent.color
+                  };
+                }
+                return {};
+              })()}
               onChange={async (e) => {
                 e.stopPropagation();
                 const newAgent = e.target.value;
@@ -210,7 +222,11 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             >
               <option value="">No agent</option>
               {availableAgents.map((agent) => (
-                <option key={agent.name} value={agent.name}>
+                <option 
+                  key={agent.name} 
+                  value={agent.name}
+                  style={agent.color ? { backgroundColor: agent.color, color: '#ffffff' } : {}}
+                >
                   {agent.name}
                 </option>
               ))}
@@ -220,7 +236,9 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
               onClick={(e) => {
                 e.stopPropagation();
                 if (currentAgent && currentAgent !== '') {
-                  setAgentModalInfo({ isOpen: true, agent: currentAgent });
+                  // Pass the full agent object if available, otherwise just the name
+                  const agentData = availableAgents.find(a => a.name === currentAgent) || currentAgent;
+                  setAgentModalInfo({ isOpen: true, agent: agentData });
                 }
               }}
               disabled={!currentAgent || currentAgent === ''}
@@ -232,7 +250,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           </div>
         );
       },
-      size: 150,
+      size: 200, // Increased from 150 to give more room for agents
     },
     {
       accessorKey: 'createdAt',
@@ -307,7 +325,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           </div>
         );
       },
-      size: 200,
+      size: 120, // Reduced from 200 to make more room for agents
     },
     {
       accessorKey: 'actions',
