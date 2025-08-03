@@ -303,7 +303,10 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             className="copy-button action-button"
             onClick={(e) => {
               e.stopPropagation();
-              const instruction = `Use task manager to complete this shrimp task: ${row.original.id}`;
+              const agentName = row.original.agent || 'task manager';
+              const instruction = agentName === 'task manager' 
+                ? `Use task manager to complete this shrimp task: ${row.original.id}`
+                : `Use the subagent '${agentName}' to complete this shrimp task: ${row.original.id}`;
               navigator.clipboard.writeText(instruction);
               const button = e.target;
               button.textContent = '✓';
@@ -311,7 +314,12 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
                 button.textContent = '🤖';
               }, 2000);
             }}
-            title={`${t('copyTaskInstruction')}: ${row.original.id}`}
+            title={(() => {
+              const agentName = row.original.agent || 'task manager';
+              return agentName === 'task manager'
+                ? `Use task manager to complete this shrimp task: ${row.original.id}`
+                : `Use the subagent '${agentName}' to complete this shrimp task: ${row.original.id}`;
+            })()}
           >
             🤖
           </button>
