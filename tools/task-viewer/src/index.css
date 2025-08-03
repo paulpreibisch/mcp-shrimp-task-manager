@@ -4345,7 +4345,7 @@ body {
 }
 
 .agent-info-modal .modal-body {
-  padding: 20px;
+  padding: 20px 50px; /* Add extra padding on sides for nav buttons */
   width: 100%;
 }
 
@@ -4493,11 +4493,11 @@ body {
 }
 
 .agent-nav-prev {
-  left: -18px;
+  left: 10px;
 }
 
 .agent-nav-next {
-  right: -18px;
+  right: 30px; /* Account for scrollbar width */
 }
 
 .agent-counter {

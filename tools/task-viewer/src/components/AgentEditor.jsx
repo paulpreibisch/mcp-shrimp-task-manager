@@ -20,6 +20,22 @@ function AgentEditor({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [initialColor, setInitialColor] = useState('');
+  
+  // Predefined color palette
+  const colorPalette = [
+    { name: 'Blue', value: '#3b82f6' },
+    { name: 'Green', value: '#10b981' },
+    { name: 'Purple', value: '#8b5cf6' },
+    { name: 'Red', value: '#ef4444' },
+    { name: 'Orange', value: '#f97316' },
+    { name: 'Yellow', value: '#eab308' },
+    { name: 'Pink', value: '#ec4899' },
+    { name: 'Indigo', value: '#6366f1' },
+    { name: 'Teal', value: '#14b8a6' },
+    { name: 'Gray', value: '#6b7280' }
+  ];
 
   // Fetch agent content on mount
   useEffect(() => {
@@ -44,6 +60,15 @@ function AgentEditor({
         const agentContent = data.content || '';
         setContent(agentContent);
         setInitialContent(agentContent);
+        
+        // Extract color from metadata if present
+        if (data.metadata && data.metadata.color) {
+          setSelectedColor(data.metadata.color);
+          setInitialColor(data.metadata.color);
+        } else if (agent.color) {
+          setSelectedColor(agent.color);
+          setInitialColor(agent.color);
+        }
       } catch (err) {
         console.error('Error loading agent:', err);
         setLoadError('Failed to load agent content: ' + err.message);
@@ -75,7 +100,10 @@ function AgentEditor({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: content.trim()
+          content: content.trim(),
+          metadata: {
+            color: selectedColor || undefined
+          }
         })
       });
       
@@ -152,7 +180,7 @@ function AgentEditor({
     );
   }
 
-  const hasChanges = content !== initialContent;
+  const hasChanges = content !== initialContent || selectedColor !== initialColor;
 
   return (
     <div className="template-editor-view agent-editor">
@@ -174,6 +202,33 @@ function AgentEditor({
             {agent.description}
           </span>
         )}
+        <div className="agent-color-selector">
+          <label htmlFor="agent-color">{t('color') || 'Color'}:</label>
+          <select 
+            id="agent-color"
+            value={selectedColor} 
+            onChange={(e) => setSelectedColor(e.target.value)}
+            className="color-dropdown"
+            style={selectedColor ? {
+              backgroundColor: selectedColor,
+              color: '#ffffff'
+            } : {}}
+          >
+            <option value="">No color</option>
+            {colorPalette.map((color) => (
+              <option 
+                key={color.value} 
+                value={color.value}
+                style={{
+                  backgroundColor: color.value,
+                  color: '#ffffff'
+                }}
+              >
+                {color.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <span className="template-path">
           {isGlobal 
             ? `[Claude Folder]/agents/${agent.name}`
