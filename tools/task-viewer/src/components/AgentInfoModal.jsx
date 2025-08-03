@@ -94,31 +94,32 @@ function AgentInfoModal({ agent, isOpen, onClose, availableAgents = [], onSelect
   
   return (
     <div className="modal-overlay agent-info-modal-overlay" onClick={onClose}>
-      <div className="modal-content agent-info-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>
-            <span className="agent-icon">🤖</span>
-            {agentInfo.title || agentName}
-            <span className="agent-counter">
-              ({currentAgentIndex + 1} of {availableAgents.length})
-            </span>
-          </h3>
-          <button className="modal-close-btn" onClick={onClose} title="Close">
-            ×
-          </button>
-        </div>
+      <div className="modal-with-nav">
+        <button 
+          className="agent-nav-button agent-nav-prev" 
+          onClick={handlePrevious}
+          title="Previous agent"
+          disabled={availableAgents.length <= 1}
+        >
+          ◀
+        </button>
         
-        <div className="modal-body-wrapper">
-          <button 
-            className="agent-nav-button agent-nav-prev" 
-            onClick={handlePrevious}
-            title="Previous agent"
-            disabled={availableAgents.length <= 1}
-          >
-            ◀
-          </button>
+        <div className="modal-content agent-info-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>
+              <span className="agent-icon">🤖</span>
+              {agentInfo.title || agentName}
+              <span className="agent-counter">
+                ({currentAgentIndex + 1} of {availableAgents.length})
+              </span>
+            </h3>
+            <button className="modal-close-btn" onClick={onClose} title="Close">
+              ×
+            </button>
+          </div>
           
-          <div className="modal-body">
+          <div className="modal-body-wrapper">
+            <div className="modal-body">
             <div className="agent-description-section">
               <h4>{t('description') || 'Description'}</h4>
               <p>{agentInfo.description}</p>
@@ -142,17 +143,8 @@ function AgentInfoModal({ agent, isOpen, onClose, availableAgents = [], onSelect
             </div>
           )}
           
+            </div>
           </div>
-          
-          <button 
-            className="agent-nav-button agent-nav-next" 
-            onClick={handleNext}
-            title="Next agent"
-            disabled={availableAgents.length <= 1}
-          >
-            ▶
-          </button>
-        </div>
         
         <div className="modal-footer">
           <div className="footer-tools-section">
@@ -179,6 +171,16 @@ function AgentInfoModal({ agent, isOpen, onClose, availableAgents = [], onSelect
             </button>
           </div>
         </div>
+      </div>
+      
+      <button 
+        className="agent-nav-button agent-nav-next" 
+        onClick={handleNext}
+        title="Next agent"
+        disabled={availableAgents.length <= 1}
+      >
+        ▶
+      </button>
       </div>
     </div>
   );
