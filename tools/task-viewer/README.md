@@ -26,6 +26,7 @@ The main Tasks page is your command center for task management. It provides a co
 - **Task Table**: Displays all tasks with sortable columns including Task #, Status, Agent, Created Date, Name, Dependencies, and Actions
 - **Status Badges**: Color-coded badges (🟡 Pending, 🔵 In Progress, 🟢 Completed, 🔴 Blocked)
 - **Agent Assignment**: Dropdown selector to assign specific AI agents to tasks
+- **Agent Viewer Popup**: Click the eye icon (👁️) to open a popup where you can browse and select agents
 - **Dependencies Column**: Shows linked task IDs with click-to-navigate functionality
 - **Actions Column**: Contains the powerful robot emoji (🤖) for AI task execution
 
@@ -76,6 +77,7 @@ The Sub-Agents page allows you to manage specialized AI agents that can be assig
 - **Agent Editor**: Built-in markdown editor for creating and modifying agents
 - **Color Coding**: Assign colors to agents for visual organization
 - **Agent Assignment**: Easily assign agents to tasks via dropdown in the task table
+- **Agent Viewer Popup**: Click the eye icon (👁️) to browse and select agents
 
 ![Agent Editor](releases/agent-editor-color-selection.png)
 
@@ -84,8 +86,13 @@ The Sub-Agents page allows you to manage specialized AI agents that can be assig
 ![Agent Dropdown](releases/agent-dropdown-task-table.png)
 
 1. **Select an agent** from the dropdown in the task table
-2. **Save automatically** updates the task's metadata
-3. **Use the robot emoji** to copy agent-specific execution instructions
+2. **Or click the eye icon (👁️)** to open the agent viewer popup
+3. **Browse through agents** in the popup to find the right one for your task
+4. **Save automatically** updates the task's metadata
+5. **Use the robot emoji** to copy agent-specific execution instructions
+
+![Agent Viewer Popup](releases/agent-viewer-popup.png)
+*The agent viewer popup allows you to browse through all available agents and select the best one for each task*
 
 ### 🎨 Templates Page
 

@@ -171,9 +171,13 @@ Access the Agents tab to see all available agents with their descriptions and ca
 In the task table, each task now has an agent dropdown selector. You can:
 - Select "No agent" for standard task manager execution
 - Choose specific agents for specialized handling
+- Click the eye icon (👁️) to open an agent viewer popup
+- Browse through different agents in the popup to select the right one
 - Ask Claude to automatically assign suitable agents
 
 <kbd><img src="tools/task-viewer/releases/agent-dropdown-task-table.png" alt="Agent Dropdown in Task Table" /></kbd>
+
+<kbd><img src="tools/task-viewer/releases/agent-viewer-popup.png" alt="Agent Viewer Popup" /></kbd>
 
 #### 3. One-Click AI Instructions
 Click the robot emoji (🤖) next to any task to copy agent-specific instructions to your clipboard:
