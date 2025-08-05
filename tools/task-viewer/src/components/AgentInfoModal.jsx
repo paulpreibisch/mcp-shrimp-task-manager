@@ -110,7 +110,28 @@ function AgentInfoModal({ agent, isOpen, onClose, availableAgents = [], onSelect
         <div className="modal-content agent-info-modal">
           <div className="modal-header">
             <h3>
-              <span className="agent-icon">🤖</span>
+              <button 
+                className="agent-icon robot-copy-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Generate a placeholder UUID for demonstration - in real app this would be the current task ID
+                  const taskId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                  });
+                  const instruction = `use the built in subagent located in ./claude/agents/${agentName} to complete this shrimp task: ${taskId} please when u start working mark the shrimp task as in progress`;
+                  navigator.clipboard.writeText(instruction);
+                  const button = e.target;
+                  button.textContent = '✓';
+                  setTimeout(() => {
+                    button.textContent = '🤖';
+                  }, 2000);
+                }}
+                title={`use the built in subagent located in ./claude/agents/${agentName} to complete this shrimp task: <uuid> please when u start working mark the shrimp task as in progress`}
+              >
+                🤖
+              </button>
               {agentInfo.title || agentName}
               <span className="agent-counter">
                 ({currentAgentIndex + 1} of {availableAgents.length})

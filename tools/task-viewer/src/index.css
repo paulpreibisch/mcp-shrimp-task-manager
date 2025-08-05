@@ -2225,6 +2225,27 @@ body {
   font-weight: 500;
 }
 
+/* Robot copy button styles */
+.robot-copy-btn {
+  background: none;
+  border: none;
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0 5px;
+  margin-right: 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.robot-copy-btn:hover {
+  background: rgba(79, 189, 186, 0.1);
+  transform: scale(1.1);
+}
+
+.robot-copy-btn:active {
+  transform: scale(0.95);
+}
+
 .template-preview-content {
   flex: 1;
   background: #000000;

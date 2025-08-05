@@ -338,8 +338,8 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
               e.stopPropagation();
               const agentName = row.original.agent || 'task manager';
               const instruction = agentName === 'task manager' 
-                ? `Use task manager to complete this shrimp task: ${row.original.id}`
-                : `Use the subagent '${agentName}' to complete this shrimp task: ${row.original.id}`;
+                ? `Use task manager to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`
+                : `use the built in subagent located in ./claude/agents/${agentName} to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`;
               navigator.clipboard.writeText(instruction);
               const button = e.target;
               button.textContent = '✓';
@@ -350,8 +350,8 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             title={(() => {
               const agentName = row.original.agent || 'task manager';
               return agentName === 'task manager'
-                ? `Use task manager to complete this shrimp task: ${row.original.id}`
-                : `Use the subagent '${agentName}' to complete this shrimp task: ${row.original.id}`;
+                ? `Use task manager to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`
+                : `use the built in subagent located in ./claude/agents/${agentName} to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`;
             })()}
           >
             🤖

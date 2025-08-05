@@ -61,8 +61,24 @@ function AgentEditor({
         setContent(agentContent);
         setInitialContent(agentContent);
         
-        // Extract color from metadata if present
-        if (data.metadata && data.metadata.color) {
+        // Extract color from content metadata
+        let extractedColor = '';
+        if (agentContent.startsWith('---')) {
+          const parts = agentContent.split('---');
+          if (parts.length >= 3) {
+            const metadata = parts[1];
+            const colorMatch = metadata.match(/^color:\s*["']?([^"'\n]+)["']?/m);
+            if (colorMatch) {
+              extractedColor = colorMatch[1];
+            }
+          }
+        }
+        
+        // Set color from extracted metadata or fallback sources
+        if (extractedColor) {
+          setSelectedColor(extractedColor);
+          setInitialColor(extractedColor);
+        } else if (data.metadata && data.metadata.color) {
           setSelectedColor(data.metadata.color);
           setInitialColor(data.metadata.color);
         } else if (agent.color) {
@@ -80,6 +96,43 @@ function AgentEditor({
     fetchAgentContent();
   }, [agent, isGlobal, profileId]);
 
+  // Helper function to update color in YAML metadata
+  const updateContentWithColor = (content, color) => {
+    // Check if content starts with metadata section (---)
+    if (content.startsWith('---')) {
+      const parts = content.split('---');
+      if (parts.length >= 3) {
+        // Extract metadata section
+        let metadata = parts[1];
+        const bodyContent = parts.slice(2).join('---');
+        
+        // Check if color property exists
+        const colorRegex = /^color:\s*.*/m;
+        if (colorRegex.test(metadata)) {
+          // Update existing color
+          if (color) {
+            metadata = metadata.replace(colorRegex, `color: "${color}"`);
+          } else {
+            // Remove color line if no color selected
+            metadata = metadata.replace(colorRegex, '');
+          }
+        } else if (color) {
+          // Add color property
+          metadata = metadata.trimEnd() + `\ncolor: "${color}"`;
+        }
+        
+        return `---${metadata}---${bodyContent}`;
+      }
+    }
+    
+    // If no metadata section exists and color is selected, create one
+    if (color) {
+      return `---\ncolor: "${color}"\n---\n${content}`;
+    }
+    
+    return content;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -90,6 +143,9 @@ function AgentEditor({
     setIsSaving(true);
     
     try {
+      // Update content with color in metadata
+      const updatedContent = updateContentWithColor(content.trim(), selectedColor);
+      
       const endpoint = isGlobal 
         ? `/api/agents/global/${encodeURIComponent(agent.name)}`
         : `/api/agents/project/${profileId}/${encodeURIComponent(agent.name)}`;
@@ -100,10 +156,7 @@ function AgentEditor({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          content: content.trim(),
-          metadata: {
-            color: selectedColor || undefined
-          }
+          content: updatedContent
         })
       });
       
@@ -180,7 +233,7 @@ function AgentEditor({
     );
   }
 
-  const hasChanges = content !== initialContent || selectedColor !== initialColor;
+  const hasChanges = content !== initialContent;
 
   return (
     <div className="template-editor-view agent-editor">
@@ -207,7 +260,12 @@ function AgentEditor({
           <select 
             id="agent-color"
             value={selectedColor} 
-            onChange={(e) => setSelectedColor(e.target.value)}
+            onChange={(e) => {
+              const newColor = e.target.value;
+              setSelectedColor(newColor);
+              // Update content with new color
+              setContent(updateContentWithColor(content, newColor));
+            }}
             className="color-dropdown"
             style={selectedColor ? {
               backgroundColor: selectedColor,
