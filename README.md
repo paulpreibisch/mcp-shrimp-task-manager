@@ -165,6 +165,11 @@ Agents are specialized AI personalities or skill sets stored in your `.claude/ag
 #### 1. Agent List View
 Access the Agents tab to see all available agents with their descriptions and capabilities. The list shows agents from both your project's `.claude/agents` folder and globally configured agents.
 
+Each agent in the list now includes:
+- **AI Instruction column**: Click the robot emoji (🤖) to copy `use subagent [agent-name] located in [path]:` directly to your clipboard
+- **View and Edit buttons**: Manage agent content and metadata
+- **Color-coded names**: Visual organization based on agent metadata
+
 <kbd><img src="tools/task-viewer/releases/agent-list-view.png" alt="Agent List View" /></kbd>
 
 #### 2. Agent Assignment

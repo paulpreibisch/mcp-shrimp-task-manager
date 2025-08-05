@@ -260,7 +260,8 @@ export const translations = {
     viewAgent: "View Agent",
     editAgent: "Edit Agent",
     noAgentsFound: "No agents found",
-    agentSavedSuccess: "Agent saved successfully"
+    agentSavedSuccess: "Agent saved successfully",
+    aiInstruction: "AI Instruction"
   },
   
   zh: {
@@ -523,7 +524,8 @@ export const translations = {
     viewAgent: "查看代理",
     editAgent: "编辑代理",
     noAgentsFound: "未找到代理",
-    agentSavedSuccess: "代理保存成功"
+    agentSavedSuccess: "代理保存成功",
+    aiInstruction: "AI 指令"
   },
   
   es: {
@@ -786,7 +788,8 @@ export const translations = {
     viewAgent: "Ver Agente",
     editAgent: "Editar Agente",
     noAgentsFound: "No se encontraron agentes",
-    agentSavedSuccess: "Agente guardado exitosamente"
+    agentSavedSuccess: "Agente guardado exitosamente",
+    aiInstruction: "Instrucción IA"
   }
 };
 

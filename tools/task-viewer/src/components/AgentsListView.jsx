@@ -196,6 +196,43 @@ function AgentsListView({
       size: 200,
     },
     {
+      accessorKey: 'aiInstruction',
+      header: t('aiInstruction') || 'AI Instruction',
+      cell: ({ row }) => {
+        const agentPath = isGlobal 
+          ? `./claude/agents/${row.original.name}` 
+          : `./${row.original.projectPath || '.claude/agents'}/${row.original.name}`;
+        const instruction = `use subagent ${row.original.name} located in ${agentPath}:`;
+        
+        return (
+          <div className="actions-cell">
+            <button
+              className="action-button robot-button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(instruction);
+                // Visual feedback
+                const button = e.target.closest('.robot-button');
+                button.textContent = '✓';
+                button.classList.add('success');
+                setTimeout(() => {
+                  button.textContent = '🤖';
+                  button.classList.remove('success');
+                }, 1000);
+                if (showToast) {
+                  showToast('success', 'AI instruction copied to clipboard');
+                }
+              }}
+              title={instruction}
+            >
+              🤖
+            </button>
+          </div>
+        );
+      },
+      size: 80,
+    },
+    {
       accessorKey: 'actions',
       header: t('actions') || 'Actions',
       cell: ({ row }) => (
@@ -226,7 +263,7 @@ function AgentsListView({
       ),
       size: 120,
     },
-  ], [t]);
+  ], [t, isGlobal, showToast]);
 
   const table = useReactTable({
     data,
