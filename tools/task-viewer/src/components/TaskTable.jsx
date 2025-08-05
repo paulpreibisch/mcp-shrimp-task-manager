@@ -19,6 +19,8 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   const [availableAgents, setAvailableAgents] = useState([]);
   const [savingAgents, setSavingAgents] = useState({});
   const [agentModalInfo, setAgentModalInfo] = useState({ isOpen: false, agent: null, taskId: null });
+  const [selectedRows, setSelectedRows] = useState(new Set());
+  const [showBulkActions, setShowBulkActions] = useState(false);
   
   // Generate task number mapping
   const taskNumberMap = useMemo(() => generateTaskNumbers(data), [data]);
@@ -81,6 +83,41 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   }, [selectedTask, onDetailViewChange]);
   // Define table columns configuration with custom cell renderers
   const columns = useMemo(() => [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <input
+          type="checkbox"
+          checked={selectedRows.size === data.length && data.length > 0}
+          indeterminate={selectedRows.size > 0 && selectedRows.size < data.length}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setSelectedRows(new Set(data.map(task => task.id)));
+            } else {
+              setSelectedRows(new Set());
+            }
+            setShowBulkActions(e.target.checked);
+          }}
+        />
+      ),
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          checked={selectedRows.has(row.original.id)}
+          onChange={(e) => {
+            const newSelectedRows = new Set(selectedRows);
+            if (e.target.checked) {
+              newSelectedRows.add(row.original.id);
+            } else {
+              newSelectedRows.delete(row.original.id);
+            }
+            setSelectedRows(newSelectedRows);
+            setShowBulkActions(newSelectedRows.size > 0);
+          }}
+        />
+      ),
+      size: 40,
+    },
     {
       accessorKey: 'taskNumber',
       header: 'Task',
@@ -475,9 +512,55 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     }
   }
 
+  // Bulk assign agents function
+  const handleBulkAssignAgents = async () => {
+    const selectedTaskIds = Array.from(selectedRows);
+    if (selectedTaskIds.length === 0) return;
+
+    try {
+      // Call API to assign agents using AI
+      const response = await fetch('/api/ai-assign-agents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskIds: selectedTaskIds,
+          profileId: profileId,
+          tasks: data.filter(task => selectedTaskIds.includes(task.id))
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Refresh the task data to show updated agents
+        if (onTaskSaved) {
+          onTaskSaved();
+        }
+        // Clear selection
+        setSelectedRows(new Set());
+        setShowBulkActions(false);
+      } else {
+        console.error('Failed to assign agents');
+      }
+    } catch (error) {
+      console.error('Error assigning agents:', error);
+    }
+  };
+
   // Otherwise, show the table
   return (
     <>
+      {showBulkActions && (
+        <div className="bulk-actions-bar">
+          <button 
+            className="bulk-action-button ai-assign"
+            onClick={handleBulkAssignAgents}
+          >
+            🤖 AI Assign Agents ({selectedRows.size} tasks selected)
+          </button>
+        </div>
+      )}
       <table className="table">
         <thead>
           {table.getHeaderGroups().map(headerGroup => (

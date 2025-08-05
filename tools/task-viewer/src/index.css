@@ -15,6 +15,22 @@ body {
   line-height: 1.6;
 }
 
+/* Global link styles - yellow for better visibility */
+a {
+  color: #ffff00;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+a:hover {
+  color: #ffb6c1;
+  text-decoration: underline;
+}
+
+a:visited {
+  color: #ffff00;
+}
+
 .app {
   min-height: 100vh;
   padding: 20px;
@@ -44,13 +60,13 @@ body {
 }
 
 .version-info a {
-  color: #4fbdba;
+  color: #ffff00;
   text-decoration: none;
   transition: color 0.3s;
 }
 
 .version-info a:hover {
-  color: #7b68ee;
+  color: #ffb6c1;
 }
 
 .header-content {
@@ -1469,14 +1485,14 @@ body {
 }
 
 .file-link {
-  color: #3b82f6;
+  color: #ff00ff;
   text-decoration: none;
   cursor: pointer;
 }
 
 .file-link:hover {
   text-decoration: underline;
-  color: #60a5fa;
+  color: #ff66ff;
 }
 
 .file-link.copied {
@@ -1799,6 +1815,30 @@ body {
   border: none;
   border-top: 1px solid #34495e;
   margin: 25px 0;
+}
+
+/* Ensure all release notes links are yellow */
+.release-markdown-content a,
+.release-text a,
+.release-list-item a,
+.release-h1 a,
+.release-h2 a,
+.release-h3 a,
+.release-h4 a {
+  color: #ffff00 !important;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.release-markdown-content a:hover,
+.release-text a:hover,
+.release-list-item a:hover,
+.release-h1 a:hover,
+.release-h2 a:hover,
+.release-h3 a:hover,
+.release-h4 a:hover {
+  color: #ffb6c1 !important;
+  text-decoration: underline;
 }
 
 .release-loading {
@@ -2586,13 +2626,13 @@ body {
 }
 
 .template-preview-content .wmde-markdown a {
-  color: #3498db;
+  color: #ffff00;
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .template-preview-content .wmde-markdown a:hover {
-  color: #5dade2;
+  color: #ffb6c1;
   text-decoration: underline;
 }
 
@@ -3781,6 +3821,117 @@ body {
   display: flex;
   gap: 10px;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-button {
+  background: #2c3e50;
+  border: 1px solid #34495e;
+  color: #ecf0f1;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.nav-button:hover:not(:disabled) {
+  background: #34495e;
+  border-color: #4fbdba;
+  color: #4fbdba;
+}
+
+.nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nav-button:disabled:hover {
+  background: #2c3e50;
+  border-color: #34495e;
+  color: #ecf0f1;
+}
+
+/* Task detail view layout */
+.task-detail-view {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.task-detail-header {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: #0d1225;
+  z-index: 10;
+  border-bottom: 1px solid rgba(79, 189, 186, 0.2);
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+
+.task-detail-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 10px;
+}
+
+/* Add scrollbar styling */
+.task-detail-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.task-detail-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.task-detail-content::-webkit-scrollbar-thumb {
+  background: rgba(79, 189, 186, 0.5);
+  border-radius: 4px;
+}
+
+.task-detail-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 189, 186, 0.8);
+}
+
+/* Keyboard shortcuts hint */
+.keyboard-shortcuts-hint {
+  margin-top: 30px;
+  padding: 15px;
+  background: rgba(79, 189, 186, 0.1);
+  border: 1px solid rgba(79, 189, 186, 0.3);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 13px;
+  color: #95a5a6;
+}
+
+.shortcut-label {
+  font-weight: 600;
+  color: #4fbdba;
+}
+
+.shortcut-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .edit-button {

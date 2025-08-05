@@ -16,9 +16,103 @@ For information on setting up Shrimp Task Manager as an MCP server, see the [mai
 
 ## 📸 Screenshot
 
-![Shrimp Task Manager Viewer Interface](screenshot.png)
+![Shrimp Task Manager Viewer Interface](task-viewer-interface.png)
 
 *Modern tabbed interface showing task management with real-time search, configurable auto-refresh, and professional table display*
+
+## 📖 Detailed Page Documentation
+
+### 📋 Tasks Page
+
+The main Tasks page is your command center for task management. It provides a comprehensive view of all tasks in the selected profile with powerful features for organization and execution.
+
+![Tasks Page Overview](task-viewer-interface.png)
+
+**Key Features:**
+- **Task Table**: Displays all tasks with sortable columns including Task #, Status, Agent, Created Date, Name, Dependencies, and Actions
+- **Status Badges**: Color-coded badges (🟡 Pending, 🔵 In Progress, 🟢 Completed, 🔴 Blocked)
+- **Agent Assignment**: Dropdown selector to assign specific AI agents to tasks
+- **Dependencies Column**: Shows linked task IDs with click-to-navigate functionality
+- **Actions Column**: Contains the powerful robot emoji (🤖) for AI task execution
+
+#### 🤖 Robot Emoji - AI Task Execution
+
+The robot emoji in the Actions column is a powerful feature for AI-assisted task execution:
+
+![Robot Emoji Tooltip](releases/agent-copy-instruction-tooltip.png)
+
+**How it works:**
+1. **Click the 🤖 emoji** to copy a task execution instruction to your clipboard
+2. **For tasks with agents**: Copies `use the built in subagent located in ./claude/agents/[agent-name] to complete this shrimp task: [task-id] please when u start working mark the shrimp task as in progress`
+3. **For tasks without agents**: Copies `Use task manager to complete this shrimp task: [task-id] please when u start working mark the shrimp task as in progress`
+4. **Visual feedback**: The emoji briefly changes to ✓ to confirm the copy action
+
+**Use Cases:**
+- **Parallel Execution**: Open multiple terminal windows with different AI agents and paste instructions for concurrent task processing
+- **Agent Specialization**: Assign specialized agents (e.g., `react-components.md`, `database-specialist.md`) to appropriate tasks
+- **Quick Handoff**: Rapidly delegate tasks to AI agents without typing complex commands
+
+### 📜 Project History Page
+
+The Project History page provides valuable insights into your project's evolution by displaying snapshots of completed tasks saved by the Shrimp Task Manager.
+
+![Project History Overview](releases/project-history-view.png)
+
+**Features:**
+- **Timeline View**: Browse through historical snapshots of your project's task states
+- **Memory Files**: Automatically saved by Shrimp Task Manager when starting new sessions
+- **Task Evolution**: Track how tasks progressed from creation to completion
+- **Notes System**: Add personal annotations to historical entries
+
+![Project History Detail](releases/project-history-detail-view.png)
+
+**Navigation:**
+- Click on any historical entry to view the detailed task state at that point in time
+- Use the navigation buttons to move between different snapshots
+- Search and filter historical tasks just like in the main tasks view
+
+### 🤖 Sub-Agents Page
+
+The Sub-Agents page allows you to manage specialized AI agents that can be assigned to tasks for optimal execution.
+
+![Agent List View](releases/agent-list-view.png)
+
+**Features:**
+- **Agent Library**: View all available agents from your `.claude/agents` folder
+- **Agent Editor**: Built-in markdown editor for creating and modifying agents
+- **Color Coding**: Assign colors to agents for visual organization
+- **Agent Assignment**: Easily assign agents to tasks via dropdown in the task table
+
+![Agent Editor](releases/agent-editor-color-selection.png)
+
+**Agent Assignment Workflow:**
+
+![Agent Dropdown](releases/agent-dropdown-task-table.png)
+
+1. **Select an agent** from the dropdown in the task table
+2. **Save automatically** updates the task's metadata
+3. **Use the robot emoji** to copy agent-specific execution instructions
+
+### 🎨 Templates Page
+
+Manage AI instruction templates that guide how the Shrimp Task Manager analyzes and executes different types of operations.
+
+![Template Management](releases/template-management-system.png)
+
+**Capabilities:**
+- **Template Editor**: Full markdown editor with syntax highlighting
+- **Template Types**: Default, Custom, and Custom+Append states
+- **Live Preview**: See template effects before activation
+- **Export/Import**: Share templates with team members
+
+### ⚙️ Global Settings
+
+Configure system-wide settings including the Claude folder path for accessing global agents.
+
+**Settings Include:**
+- **Claude Folder Path**: Set the path to your global `.claude` folder
+- **API Key Configuration**: Manage environment variables for AI services
+- **Language Preferences**: Switch between supported languages
 
 ## 🌟 Features
 

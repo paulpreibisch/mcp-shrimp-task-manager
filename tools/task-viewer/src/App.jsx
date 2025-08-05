@@ -897,7 +897,7 @@ function AppContent() {
         <h1>{t('appTitle')}</h1>
         <div className="header-content">
           <div className="version-info">
-            <span>{t('version')} 2.1.0</span> • 
+            <span>{t('version')} 3.0.0</span> • 
             <a href="#" onClick={(e) => {
               e.preventDefault();
               handleOuterTabChange('release-notes');
@@ -1132,6 +1132,7 @@ function AppContent() {
                     error={historyError}
                     onViewTasks={loadHistoryTasks}
                     onBack={null} // No back button needed in tab view
+                    profileId={selectedProfile}
                   />
                 )}
               </div>

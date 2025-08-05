@@ -62,15 +62,8 @@ export async function getDataDir(): Promise<string> {
   // 處理 process.env.DATA_DIR
   if (process.env.DATA_DIR) {
     if (path.isAbsolute(process.env.DATA_DIR)) {
-      // 如果 DATA_DIR 是絕對路徑，返回 "DATA_DIR/rootPath最後一個資料夾名稱"
-      if (rootPath) {
-        const lastFolderName = path.basename(rootPath);
-        const finalPath = path.join(process.env.DATA_DIR, lastFolderName);
-        return finalPath;
-      } else {
-        // 如果沒有 rootPath，直接返回 DATA_DIR
-        return process.env.DATA_DIR;
-      }
+      // 如果 DATA_DIR 是絕對路徑，直接返回 DATA_DIR
+      return process.env.DATA_DIR;
     } else {
       // 如果 DATA_DIR 是相對路徑，返回 "rootPath/DATA_DIR"
       if (rootPath) {

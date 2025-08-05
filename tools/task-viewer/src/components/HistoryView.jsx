@@ -14,13 +14,38 @@ function HistoryView({
   loading = false, 
   error = '',
   onViewTasks,
-  onBack
+  onBack,
+  profileId
 }) {
   const { t } = useLanguage();
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [notesText, setNotesText] = useState('');
   const [savedNotes, setSavedNotes] = useState({});
+  const [savingNote, setSavingNote] = useState(false);
+
+  // Load notes from localStorage on mount
+  React.useEffect(() => {
+    if (!profileId) return;
+    
+    const storageKey = `history-notes-${profileId}`;
+    const storedNotes = localStorage.getItem(storageKey);
+    if (storedNotes) {
+      try {
+        setSavedNotes(JSON.parse(storedNotes));
+      } catch (e) {
+        console.error('Failed to parse stored notes:', e);
+      }
+    }
+  }, [profileId]);
+
+  // Save notes to localStorage whenever they change
+  React.useEffect(() => {
+    if (!profileId) return;
+    
+    const storageKey = `history-notes-${profileId}`;
+    localStorage.setItem(storageKey, JSON.stringify(savedNotes));
+  }, [savedNotes, profileId]);
 
   const columns = useMemo(() => [
     {

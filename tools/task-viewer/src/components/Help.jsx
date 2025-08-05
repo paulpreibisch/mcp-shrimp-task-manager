@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 // @ts-ignore
 import { dark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getUIStrings, getReadmeContent } from '../i18n/documentation/index.js';
+import ImageLightbox, { useLightbox } from './ImageLightbox';
 
 function Help() {
   const [readmeContent, setReadmeContent] = useState('');
   const [loading, setLoading] = useState(true);
   const { currentLanguage } = useLanguage();
   const uiStrings = getUIStrings('help', currentLanguage);
+  const lightbox = useLightbox();
+  const imagesRef = useRef([]);
 
   useEffect(() => {
     loadReadmeContent();
@@ -149,6 +152,7 @@ function Help() {
     
     const lines = content.split('\n');
     const elements = [];
+    const imageList = [];
     let i = 0;
     
     while (i < lines.length) {
@@ -262,12 +266,21 @@ function Help() {
         if (imgMatch) {
           const altText = imgMatch[1];
           const imgUrl = imgMatch[2];
+          const imageIndex = imageList.length;
+          
+          imageList.push({
+            src: imgUrl,
+            title: altText || `Image ${imageIndex + 1}`,
+            description: altText
+          });
+          
           elements.push(
             <div key={i} className="release-image">
               <img 
                 src={imgUrl} 
                 alt={altText} 
-                style={{ maxWidth: '80%', height: 'auto', margin: '1rem 0' }}
+                style={{ maxWidth: '100%', height: 'auto', margin: '1rem 0', cursor: 'pointer' }}
+                onClick={() => lightbox.openLightbox(imagesRef.current, imageIndex)}
               />
             </div>
           );
@@ -288,6 +301,9 @@ function Help() {
         i++;
       }
     }
+    
+    // Store images in ref to avoid re-renders
+    imagesRef.current = imageList;
     
     return elements;
   };
@@ -311,6 +327,13 @@ function Help() {
           </div>
         </div>
       </div>
+      
+      <ImageLightbox
+        isOpen={lightbox.isOpen}
+        onClose={lightbox.closeLightbox}
+        images={lightbox.images}
+        currentIndex={lightbox.currentIndex}
+      />
     </div>
   );
 }

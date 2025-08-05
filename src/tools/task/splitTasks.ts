@@ -109,7 +109,7 @@ export async function splitTasks({
 }: z.infer<typeof splitTasksSchema>) {
   try {
     // 載入可用的代理
-    let availableAgents;
+    let availableAgents: any[] = [];
     try {
       availableAgents = await getAllAvailableAgents();
     } catch (error) {

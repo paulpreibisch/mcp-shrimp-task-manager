@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { matchAgentToTask, getSuggestedAgentType, getKeywordMatchDetails } from './agentMatcher';
-import { Task, TaskStatus } from '../types';
+import { matchAgentToTask, getSuggestedAgentType, getKeywordMatchDetails } from './agentMatcher.js';
+import { Task, TaskStatus } from '../types/index.js';
 
 // Helper function to create a test task
 function createTestTask(name: string, description?: string, notes?: string): Task {
@@ -191,7 +191,7 @@ describe('agentMatcher', () => {
       
       expect(details.length).toBeGreaterThan(0);
       expect(details[0].matchedKeywords).toContain('react');
-      expect(details.find(d => d.type === 'backend')?.matchedKeywords).toContain('node');
+      expect(details.find((d: any) => d.type === 'backend')?.matchedKeywords).toContain('node');
     });
 
     it('should sort by score descending', () => {
@@ -221,7 +221,7 @@ describe('agentMatcher', () => {
       };
       const details = getKeywordMatchDetails(task);
       
-      const dataMatch = details.find(d => d.type === 'data');
+      const dataMatch = details.find((d: any) => d.type === 'data');
       expect(dataMatch).toBeDefined();
       expect(dataMatch?.matchedKeywords).toContain('tensorflow');
       expect(dataMatch?.matchedKeywords).toContain('machine learning');
@@ -240,8 +240,8 @@ describe('agentMatcher', () => {
       const details1 = getKeywordMatchDetails(task1);
       const details2 = getKeywordMatchDetails(task2);
       
-      const frontend1 = details1.find(d => d.type === 'frontend');
-      const frontend2 = details2.find(d => d.type === 'frontend');
+      const frontend1 = details1.find((d: any) => d.type === 'frontend');
+      const frontend2 = details2.find((d: any) => d.type === 'frontend');
       
       expect(frontend2?.score).toBeGreaterThan(frontend1?.score || 0);
     });
@@ -257,7 +257,7 @@ describe('agentMatcher', () => {
         'This is about database, not about databasesystem'
       );
       const details = getKeywordMatchDetails(task);
-      const databaseMatch = details.find(d => d.type === 'database');
+      const databaseMatch = details.find((d: any) => d.type === 'database');
       
       // Should match 'database' as a whole word
       expect(databaseMatch?.matchedKeywords).toContain('database');
@@ -268,7 +268,7 @@ describe('agentMatcher', () => {
         'This is about Preact component'
       );
       const details2 = getKeywordMatchDetails(task2);
-      const frontendMatch = details2.find(d => d.type === 'frontend');
+      const frontendMatch = details2.find((d: any) => d.type === 'frontend');
       
       // Should match 'component' but not 'react' (which is inside 'preact')
       expect(frontendMatch?.matchedKeywords).toContain('component');

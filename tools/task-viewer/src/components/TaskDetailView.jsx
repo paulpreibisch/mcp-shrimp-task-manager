@@ -1,8 +1,38 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 
 function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex, allTasks, isHistorical = false, onEdit }) {
   const { t } = useLanguage();
+  
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ignore if user is typing in an input or textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      // Arrow key navigation
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (taskIndex > 0 && allTasks && allTasks[taskIndex - 1]) {
+          onNavigateToTask(allTasks[taskIndex - 1].id);
+        }
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (allTasks && taskIndex < allTasks.length - 1 && allTasks[taskIndex + 1]) {
+          onNavigateToTask(allTasks[taskIndex + 1].id);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onBack();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [taskIndex, allTasks, onNavigateToTask, onBack]);
+  
   if (!task) return null;
 
   const formatDate = (dateStr) => {
@@ -17,6 +47,29 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
       second: '2-digit',
       hour12: true
     });
+  };
+
+  const calculateTimeTaken = (createdAt, completedAt) => {
+    if (!createdAt || !completedAt) return null;
+    
+    const start = new Date(createdAt);
+    const end = new Date(completedAt);
+    const diffMs = end - start;
+    
+    if (diffMs < 0) return null;
+    
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+    
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+    
+    return parts.join(' ');
   };
 
   const getStatusColor = (status) => {
@@ -48,6 +101,32 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
           {task.name}
         </h2>
         <div className="header-buttons">
+          <div className="nav-buttons">
+            <button 
+              className="nav-button prev-button"
+              onClick={() => {
+                if (taskIndex > 0 && allTasks && allTasks[taskIndex - 1]) {
+                  onNavigateToTask(allTasks[taskIndex - 1].id);
+                }
+              }}
+              disabled={!allTasks || taskIndex <= 0}
+              title="Previous Task (← Arrow Key)"
+            >
+              ← Previous
+            </button>
+            <button 
+              className="nav-button next-button"
+              onClick={() => {
+                if (allTasks && taskIndex < allTasks.length - 1 && allTasks[taskIndex + 1]) {
+                  onNavigateToTask(allTasks[taskIndex + 1].id);
+                }
+              }}
+              disabled={!allTasks || taskIndex >= allTasks.length - 1}
+              title="Next Task (→ Arrow Key)"
+            >
+              Next →
+            </button>
+          </div>
           {!isHistorical && onEdit && (
             <button 
               className={`edit-button ${task.status === 'completed' ? 'disabled' : ''}`}
@@ -94,10 +173,18 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
           </div>
           
           {task.completedAt && (
-            <div className="detail-row">
-              <span className="detail-label">Completed:</span>
-              <span className="detail-value">{formatDate(task.completedAt)}</span>
-            </div>
+            <>
+              <div className="detail-row">
+                <span className="detail-label">Completed:</span>
+                <span className="detail-value">{formatDate(task.completedAt)}</span>
+              </div>
+              {calculateTimeTaken(task.createdAt, task.completedAt) && (
+                <div className="detail-row">
+                  <span className="detail-label">Total time taken:</span>
+                  <span className="detail-value">{calculateTimeTaken(task.createdAt, task.completedAt)}</span>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -222,6 +309,13 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
             </div>
           </div>
         )}
+        
+        <div className="keyboard-shortcuts-hint">
+          <span className="shortcut-label">Keyboard shortcuts:</span>
+          <span className="shortcut-item">← Previous</span>
+          <span className="shortcut-item">→ Next</span>
+          <span className="shortcut-item">ESC Back to list</span>
+        </div>
       </div>
     </div>
   );

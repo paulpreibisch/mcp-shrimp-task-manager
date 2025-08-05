@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { releaseMetadata, getReleaseFile } from '../data/releases';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 // @ts-ignore
 import { dark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useLanguage } from '../i18n/LanguageContext';
 import { getUIStrings, getReleaseContent } from '../i18n/documentation/index.js';
+import ImageLightbox, { useLightbox } from './ImageLightbox';
 
 function ReleaseNotes() {
   const [selectedVersion, setSelectedVersion] = useState(releaseMetadata[0]?.version || '');
@@ -12,6 +13,8 @@ function ReleaseNotes() {
   const [loading, setLoading] = useState(true);
   const { currentLanguage } = useLanguage();
   const uiStrings = getUIStrings('releaseNotes', currentLanguage);
+  const lightbox = useLightbox();
+  const imagesRef = useRef([]);
 
   useEffect(() => {
     if (selectedVersion) {
@@ -74,13 +77,24 @@ function ReleaseNotes() {
           parts.push(remaining.substring(0, linkMatch.index));
         }
         // Add link
+        const href = linkMatch[2];
+        const isAnchor = href.startsWith('#');
+        
         parts.push(
           <a
             key={`link-${key++}`}
-            href={linkMatch[2]}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: '#3b82f6', textDecoration: 'underline' }}
+            href={href}
+            target={isAnchor ? undefined : "_blank"}
+            rel={isAnchor ? undefined : "noopener noreferrer"}
+            style={{ color: '#ffff00', textDecoration: 'underline' }}
+            onClick={isAnchor ? (e) => {
+              e.preventDefault();
+              const targetId = href.substring(1);
+              const element = document.getElementById(targetId);
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            } : undefined}
           >
             {linkMatch[1]}
           </a>
@@ -156,36 +170,45 @@ function ReleaseNotes() {
     
     const lines = content.split('\n');
     const elements = [];
+    const imageList = [];
     let i = 0;
     
     while (i < lines.length) {
       const line = lines[i];
       
       if (line.startsWith('# ')) {
+        const text = line.substring(2);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h1 key={i} className="release-h1">
-            {parseInlineMarkdown(line.substring(2))}
+          <h1 key={i} id={id} className="release-h1">
+            {parseInlineMarkdown(text)}
           </h1>
         );
         i++;
       } else if (line.startsWith('## ')) {
+        const text = line.substring(3);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h2 key={i} className="release-h2">
-            {parseInlineMarkdown(line.substring(3))}
+          <h2 key={i} id={id} className="release-h2">
+            {parseInlineMarkdown(text)}
           </h2>
         );
         i++;
       } else if (line.startsWith('### ')) {
+        const text = line.substring(4);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h3 key={i} className="release-h3">
-            {parseInlineMarkdown(line.substring(4))}
+          <h3 key={i} id={id} className="release-h3">
+            {parseInlineMarkdown(text)}
           </h3>
         );
         i++;
       } else if (line.startsWith('#### ')) {
+        const text = line.substring(5);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h4 key={i} className="release-h4">
-            {parseInlineMarkdown(line.substring(5))}
+          <h4 key={i} id={id} className="release-h4">
+            {parseInlineMarkdown(text)}
           </h4>
         );
         i++;
@@ -263,12 +286,21 @@ function ReleaseNotes() {
         if (imgMatch) {
           const altText = imgMatch[1];
           const imgUrl = imgMatch[2];
+          const imageIndex = imageList.length;
+          
+          imageList.push({
+            src: imgUrl,
+            title: altText || `Image ${imageIndex + 1}`,
+            description: altText
+          });
+          
           elements.push(
             <div key={i} className="release-image">
               <img 
                 src={imgUrl} 
                 alt={altText} 
-                style={{ maxWidth: '60%', height: 'auto', margin: '1rem 0' }}
+                style={{ maxWidth: '75%', height: 'auto', margin: '1rem 0', cursor: 'pointer' }}
+                onClick={() => lightbox.openLightbox(imagesRef.current, imageIndex)}
               />
             </div>
           );
@@ -297,6 +329,9 @@ function ReleaseNotes() {
         i++;
       }
     }
+    
+    // Store images in ref to avoid re-renders
+    imagesRef.current = imageList;
     
     return elements;
   };
@@ -341,6 +376,13 @@ function ReleaseNotes() {
           </div>
         </div>
       </div>
+      
+      <ImageLightbox
+        isOpen={lightbox.isOpen}
+        onClose={lightbox.closeLightbox}
+        images={lightbox.images}
+        currentIndex={lightbox.currentIndex}
+      />
     </div>
   );
 }

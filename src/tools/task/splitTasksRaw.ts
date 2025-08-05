@@ -114,7 +114,7 @@ export async function splitTasksRaw({
   globalAnalysisResult,
 }: z.infer<typeof splitTasksRawSchema>) {
   // 載入可用的代理
-  let availableAgents;
+  let availableAgents: any[] = [];
   try {
     availableAgents = await getAllAvailableAgents();
   } catch (error) {
