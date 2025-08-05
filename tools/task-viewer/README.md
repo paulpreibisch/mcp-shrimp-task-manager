@@ -14,12 +14,6 @@ When using Shrimp Task Manager as an MCP server with AI agents like Claude, this
 
 For information on setting up Shrimp Task Manager as an MCP server, see the [main repository](https://github.com/cjo4m06/mcp-shrimp-task-manager).
 
-## 📸 Screenshot
-
-![Shrimp Task Manager Viewer Interface](task-viewer-interface.png)
-
-*Modern tabbed interface showing task management with real-time search, configurable auto-refresh, and professional table display*
-
 ## 📖 Detailed Page Documentation
 
 ### 📋 Tasks Page
