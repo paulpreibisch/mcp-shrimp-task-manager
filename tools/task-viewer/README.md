@@ -70,11 +70,14 @@ The Project History page provides valuable insights into your project's evolutio
 
 The Sub-Agents page allows you to manage specialized AI agents that can be assigned to tasks for optimal execution.
 
-![Agent List View](releases/agent-list-view.png)
+![Agent List View with AI Instruction](releases/agent-list-view-with-ai-instruction.png)
 
 **Features:**
 - **Agent Library**: View all available agents from your `.claude/agents` folder
-- **AI Instruction Column**: Click the robot emoji (🤖) to copy `use subagent [agent-name] located in [path]:` for direct use in Claude
+- **AI Instruction Column**: Click the robot emoji (🤖) to instantly copy agent usage instructions
+  - Example: `use subagent debugger.md located in ./claude/agents to perform:`
+  - No need to manually type agent paths or remember syntax
+  - Visual feedback confirms successful copy to clipboard
 - **Agent Editor**: Built-in markdown editor for creating and modifying agents
 - **Color Coding**: Assign colors to agents for visual organization
 - **Agent Assignment**: Easily assign agents to tasks via dropdown in the task table
