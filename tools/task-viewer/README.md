@@ -231,8 +231,12 @@ Configure system-wide settings including the Claude folder path for accessing gl
 For development with hot reload:
 
 ```bash
-# Start the development server
-npm run dev
+# Start both the API server and development server
+npm run start:all
+
+# Or run them separately:
+npm start          # API server on port 9998
+npm run dev        # Vite dev server on port 3000
 ```
 
 The app will be available at `http://localhost:3000` with automatic rebuilding on file changes.
@@ -289,9 +293,11 @@ For automatic startup and process management:
    ```bash
    npm start
    ```
+   
+   **Note**: If you haven't built the app yet or want to use development mode with hot reload, use `npm run start:all` instead.
 
 2. **Open your browser**:
-   Navigate to `http://127.0.0.1:9998`
+   Navigate to `http://127.0.0.1:9998` (production) or `http://localhost:3000` (development)
 
 3. **Add your first profile**:
    - Click the "**+ Add Tab**" button
@@ -369,19 +375,26 @@ OPEN_AI_KEY_SHRIMP_TASK_VIEWER=sk-...  # Alternative env var for OpenAI key
 
 ### Development Configuration
 
-- **Development server with hot reload (Vite)**:
+- **Development with hot reload (recommended for development)**:
   ```bash
-  npm run dev  # Runs on port 3000
+  npm run start:all  # Runs API server (9998) + Vite dev server (3000)
   ```
   
-  **Why use the development server?** During active development, the Vite dev server provides instant hot module replacement (HMR), meaning your changes appear immediately in the browser without manual refreshing. This dramatically speeds up development by preserving component state between edits and providing instant feedback on your code changes. The dev server also provides better error messages and debugging capabilities.
+  **Why use start:all?** This command runs both the API server and Vite dev server simultaneously. You get instant hot module replacement (HMR) for UI changes while having the full API functionality. Your changes appear immediately in the browser at `http://localhost:3000` without manual refreshing.
 
-- **Production build and serve**:
+- **API server only (for production or API testing)**:
   ```bash
-  npm run build && npm start  # Runs on port 9998
+  npm start  # Runs on port 9998
   ```
   
-  **Why build for production?** The production build optimizes your code by minifying JavaScript, removing dead code, and bundling assets efficiently. This results in faster load times and better performance for end users. Always use the production build when deploying or when you need to test real-world performance.
+  **Why use API server only?** Use this when you've built the production files and want to test the complete app as it would run in production, or when you only need the API endpoints.
+
+- **Build and serve for production**:
+  ```bash
+  npm run build && npm start  # Build then serve on port 9998
+  ```
+  
+  **Why build for production?** The production build optimizes your code by minifying JavaScript, removing dead code, and bundling assets efficiently. This results in faster load times and better performance for end users. Always use the production build when deploying.
 
 ### Profile Data Storage
 
