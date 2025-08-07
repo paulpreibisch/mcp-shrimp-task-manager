@@ -22,6 +22,10 @@ export const releaseMetadata = [
 
 export const getLatestVersion = () => releaseMetadata[0];
 
-export const getReleaseFile = (version) => {
+export const getReleaseFile = (version, language = 'en') => {
+  // For non-English languages, try to load the language-specific file first
+  if (language !== 'en') {
+    return `/releases/${version}-${language}.md`;
+  }
   return `/releases/${version}.md`;
 };

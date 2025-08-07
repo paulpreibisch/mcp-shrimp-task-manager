@@ -14,6 +14,7 @@ import SubAgentsView from './components/SubAgentsView';
 import ProjectAgentsView from './components/ProjectAgentsView';
 import ToastContainer from './components/ToastContainer';
 import LanguageSelector from './components/LanguageSelector';
+import ChatAgent from './components/ChatAgent';
 import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
 import { parseUrlState, updateUrl, pushUrlState, getInitialUrlState, cleanUrlStateForTab } from './utils/urlStateSync';
 import NestedTabs from './components/NestedTabs';
@@ -84,6 +85,9 @@ function AppContent() {
   
   // Toast notifications state
   const [toasts, setToasts] = useState([]);
+  
+  // Current task state for chat context
+  const [currentTask, setCurrentTask] = useState(null);
 
   // Toast helper functions
   const showToast = (message, type = 'success', duration = 3000) => {
@@ -1063,6 +1067,14 @@ function AppContent() {
                     setIsInDetailView(inDetailView);
                     setIsInEditMode(inEditMode || false);
                     
+                    // Set current task for chat context
+                    if (inDetailView && taskId) {
+                      const task = tasks.find(t => t.id === taskId);
+                      setCurrentTask(task || null);
+                    } else {
+                      setCurrentTask(null);
+                    }
+                    
                     // Update URL when viewing/editing task
                     if (inDetailView && taskId) {
                       pushUrlState({
@@ -1460,6 +1472,43 @@ function AppContent() {
             </form>
           </div>
         </div>
+      )}
+      
+      {/* Chat Agent - Available on all pages when a profile is selected */}
+      {selectedProfile && (
+        <ChatAgent
+          currentPage={
+            selectedOuterTab === 'projects' 
+              ? (isInDetailView ? 'task-detail' : (projectInnerTab === 'history' ? 'history' : 'task-list'))
+              : selectedOuterTab
+          }
+          currentTask={currentTask}
+          tasks={tasks}
+          profileId={selectedProfile}
+          projectRoot={projectRoot}
+          showToast={showToast}
+          onTaskUpdate={async (taskId, updates) => {
+            // Handle task updates from chat
+            try {
+              const response = await fetch(`/api/tasks/${selectedProfile}/update`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ taskId, updates })
+              });
+              
+              if (response.ok) {
+                await loadTasks(selectedProfile);
+                return true;
+              }
+              return false;
+            } catch (err) {
+              console.error('Error updating task from chat:', err);
+              return false;
+            }
+          }}
+        />
       )}
     </div>
   );
