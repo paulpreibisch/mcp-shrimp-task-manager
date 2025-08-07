@@ -403,13 +403,13 @@ OPEN_AI_KEY_SHRIMP_TASK_VIEWER=sk-...  # Alternative env var for OpenAI key
 
 **Automatic Version Control**: Starting with v3.0, the Shrimp Task Manager automatically tracks all task changes using Git. This provides a complete audit trail without any manual configuration.
 
-- **Repository Location**: `~/.shrimp_data_<project>/.git`
+- **Repository Location**: `<shrimp-data-directory>/.git`
   
-  Each project gets its own Git repository in the data directory. This is completely separate from your project's main Git repository, preventing any conflicts or interference.
+  Each project gets its own Git repository in the data directory configured in your `.mcp.json` file. This is completely separate from your project's main Git repository, preventing any conflicts or interference.
 
 - **Viewing History**: Use standard Git commands to explore task history
   ```bash
-  cd ~/.shrimp_data_<project>
+  cd <shrimp-data-directory>
   git log --oneline          # View commit history
   git show <commit-hash>     # See specific changes
   git diff HEAD~5            # Compare with 5 commits ago
@@ -424,6 +424,7 @@ OPEN_AI_KEY_SHRIMP_TASK_VIEWER=sk-...  # Alternative env var for OpenAI key
 
 - **Recovery**: Restore previous task states if needed
   ```bash
+  cd <shrimp-data-directory>
   git checkout <commit-hash> -- tasks.json  # Restore specific version
   git reset --hard <commit-hash>            # Full reset to previous state
   ```
