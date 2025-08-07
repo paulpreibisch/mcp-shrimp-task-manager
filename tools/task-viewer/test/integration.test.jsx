@@ -5,11 +5,28 @@ import http from 'http';
 import path from 'path';
 import os from 'os';
 import App from '../src/App';
-import { startServer } from '../server.js';
 
-// Mock modules
-vi.mock('fs/promises');
-vi.mock('os');
+// Mock os module first
+vi.mock('os', () => ({
+  default: {
+    homedir: () => '/mock/home',
+    tmpdir: () => '/mock/tmp'
+  }
+}));
+
+// Mock fs module
+const mockFs = {
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
+  mkdir: vi.fn()
+};
+
+vi.mock('fs', () => ({
+  promises: mockFs
+}));
+
+// Import server after mocks are set up
+const { startServer } = await import('../server.js');
 
 describe('Integration Tests', () => {
   let server;
@@ -50,11 +67,8 @@ describe('Integration Tests', () => {
     vi.clearAllMocks();
     
     // Setup file system mocks
-    const fs = await import('fs/promises');
-    os.homedir.mockReturnValue('/mock/home');
-    os.tmpdir.mockReturnValue('/mock/tmp');
     
-    fs.readFile.mockImplementation((filePath) => {
+    mockFs.readFile.mockImplementation((filePath) => {
       if (filePath.includes('.shrimp-task-viewer-settings.json')) {
         return Promise.resolve(JSON.stringify({ agents: mockProfiles }));
       } else if (filePath.includes('agent1.json')) {
@@ -69,8 +83,8 @@ describe('Integration Tests', () => {
       return Promise.reject(error);
     });
     
-    fs.writeFile.mockResolvedValue();
-    fs.mkdir.mockResolvedValue();
+    mockFs.writeFile.mockResolvedValue();
+    mockFs.mkdir.mockResolvedValue();
     
     // Start test server
     server = await startServer();
@@ -247,7 +261,7 @@ describe('Integration Tests', () => {
       await userEvent.upload(fileInput, file);
 
       // Mock the server response for add profile
-      fs.readFile.mockImplementation((filePath) => {
+      mockFs.readFile.mockImplementation((filePath) => {
         if (filePath.includes('.shrimp-task-viewer-settings.json')) {
           return Promise.resolve(JSON.stringify({
             agents: [...mockProfiles, { id: 'new-test-agent', name: 'New Test Agent', path: '/mock/tmp/new.json' }]
@@ -277,7 +291,7 @@ describe('Integration Tests', () => {
       });
 
       // Mock updated profiles after removal
-      fs.readFile.mockImplementation((filePath) => {
+      mockFs.readFile.mockImplementation((filePath) => {
         if (filePath.includes('.shrimp-task-viewer-settings.json')) {
           return Promise.resolve(JSON.stringify({
             agents: [mockProfiles[1]] // Only Agent 2 remains
@@ -312,7 +326,7 @@ describe('Integration Tests', () => {
       let taskCallCount = 0;
       
       // Mock changing task data
-      fs.readFile.mockImplementation((filePath) => {
+      mockFs.readFile.mockImplementation((filePath) => {
         if (filePath.includes('agent1.json')) {
           taskCallCount++;
           if (taskCallCount === 1) {
@@ -381,7 +395,7 @@ describe('Integration Tests', () => {
     it('handles corrupted task data gracefully', async () => {
       const fs = await import('fs/promises');
       
-      fs.readFile.mockImplementation((filePath) => {
+      mockFs.readFile.mockImplementation((filePath) => {
         if (filePath.includes('agent1.json')) {
           return Promise.resolve('{ invalid json }');
         } else if (filePath.includes('.shrimp-task-viewer-settings.json')) {
@@ -418,7 +432,7 @@ describe('Integration Tests', () => {
         }))
       };
 
-      fs.readFile.mockImplementation((filePath) => {
+      mockFs.readFile.mockImplementation((filePath) => {
         if (filePath.includes('agent1.json')) {
           return Promise.resolve(JSON.stringify(largeTasks));
         } else if (filePath.includes('.shrimp-task-viewer-settings.json')) {

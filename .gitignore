@@ -55,4 +55,15 @@ data/*/*.json
 data/*
 
 # Cursor AI 生成的暫存檔案
-.cursor/tmp/ 
+.cursor/tmp/
+
+# Claude and MCP files
+.claude/
+.mcp.json
+
+# Audio files
+*.wav 
+
+# Screenshots folder
+Screenshots/
+/Screenshots

@@ -6,6 +6,7 @@
 - [🧭 Usage Guide](#usage-guide)
 - [🖥️ Task Viewer Tool](#task-viewer-tool)
 - [🔬 Research Mode](#research-mode)
+- [🤖 Agent Management System](#agent-management-system)
 - [🧠 Task Memory Function](#task-memory-function)
 - [📋 Project Rules Initialization](#project-rules)
 - [🌐 Web GUI](#web-gui)
@@ -46,9 +47,11 @@ Shrimp Task Manager guides Agents through structured workflows for systematic pr
 - **<a id="web-gui"></a>Web GUI**: Provides an optional web-based graphical user interface for task management. Enable by setting `ENABLE_GUI=true` in your `.env` file. When enabled, a `WebGUI.md` file containing the access address will be created in your `DATA_DIR`. You can customize the web port by setting `WEB_PORT` (if not specified, an available port will be automatically selected).
 - **<a id="task-viewer"></a>Task Viewer**: A modern, React-based web interface for viewing and managing task data across multiple profiles with advanced features like drag & drop tabs, real-time search, and configurable auto-refresh. See the [Task Viewer documentation](tools/task-viewer) for setup and usage instructions.
 
-  ![Task Viewer Interface](tools/task-viewer/screenshot.png)
+  <kbd><img src="tools/task-viewer/task-viewer-interface.png" alt="Task Viewer Interface" /></kbd>
   
-  ![Task Viewer in Action](tools/task-viewer/taskview.png)
+  <kbd><img src="tools/task-viewer/task-details-view.png" alt="Task Details View" /></kbd>
+
+- **<a id="agent-management"></a>Agent Management**: Comprehensive subagent management system for specialized task handling. Assign specific AI agents to tasks, manage agent metadata, and leverage Claude's agent system for optimal task execution.
 
 ## 🧭 <a id="usage-guide"></a>Usage Guide
 
@@ -142,6 +145,89 @@ The system will guide the Agent through structured research phases, ensuring tho
 5. **Integration**: Applying research results to your project context
 
 > **💡 Recommendation**: For the best research mode experience, we recommend using **Claude 4 Sonnet**, which provides exceptional analytical capabilities and comprehensive research synthesis.
+
+## 🤖 <a id="agent-management-system"></a>Agent Management System
+
+The Task Viewer now includes a comprehensive Agent Management System that integrates seamlessly with Claude's agent capabilities, allowing you to leverage specialized AI agents for different types of tasks.
+
+### What are Agents?
+
+Agents are specialized AI personalities or skill sets stored in your `.claude/agents` folder. Each agent can have unique capabilities, instructions, and behaviors tailored to specific types of tasks. The Agent Management System allows you to:
+
+- **View Available Agents**: Browse all agents from your `.claude/agents` folder
+- **Assign Agents to Tasks**: Use the dropdown selector in the task table to assign specific agents
+- **Edit Agent Content**: Modify agent instructions and metadata using the built-in editor
+- **Customize Agent Appearance**: Assign colors to agents for visual organization
+- **Leverage Global Agents**: Access system-wide agents by configuring your global Claude folder path
+
+### Key Features
+
+#### 1. Agent List View
+Access the Agents tab to see all available agents with their descriptions and capabilities. The list shows agents from both your project's `.claude/agents` folder and globally configured agents.
+
+Each agent in the list now includes:
+- **AI Instruction column**: Click the robot emoji (🤖) to instantly copy agent usage instructions to your clipboard
+  - Example: `use subagent debugger.md located in ./claude/agents to perform:`
+  - Saves you from typing the full agent path and syntax
+  - Works for both global and project-specific agents
+- **View and Edit buttons**: Manage agent content and metadata
+- **Color-coded names**: Visual organization based on agent metadata
+
+<kbd><img src="tools/task-viewer/releases/agent-list-view-with-ai-instruction.png" alt="Agent List View with AI Instruction Column" /></kbd>
+
+#### 2. Agent Assignment
+In the task table, each task now has an agent dropdown selector. You can:
+- Select "No agent" for standard task manager execution
+- Choose specific agents for specialized handling
+- Click the eye icon (👁️) to open an agent viewer popup
+- Browse through different agents in the popup to select the right one
+- Ask Claude to automatically assign suitable agents
+
+<kbd><img src="tools/task-viewer/releases/agent-dropdown-task-table.png" alt="Agent Dropdown in Task Table" /></kbd>
+
+<kbd><img src="tools/task-viewer/releases/agent-viewer-popup.png" alt="Agent Viewer Popup" /></kbd>
+
+#### 3. One-Click AI Instructions
+Click the robot emoji (🤖) next to any task to copy agent-specific instructions to your clipboard:
+```
+use the built in subagent located in ./claude/agents/[agent-name] to complete this shrimp task: [task-id] please when u start working mark the shrimp task as in progress
+```
+
+<kbd><img src="tools/task-viewer/releases/agent-copy-instruction-tooltip.png" alt="Agent Copy Instruction Tooltip" /></kbd>
+
+#### 4. Agent Editor
+Edit agent content and metadata directly in the Task Viewer:
+- Modify agent instructions using markdown
+- Add color metadata for visual organization
+- Preview changes before saving
+
+<kbd><img src="tools/task-viewer/releases/agent-editor-color-selection.png" alt="Agent Editor with Color Selection" /></kbd>
+
+#### 5. Agent Information Modal
+Browse through detailed agent information with easy navigation between agents.
+
+<kbd><img src="tools/task-viewer/releases/agent-info-modal.png" alt="Agent Information Modal" /></kbd>
+
+#### 6. Global Settings
+Configure your global Claude folder path to access system-wide agents across all projects.
+
+<kbd><img src="tools/task-viewer/releases/global-settings-agents.png" alt="Global Settings for Agents" /></kbd>
+
+### How to Use Agent Management
+
+1. **Setup**: Ensure you have agents defined in your `.claude/agents` folder
+2. **Browse**: Navigate to the Agents tab to view available agents
+3. **Assign**: In the task table, use the dropdown to assign agents to specific tasks
+4. **Execute**: Click the robot emoji to copy the execution command
+5. **Paste**: Give the command to Claude to execute the task with the specified agent
+
+### Benefits
+
+- **Specialization**: Use agents optimized for specific types of tasks (e.g., frontend, backend, testing)
+- **Consistency**: Ensure tasks are handled according to predefined agent behaviors
+- **Efficiency**: Quickly assign and execute tasks with appropriate agents
+- **Organization**: Visual color coding helps identify agent assignments at a glance
+- **Integration**: Seamlessly works with Claude's existing agent system
 
 ## 🧠 <a id="task-memory-function"></a>Task Memory Function
 

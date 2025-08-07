@@ -101,7 +101,9 @@ export async function createWebServer() {
         await fsPromises.mkdir(DATA_DIR, { recursive: true });
       }
       await fsPromises.writeFile(websiteFilePath, websiteUrl, "utf-8");
-    } catch (error) {}
+    } catch (error) {
+      // Silently handle error - console not supported in MCP
+    }
   }
 
   return {

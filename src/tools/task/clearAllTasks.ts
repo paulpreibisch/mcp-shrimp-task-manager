@@ -31,6 +31,7 @@ export async function clearAllTasks({
     };
   }
 
+
   // 檢查是否真的有任務需要清除
   const allTasks = await getAllTasks();
   if (allTasks.length === 0) {

@@ -1,13 +1,28 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import http from 'http';
-import fs from 'fs/promises';
 import path from 'path';
-import os from 'os';
-import { startServer } from '../server.js';
 
-// Mock modules
-vi.mock('fs/promises');
-vi.mock('os');
+// Mock os module first
+vi.mock('os', () => ({
+  default: {
+    homedir: () => '/mock/home',
+    tmpdir: () => '/mock/tmp'
+  }
+}));
+
+// Mock fs module
+const mockFs = {
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
+  mkdir: vi.fn()
+};
+
+vi.mock('fs', () => ({
+  promises: mockFs
+}));
+
+// Import server after mocks are set up
+const { startServer } = await import('../server.js');
 
 describe('Server', () => {
   let server;
@@ -15,10 +30,6 @@ describe('Server', () => {
   const mockTempDir = '/mock/tmp/shrimp-task-viewer';
   
   beforeEach(() => {
-    // Setup mocks
-    os.homedir.mockReturnValue('/mock/home');
-    os.tmpdir.mockReturnValue('/mock/tmp');
-    
     // Reset all mocks
     vi.clearAllMocks();
   });
@@ -28,6 +39,7 @@ describe('Server', () => {
       await new Promise((resolve) => {
         server.close(resolve);
       });
+      server = null;
     }
   });
 
@@ -38,7 +50,7 @@ describe('Server', () => {
         { id: 'agent2', name: 'Agent 2', path: '/path/to/agent2.json' }
       ];
       
-      fs.readFile.mockResolvedValue(JSON.stringify({
+      mockFs.readFile.mockResolvedValue(JSON.stringify({
         agents: mockAgents,
         lastUpdated: '2024-01-01T00:00:00.000Z',
         version: '2.0.0'
@@ -47,16 +59,18 @@ describe('Server', () => {
       // Start server to trigger loadSettings
       server = await startServer();
       
-      expect(fs.readFile).toHaveBeenCalledWith(mockSettingsFile, 'utf8');
+      expect(mockFs.readFile).toHaveBeenCalledWith(mockSettingsFile, 'utf8');
     });
 
     it('should create default settings if file does not exist', async () => {
-      fs.readFile.mockRejectedValue(new Error('ENOENT'));
-      fs.writeFile.mockResolvedValue();
+      const error = new Error('ENOENT: no such file or directory');
+      error.code = 'ENOENT';
+      mockFs.readFile.mockRejectedValue(error);
+      mockFs.writeFile.mockResolvedValue();
 
       server = await startServer();
 
-      expect(fs.writeFile).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         mockSettingsFile,
         expect.stringContaining('"agents": []')
       );
@@ -67,9 +81,9 @@ describe('Server', () => {
         { id: 'test-agent', name: 'Test Agent', path: '/test/path.json' }
       ];
       
-      fs.readFile.mockResolvedValue(JSON.stringify({ agents: [] }));
-      fs.writeFile.mockResolvedValue();
-      fs.mkdir.mockResolvedValue();
+      mockFs.readFile.mockResolvedValue(JSON.stringify({ agents: [] }));
+      mockFs.writeFile.mockResolvedValue();
+      mockFs.mkdir.mockResolvedValue();
 
       server = await startServer();
 
@@ -80,7 +94,7 @@ describe('Server', () => {
         body: 'name=Test+Agent&taskFile=' + encodeURIComponent('{"tasks":[]}')
       });
 
-      expect(fs.writeFile).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         mockSettingsFile,
         expect.stringMatching(/"agents":\s*\[[\s\S]*\]/)
       );
@@ -89,7 +103,7 @@ describe('Server', () => {
 
   describe('API Endpoints', () => {
     beforeEach(async () => {
-      fs.readFile.mockImplementation((filePath) => {
+      mockFs.readFile.mockImplementation((filePath) => {
         if (filePath === mockSettingsFile) {
           return Promise.resolve(JSON.stringify({
             agents: [
@@ -108,8 +122,8 @@ describe('Server', () => {
         return Promise.reject(new Error('File not found'));
       });
       
-      fs.writeFile.mockResolvedValue();
-      fs.mkdir.mockResolvedValue();
+      mockFs.writeFile.mockResolvedValue();
+      mockFs.mkdir.mockResolvedValue();
       
       server = await startServer();
     });
@@ -152,7 +166,7 @@ describe('Server', () => {
           path: expect.stringContaining('tasks.json')
         });
 
-        expect(fs.writeFile).toHaveBeenCalledWith(
+        expect(mockFs.writeFile).toHaveBeenCalledWith(
           expect.stringContaining('tasks.json'),
           '{"tasks":[]}'
         );
@@ -235,7 +249,7 @@ describe('Server', () => {
 
         expect(response.statusCode).toBe(200);
         // Should have updated, not added new
-        expect(fs.writeFile).toHaveBeenCalledWith(
+        expect(mockFs.writeFile).toHaveBeenCalledWith(
           mockSettingsFile,
           expect.stringContaining('"agents": [')
         );
@@ -251,7 +265,7 @@ describe('Server', () => {
         expect(response.statusCode).toBe(200);
         expect(response.body).toBe('Profile removed');
         
-        expect(fs.writeFile).toHaveBeenCalledWith(
+        expect(mockFs.writeFile).toHaveBeenCalledWith(
           mockSettingsFile,
           expect.not.stringContaining('agent1')
         );
@@ -297,7 +311,7 @@ describe('Server', () => {
       });
 
       it('should handle file read errors', async () => {
-        fs.readFile.mockImplementation((filePath) => {
+        mockFs.readFile.mockImplementation((filePath) => {
           if (filePath === mockSettingsFile) {
             return Promise.resolve(JSON.stringify({
               agents: [{ id: 'agent-error', name: 'Error Agent', path: '/error/path.json' }]
@@ -330,7 +344,7 @@ describe('Server', () => {
 
   describe('Static File Serving', () => {
     beforeEach(async () => {
-      fs.readFile.mockImplementation((filePath) => {
+      mockFs.readFile.mockImplementation((filePath) => {
         if (filePath === mockSettingsFile) {
           return Promise.resolve(JSON.stringify({ agents: [] }));
         } else if (filePath.endsWith('index.html')) {
@@ -391,7 +405,7 @@ describe('Server', () => {
     });
 
     it('should handle missing dist directory', async () => {
-      fs.readFile.mockRejectedValue(new Error('ENOENT'));
+      mockFs.readFile.mockRejectedValue(new Error('ENOENT'));
 
       const response = await makeRequest(server, '/');
 
@@ -402,20 +416,20 @@ describe('Server', () => {
 
   describe('Error Handling', () => {
     it('should handle server startup errors', async () => {
-      fs.readFile.mockRejectedValue(new Error('Permission denied'));
-      fs.writeFile.mockRejectedValue(new Error('Permission denied'));
+      mockFs.readFile.mockRejectedValue(new Error('Permission denied'));
+      mockFs.writeFile.mockRejectedValue(new Error('Permission denied'));
 
       await expect(startServer()).rejects.toThrow();
     });
 
     it('should handle malformed JSON in settings file', async () => {
-      fs.readFile.mockResolvedValue('{ invalid json }');
-      fs.writeFile.mockResolvedValue();
+      mockFs.readFile.mockResolvedValue('{ invalid json }');
+      mockFs.writeFile.mockResolvedValue();
 
       server = await startServer();
       
       // Should create new settings file
-      expect(fs.writeFile).toHaveBeenCalledWith(
+      expect(mockFs.writeFile).toHaveBeenCalledWith(
         mockSettingsFile,
         expect.stringContaining('"agents": []')
       );

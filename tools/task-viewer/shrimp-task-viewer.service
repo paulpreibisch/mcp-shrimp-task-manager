@@ -1,0 +1,19 @@
+[Unit]
+Description=Shrimp Task Manager Viewer Server
+After=network.target
+
+[Service]
+Type=simple
+User=fire
+WorkingDirectory=/home/fire/claude/mcp-shrimp-task-manager/tools/task-viewer
+ExecStart=/usr/bin/node /home/fire/claude/mcp-shrimp-task-manager/tools/task-viewer/server.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=shrimp-task-viewer
+Environment="NODE_ENV=production"
+Environment="SHRIMP_VIEWER_PORT=9998"
+
+[Install]
+WantedBy=multi-user.target

@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 
-const fs = require('fs').promises;
-const path = require('path');
-const { spawn } = require('child_process');
+import { promises as fs } from 'fs';
+import path from 'path';
+import { spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PID_FILE = path.join(process.cwd(), '.shrimp-viewer.pid');
 const DEFAULT_PORT = 9998;
@@ -257,11 +262,9 @@ process.on('SIGINT', async () => {
 });
 
 // Run if called directly
-if (require.main === module) {
-    main();
-}
+main();
 
-module.exports = {
+export {
     startServer,
     stopServer,
     restartServer,

@@ -6,6 +6,8 @@ import {
 } from "../../models/taskModel.js";
 import { RelatedFileType, Task } from "../../types/index.js";
 import { getSplitTasksPrompt } from "../../prompts/index.js";
+import { getAllAvailableAgents } from "../../utils/agentLoader.js";
+import { matchAgentToTask } from "../../utils/agentMatcher.js";
 
 // 拆分任務工具
 export const splitTasksRawSchema = z.object({
@@ -111,6 +113,15 @@ export async function splitTasksRaw({
   tasksRaw,
   globalAnalysisResult,
 }: z.infer<typeof splitTasksRawSchema>) {
+  // 載入可用的代理
+  let availableAgents: any[] = [];
+  try {
+    availableAgents = await getAllAvailableAgents();
+  } catch (error) {
+    // 如果載入代理失敗，繼續執行但不分配代理
+    availableAgents = [];
+  }
+
   let tasks: Task[] = [];
   try {
     tasks = JSON.parse(tasksRaw);
@@ -168,21 +179,37 @@ export async function splitTasksRaw({
     let allTasks: Task[] = [];
 
     // 將任務資料轉換為符合batchCreateOrUpdateTasks的格式
-    const convertedTasks = tasks.map((task) => ({
-      name: task.name,
-      description: task.description,
-      notes: task.notes,
-      dependencies: task.dependencies as unknown as string[],
-      implementationGuide: task.implementationGuide,
-      verificationCriteria: task.verificationCriteria,
-      relatedFiles: task.relatedFiles?.map((file) => ({
-        path: file.path,
-        type: file.type as RelatedFileType,
-        description: file.description,
-        lineStart: file.lineStart,
-        lineEnd: file.lineEnd,
-      })),
-    }));
+    const convertedTasks = tasks.map((task) => {
+      // 創建一個臨時的 Task 對象用於代理匹配
+      const tempTask: Partial<Task> = {
+        name: task.name,
+        description: task.description,
+        notes: task.notes,
+        implementationGuide: task.implementationGuide,
+      };
+
+      // 使用 matchAgentToTask 找到最適合的代理
+      const matchedAgent = availableAgents.length > 0 
+        ? matchAgentToTask(tempTask as Task, availableAgents)
+        : undefined;
+
+      return {
+        name: task.name,
+        description: task.description,
+        notes: task.notes,
+        dependencies: task.dependencies as unknown as string[],
+        implementationGuide: task.implementationGuide,
+        verificationCriteria: task.verificationCriteria,
+        agent: matchedAgent, // 添加代理分配
+        relatedFiles: task.relatedFiles?.map((file) => ({
+          path: file.path,
+          type: file.type as RelatedFileType,
+          description: file.description,
+          lineStart: file.lineStart,
+          lineEnd: file.lineEnd,
+        })),
+      };
+    });
 
     // 處理 clearAllTasks 模式
     if (updateMode === "clearAllTasks") {
