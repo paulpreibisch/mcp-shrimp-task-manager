@@ -1727,6 +1727,124 @@ Return ONLY a JSON object mapping task IDs to agent names, like this:
                 }
             });
             
+        } else if (url.pathname === '/api/chat' && req.method === 'POST') {
+            // Handle chat with AI agents
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { message, agents, context, profileId, openAIKey, availableAgents } = JSON.parse(body);
+                    console.log('Chat request:', { message, agents, context: context?.currentPage });
+                    
+                    // Validate OpenAI key
+                    const apiKey = openAIKey || process.env.OPENAI_API_KEY || process.env.OPEN_AI_KEY_SHRIMP_TASK_VIEWER;
+                    
+                    if (!apiKey) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({
+                            error: 'OpenAI API key not configured',
+                            message: 'Please configure your OpenAI API key in Settings → Global Settings'
+                        }));
+                        return;
+                    }
+                    
+                    // Build context-aware prompt
+                    let systemPrompt = `You are an AI assistant helping with task management in the Shrimp Task Manager. 
+You have access to information about available agents and can help users understand tasks, suggest agent assignments, and provide task-related insights.
+
+Available agents for this project:
+${availableAgents.map(a => `- ${a.name}: ${a.description || 'No description'}`).join('\n')}
+
+Current context:
+- Page: ${context.currentPage}
+${context.currentTask ? `- Current Task: ${context.currentTask.name}
+  - Status: ${context.currentTask.status}
+  - Description: ${context.currentTask.description || 'No description'}
+  - Dependencies: ${context.currentTask.dependencies?.join(', ') || 'None'}` : ''}
+${context.tasksSummary ? `- Tasks Summary: ${context.tasksSummary.total} total (${context.tasksSummary.completed} completed, ${context.tasksSummary.inProgress} in progress, ${context.tasksSummary.pending} pending)` : ''}
+
+When suggesting agent assignments, consider:
+1. The agent's capabilities and description
+2. The task requirements and complexity
+3. Dependencies between tasks
+4. Current task status
+
+Be helpful, concise, and specific in your responses.`;
+
+                    // Call OpenAI API
+                    const openAIData = JSON.stringify({
+                        model: 'gpt-4-turbo-preview',
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: message }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 1000
+                    });
+                    
+                    const openAIResponse = await new Promise((resolve, reject) => {
+                        const options = {
+                            hostname: 'api.openai.com',
+                            path: '/v1/chat/completions',
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${apiKey}`,
+                                'Content-Length': Buffer.byteLength(openAIData)
+                            }
+                        };
+                        
+                        const req = https.request(options, (res) => {
+                            let data = '';
+                            res.on('data', chunk => data += chunk);
+                            res.on('end', () => {
+                                if (res.statusCode === 200) {
+                                    try {
+                                        resolve(JSON.parse(data));
+                                    } catch (err) {
+                                        reject(new Error('Invalid JSON from OpenAI'));
+                                    }
+                                } else {
+                                    reject(new Error(`OpenAI API error: ${res.statusCode} - ${data}`));
+                                }
+                            });
+                        });
+                        
+                        req.on('error', reject);
+                        req.write(openAIData);
+                        req.end();
+                    });
+                    
+                    const aiResponse = openAIResponse.choices[0].message.content;
+                    
+                    // Check if response suggests task modification
+                    let taskModification = null;
+                    if (context.currentTask && aiResponse.toLowerCase().includes('modify') || aiResponse.toLowerCase().includes('update')) {
+                        // Extract potential modifications (this is a simplified example)
+                        // In a real implementation, you might want to use structured output from the AI
+                        taskModification = {
+                            suggested: true,
+                            // Add modification details here based on AI response parsing
+                        };
+                    }
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        response: aiResponse,
+                        respondingAgents: agents,
+                        taskModification
+                    }));
+                    
+                } catch (err) {
+                    console.error('Error processing chat request:', err);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: 'Failed to process chat request',
+                        details: err.message 
+                    }));
+                }
+            });
+            
         } else {
             // Serve static files (React app)
             const filePath = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
