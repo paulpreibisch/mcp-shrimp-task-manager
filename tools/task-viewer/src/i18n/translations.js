@@ -121,6 +121,7 @@ export const translations = {
     inProgress: "In Progress",
     pending: "Pending",
     autoRefresh: "Auto-refresh",
+    initialRequest: "Initial Request",
     
     // History management
     backToTasks: "Back to Tasks",
@@ -386,6 +387,7 @@ export const translations = {
     inProgress: "进行中",
     pending: "待处理",
     autoRefresh: "自动刷新",
+    initialRequest: "初始请求",
     
     // History management
     backToTasks: "返回任务",
@@ -650,6 +652,7 @@ export const translations = {
     inProgress: "En Progreso",
     pending: "Pendientes",
     autoRefresh: "Actualización automática",
+    initialRequest: "Solicitud Inicial",
     
     // History management
     backToTasks: "Volver a Tareas",
@@ -851,6 +854,7 @@ export const translations = {
     inProgress: "Em Progresso",
     pending: "Pendentes",
     autoRefresh: "Atualização automática",
+    initialRequest: "Solicitação Inicial",
     
     // History management
     backToTasks: "Voltar às Tarefas",
@@ -1070,6 +1074,7 @@ export const translations = {
     inProgress: "Devam Eden",
     pending: "Bekleyen",
     autoRefresh: "Otomatik yenileme",
+    initialRequest: "İlk Talep",
     
     // History management
     backToTasks: "Görevlere Geri Dön",
@@ -1395,6 +1400,7 @@ export const translations = {
     completedTasks: "완료된 작업",
     pendingTasks: "대기 중 작업",
     inProgressTasks: "진행 중 작업",
+    initialRequest: "초기 요청",
     
     // Agent related
     viewAgent: "에이전트 보기",
@@ -1569,6 +1575,7 @@ export const translations = {
     completedTasks: "完了タスク",
     pendingTasks: "保留中タスク",
     inProgressTasks: "進行中タスク",
+    initialRequest: "初期リクエスト",
     
     // Agent related
     viewAgent: "エージェント表示",

@@ -30,6 +30,7 @@ function AppContent() {
   const [profiles, setProfiles] = useState([]);
   const [selectedProfile, setSelectedProfile] = useState(initialUrlState.profile || '');
   const [tasks, setTasks] = useState([]);
+  const [initialRequest, setInitialRequest] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(() => {
@@ -89,6 +90,9 @@ function AppContent() {
   
   // Current task state for chat context
   const [currentTask, setCurrentTask] = useState(null);
+  
+  // Initial request collapse state
+  const [initialRequestCollapsed, setInitialRequestCollapsed] = useState(false);
 
   // Toast helper functions
   const showToast = (message, type = 'success', duration = 3000) => {
@@ -290,6 +294,7 @@ function AppContent() {
   const loadTasks = async (profileId, forceRefresh = false) => {
     if (!profileId) {
       setTasks([]);
+      setInitialRequest('');
       return;
     }
 
@@ -304,6 +309,7 @@ function AppContent() {
       const cachedData = tasksCache.get(profileId);
       setTasks(cachedData.tasks);
       setProjectRoot(cachedData.projectRoot);
+      setInitialRequest(cachedData.initialRequest || '');
       return;
     }
 
@@ -319,6 +325,7 @@ function AppContent() {
       
       const data = await response.json();
       console.log('Received tasks data:', data.tasks?.length, 'tasks');
+      console.log('Initial request in data:', data.initialRequest);
       
       // Check if there's a message about missing tasks.json
       if (data.message && data.tasks?.length === 0) {
@@ -330,14 +337,17 @@ function AppContent() {
       // Cache the data
       tasksCache.set(profileId, {
         tasks: data.tasks || [],
-        projectRoot: data.projectRoot || null
+        projectRoot: data.projectRoot || null,
+        initialRequest: data.initialRequest || ''
       });
       
       setTasks(data.tasks || []);
       setProjectRoot(data.projectRoot || null);
+      setInitialRequest(data.initialRequest || '');
     } catch (err) {
       setError('❌ Error loading tasks: ' + err.message);
       setTasks([]);
+      setInitialRequest('');
     } finally {
       setLoading(false);
       loadingRef.current = false;
@@ -518,6 +528,7 @@ function AppContent() {
       if (selectedProfile === profileId) {
         setSelectedProfile('');
         setTasks([]);
+        setInitialRequest('');
       }
 
       await loadProfiles();
@@ -1057,6 +1068,64 @@ function AppContent() {
                     </div>
                   </div>
                 </div>
+
+                {/* Initial Request Display */}
+                {initialRequest && (
+                  <div style={{
+                    backgroundColor: '#16213e',
+                    border: '1px solid #2c3e50',
+                    borderRadius: '8px',
+                    marginBottom: '20px',
+                    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+                    overflow: 'hidden'
+                  }}>
+                    <div 
+                      style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#4fbdba',
+                        padding: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        borderBottom: initialRequestCollapsed ? 'none' : '1px solid #2c3e50'
+                      }}
+                      onClick={() => setInitialRequestCollapsed(!initialRequestCollapsed)}
+                      title={initialRequestCollapsed ? 'Click to expand' : 'Click to collapse'}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <span style={{
+                          fontSize: '16px'
+                        }}>📋</span>
+                        {t('initialRequest', 'Initial Request')}
+                      </div>
+                      <span style={{
+                        fontSize: '16px',
+                        transition: 'transform 0.2s ease',
+                        transform: initialRequestCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'
+                      }}>
+                        ▼
+                      </span>
+                    </div>
+                    {!initialRequestCollapsed && (
+                      <div style={{
+                        fontSize: '14px',
+                        color: '#b8c5d6',
+                        lineHeight: '1.5',
+                        whiteSpace: 'pre-wrap',
+                        padding: '16px',
+                        transition: 'all 0.3s ease'
+                      }}>
+                        {initialRequest}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <TaskTable 
                   data={tasks} 

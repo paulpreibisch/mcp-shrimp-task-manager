@@ -718,7 +718,12 @@ async function startServer() {
                 console.log(`File last modified: ${stats.mtime}`);
                 
                 const data = await fs.readFile(project.path, 'utf8');
-                const tasksData = JSON.parse(data);
+                let tasksData = JSON.parse(data);
+                
+                // Handle backward compatibility - old format was just an array of tasks
+                if (Array.isArray(tasksData)) {
+                    tasksData = { tasks: tasksData };
+                }
                 
                 // Log task status for debugging
                 const task880f = tasksData.tasks?.find(t => t.id === '880f4dd8-a603-4bb9-8d4d-5033887d0e0f');
@@ -726,10 +731,12 @@ async function startServer() {
                     console.log(`Task 880f4dd8 status: ${task880f.status}`);
                 }
                 
-                // Add projectRoot to the response
-                if (project.projectRoot) {
-                    tasksData.projectRoot = project.projectRoot;
-                }
+                // Prepare response with all available data
+                const response = {
+                    tasks: tasksData.tasks || [],
+                    initialRequest: tasksData.initialRequest || null,
+                    projectRoot: project.projectRoot || null
+                };
                 
                 res.writeHead(200, { 
                     'Content-Type': 'application/json',
@@ -737,7 +744,7 @@ async function startServer() {
                     'Pragma': 'no-cache',
                     'Expires': '0'
                 });
-                res.end(JSON.stringify(tasksData));
+                res.end(JSON.stringify(response));
             } catch (err) {
                 console.error(`Error reading file ${project.path}:`, err);
                 res.writeHead(500, { 'Content-Type': 'text/plain' });

@@ -6,6 +6,7 @@ import {
   TaskComplexityThresholds,
   TaskComplexityAssessment,
   RelatedFile,
+  TasksData,
 } from "../types/index.js";
 import fs from "fs/promises";
 import path from "path";
@@ -126,27 +127,58 @@ async function ensureDataDir() {
   }
 }
 
-// 讀取所有任務
-// Read all tasks
-async function readTasks(): Promise<Task[]> {
+// 讀取任務數據（包含初始請求）
+// Read tasks data (including initial request)
+async function readTasksData(): Promise<TasksData> {
   await ensureDataDir();
   const TASKS_FILE = await getTasksFilePath();
   const data = await fs.readFile(TASKS_FILE, "utf-8");
-  const tasks = JSON.parse(data).tasks;
+  const tasksData = JSON.parse(data);
 
-  // 將日期字串轉換回 Date 物件
-  // Convert date strings back to Date objects
-  return tasks.map((task: any) => ({
-    ...task,
-    createdAt: task.createdAt ? new Date(task.createdAt) : getLocalDate(),
-    updatedAt: task.updatedAt ? new Date(task.updatedAt) : getLocalDate(),
-    completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
-  }));
+  // 處理舊格式的向後兼容性
+  // Handle backward compatibility with old format
+  if (Array.isArray(tasksData)) {
+    // 舊格式：直接是任務數組
+    // Old format: direct tasks array
+    return {
+      tasks: tasksData.map((task: any) => ({
+        ...task,
+        createdAt: task.createdAt ? new Date(task.createdAt) : getLocalDate(),
+        updatedAt: task.updatedAt ? new Date(task.updatedAt) : getLocalDate(),
+        completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
+      })),
+      initialRequest: undefined,
+      createdAt: getLocalDate(),
+      updatedAt: getLocalDate(),
+    };
+  }
+
+  // 新格式：包含 tasks 和其他元數據
+  // New format: contains tasks and other metadata
+  const tasks = tasksData.tasks || [];
+  return {
+    tasks: tasks.map((task: any) => ({
+      ...task,
+      createdAt: task.createdAt ? new Date(task.createdAt) : getLocalDate(),
+      updatedAt: task.updatedAt ? new Date(task.updatedAt) : getLocalDate(),
+      completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
+    })),
+    initialRequest: tasksData.initialRequest,
+    createdAt: tasksData.createdAt ? new Date(tasksData.createdAt) : getLocalDate(),
+    updatedAt: tasksData.updatedAt ? new Date(tasksData.updatedAt) : getLocalDate(),
+  };
 }
 
-// 寫入所有任務
-// Write all tasks
-async function writeTasks(tasks: Task[], commitMessage?: string): Promise<void> {
+// 讀取所有任務
+// Read all tasks
+async function readTasks(): Promise<Task[]> {
+  const tasksData = await readTasksData();
+  return tasksData.tasks;
+}
+
+// 寫入任務數據（包含初始請求）
+// Write tasks data (including initial request)
+async function writeTasksData(tasksData: TasksData, commitMessage?: string): Promise<void> {
   await ensureDataDir();
   const TASKS_FILE = await getTasksFilePath();
   const DATA_DIR = await getDataDir();
@@ -154,13 +186,31 @@ async function writeTasks(tasks: Task[], commitMessage?: string): Promise<void> 
   // Initialize git if needed
   await initGitIfNeeded(DATA_DIR);
   
+  // Update the updatedAt timestamp
+  tasksData.updatedAt = getLocalDate();
+  
   // Write the tasks file
-  await fs.writeFile(TASKS_FILE, JSON.stringify({ tasks }, null, 2));
+  await fs.writeFile(TASKS_FILE, JSON.stringify(tasksData, null, 2));
   
   // Commit the changes
   if (commitMessage) {
     await commitTaskChanges(DATA_DIR, commitMessage);
   }
+}
+
+// 寫入所有任務
+// Write all tasks
+async function writeTasks(tasks: Task[], commitMessage?: string): Promise<void> {
+  // 讀取現有數據以保留初始請求
+  // Read existing data to preserve initial request
+  const existingData = await readTasksData();
+  const tasksData: TasksData = {
+    ...existingData,
+    tasks,
+    updatedAt: getLocalDate(),
+  };
+  
+  await writeTasksData(tasksData, commitMessage);
 }
 
 // 獲取所有任務
@@ -1201,4 +1251,27 @@ function filterCurrentTasks(
       });
     });
   }
+}
+
+// 獲取初始請求
+// Get initial request
+export async function getInitialRequest(): Promise<string | undefined> {
+  const tasksData = await readTasksData();
+  return tasksData.initialRequest;
+}
+
+// 設置初始請求
+// Set initial request
+export async function setInitialRequest(initialRequest: string, commitMessage?: string): Promise<void> {
+  const tasksData = await readTasksData();
+  tasksData.initialRequest = initialRequest;
+  
+  const message = commitMessage || "Update initial request";
+  await writeTasksData(tasksData, message);
+}
+
+// 獲取完整的任務數據（包含初始請求）
+// Get complete tasks data (including initial request)
+export async function getTasksData(): Promise<TasksData> {
+  return await readTasksData();
 }

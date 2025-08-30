@@ -157,3 +157,12 @@ export interface TaskComplexityAssessment {
   recommendations: string[]; // 處理建議列表
   // recommendations: string[]; // List of processing recommendations
 }
+
+// 任務數據結構：包含任務列表和初始請求
+// Tasks data structure: Contains task list and initial request
+export interface TasksData {
+  tasks: Task[];
+  initialRequest?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
