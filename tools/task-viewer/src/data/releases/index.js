@@ -1,6 +1,12 @@
 // Release metadata only - actual content is loaded from /releases/*.md files
 export const releaseMetadata = [
   {
+    version: 'v3.1.0',
+    date: '2025-08-31',
+    title: 'Initial Request Display',
+    summary: 'Captures and displays the original user request that initiated task planning, providing essential context for task lists'
+  },
+  {
     version: 'v3.0.0',
     date: '2025-08-01',
     title: 'Internationalization, Task History, Sub-agents, Lightbox',
