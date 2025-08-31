@@ -9,7 +9,7 @@ import {
   getAllTasks,
   createTask
 } from './taskModel.js';
-import { TasksData } from '../types/index.js';
+import { TasksData, TaskStatus } from '../types/index.js';
 
 // Mock the paths module
 vi.mock('../utils/paths.js', () => ({
@@ -87,7 +87,7 @@ describe('TaskModel Initial Request Feature', () => {
           id: '123',
           name: 'Old Task',
           description: 'Task from old format',
-          status: 'pending',
+          status: TaskStatus.PENDING,
           dependencies: [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -114,7 +114,7 @@ describe('TaskModel Initial Request Feature', () => {
             id: '456',
             name: 'New Task',
             description: 'Task from new format',
-            status: 'pending' as const,
+            status: TaskStatus.PENDING,
             dependencies: [],
             createdAt: new Date(),
             updatedAt: new Date()
@@ -173,7 +173,7 @@ describe('TaskModel Initial Request Feature', () => {
       const updatedData = await getTasksData();
       
       expect(updatedData.initialRequest).toBe('Updated request');
-      expect(updatedData.updatedAt.getTime()).toBeGreaterThan(firstData.updatedAt.getTime());
+      expect(updatedData.updatedAt?.getTime()).toBeGreaterThan(firstData.updatedAt?.getTime() ?? 0);
     });
   });
 
