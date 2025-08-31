@@ -1,0 +1,139 @@
+# 🦐 Shrimp Task Manager v3.1.0 Release Notes
+
+## 🎉 New Feature: Initial Request Display
+
+### Overview
+Version 3.1.0 introduces a game-changing feature that addresses a common user need: **understanding the context behind task lists**. The new **Initial Request Display** feature captures and prominently displays the original user request that initiated task planning, providing essential context for why tasks were created.
+
+![Initial Request Feature](tools/task-viewer/screenshots/initial-request-feature.png)
+
+### 🌟 Key Highlights
+
+#### 📋 **Persistent Context**
+- The initial user request is now automatically saved when using the `plan_task` tool
+- Provides a clear understanding of the project's origin and purpose
+- Helps team members quickly grasp the overall objective without diving into individual tasks
+
+#### 🎨 **Beautiful Dark Theme UI**
+- Seamlessly integrated with the existing dark theme design
+- Clean, modern interface with the signature Shrimp color palette
+- Positioned prominently above the task table for immediate visibility
+
+#### 🔄 **Collapsible Interface**
+- **Expandable/Collapsible design** to maximize screen real estate
+- Smooth animations with rotating arrow indicator
+- Remembers your preference during the session
+- Click the header to toggle between expanded and collapsed states
+
+### 📸 Feature in Action
+
+The screenshot below shows the Initial Request feature displaying a comprehensive project request for creating a Chakra UI React application:
+
+**Key Visual Elements:**
+- 🏷️ **"Initial Request" header** in the accent teal color (`#4fbdba`)
+- 📄 **Full request text** displayed in a readable format with proper line breaks
+- ▼ **Collapse arrow** that rotates when toggling the view
+- 🎨 **Dark theme styling** matching the rest of the application (`#16213e` background)
+
+### 🔧 Technical Implementation
+
+#### Backend Enhancements
+- **New `TasksData` structure** that includes:
+  - `initialRequest`: Stores the original planning request
+  - `createdAt`: Timestamp when tasks were first created
+  - `updatedAt`: Last modification timestamp
+  - `tasks`: Array of task objects (existing structure)
+
+#### Smart Backward Compatibility
+- **Automatic format detection** for existing task files
+- Old format (array of tasks) → New format (TasksData object) conversion
+- Zero breaking changes - all existing installations continue to work
+- Graceful handling of missing initial requests in legacy files
+
+#### API Updates
+- Server endpoints now return initial request data alongside tasks
+- Maintains response structure compatibility with older clients
+- Efficient caching to reduce server load
+
+### 🌍 Internationalization
+Full support for all 7 languages:
+- 🇬🇧 English: "Initial Request"
+- 🇨🇳 Chinese: "初始请求"
+- 🇪🇸 Spanish: "Solicitud Inicial"
+- 🇵🇹 Portuguese: "Solicitação Inicial"
+- 🇹🇷 Turkish: "İlk Talep"
+- 🇰🇷 Korean: "초기 요청"
+- 🇯🇵 Japanese: "初期リクエスト"
+
+### 🧪 Comprehensive Testing
+**49 test cases** ensure reliability:
+- ✅ Backend data structure tests
+- ✅ Task planning integration tests
+- ✅ API endpoint validation
+- ✅ React component UI tests
+- ✅ End-to-end workflow tests
+- ✅ Backward compatibility tests
+- ✅ Performance and edge case tests
+
+### 📈 Benefits
+
+1. **Improved Team Collaboration**
+   - New team members can quickly understand project context
+   - Reduces need for external documentation
+   - Creates a self-documenting task system
+
+2. **Better Task Management**
+   - Clear connection between request and resulting tasks
+   - Easier to validate that tasks align with original requirements
+   - Helps identify scope creep or missing requirements
+
+3. **Enhanced User Experience**
+   - Clean, unobtrusive design that doesn't interfere with task management
+   - Optional visibility through collapsible interface
+   - Consistent with existing UI patterns
+
+### 🚀 How to Use
+
+1. **For New Task Plans**: When you use the task planner, your initial request is automatically saved
+2. **Viewing**: The initial request appears above the task table in the viewer
+3. **Toggling**: Click the header to expand/collapse the request display
+4. **For Existing Projects**: The feature works with all existing task files (initial request will be empty for legacy files)
+
+### 🔄 Migration Guide
+
+**No action required!** The feature is fully backward compatible:
+- Existing task files continue to work without modification
+- New task plans automatically use the enhanced format
+- The viewer handles both formats seamlessly
+
+### 🐛 Bug Fixes
+- Fixed task file format handling in server response
+- Improved error handling for malformed JSON files
+- Enhanced cache management for better performance
+
+### 🔮 Coming Next
+- Task templates with predefined initial requests
+- Initial request editing capability
+- Request history tracking
+- AI-powered request analysis and suggestions
+
+### 📦 Installation
+
+Update to the latest version:
+```bash
+npm update mcp-shrimp-task-manager
+```
+
+Or install fresh:
+```bash
+npm install mcp-shrimp-task-manager@3.1.0
+```
+
+### 🙏 Acknowledgments
+Thanks to the community for requesting this feature and providing valuable feedback during development!
+
+---
+
+**Full Changelog**: v3.0.0...v3.1.0
+
+*Released: August 31, 2025*
