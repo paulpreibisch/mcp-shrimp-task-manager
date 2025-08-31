@@ -324,7 +324,11 @@ function getEnvironmentOverrides() {
             let functionName = key.replace('MCP_PROMPT_', '').toLowerCase();
             let isAppend = false;
             
-            if (functionName.endsWith('_append')) {
+            // Check for both APPEND_ prefix and _append suffix patterns
+            if (functionName.startsWith('append_')) {
+                functionName = functionName.replace('append_', '');
+                isAppend = true;
+            } else if (functionName.endsWith('_append')) {
                 functionName = functionName.replace('_append', '');
                 isAppend = true;
             }
@@ -388,8 +392,52 @@ async function getAllTemplates() {
 }
 
 async function getTemplate(functionName) {
+    // First try to get from the cached templates
     const templates = await getAllTemplates();
-    return templates[functionName] || null;
+    
+    // If template exists in cache, return it
+    if (templates[functionName]) {
+        return templates[functionName];
+    }
+    
+    // If not in cache, try to read it directly to distinguish between 
+    // "file doesn't exist" vs "file read error"
+    const customPath = path.join(TEMPLATES_DIR, functionName, 'index.md');
+    const defaultPath = path.join(DEFAULT_TEMPLATES_DIR, functionName, 'index.md');
+    
+    try {
+        // Try custom template first
+        const customContent = await fs.readFile(customPath, 'utf8');
+        return {
+            name: functionName,
+            content: customContent,
+            status: 'custom',
+            source: 'user-custom'
+        };
+    } catch (customErr) {
+        if (customErr.code !== 'ENOENT') {
+            // File exists but can't be read - this is a real error
+            throw new Error(`Error reading custom template: ${customErr.message}`);
+        }
+        
+        try {
+            // Try default template
+            const defaultContent = await fs.readFile(defaultPath, 'utf8');
+            return {
+                name: functionName,
+                content: defaultContent,
+                status: 'default',
+                source: 'built-in'
+            };
+        } catch (defaultErr) {
+            if (defaultErr.code !== 'ENOENT') {
+                // File exists but can't be read - this is a real error
+                throw new Error(`Error reading default template: ${defaultErr.message}`);
+            }
+            // Both files don't exist
+            return null;
+        }
+    }
 }
 
 async function saveCustomTemplate(functionName, content) {
@@ -451,7 +499,7 @@ async function serveStaticFile(req, res, filePath) {
 }
 
 // Initialize and start server
-async function startServer() {
+async function startServer(testPort = null) {
     projects = await loadSettings();
     
     const server = http.createServer(async (req, res) => {
@@ -908,11 +956,13 @@ async function startServer() {
             // List all templates with status
             try {
                 const templates = await getAllTemplates();
-                const templateList = Object.values(templates).map(template => ({
+                const templateList = Object.entries(templates).map(([functionName, template]) => ({
+                    functionName: functionName,
                     name: template.name,
                     status: template.status,
                     source: template.source,
-                    contentLength: template.content.length
+                    contentLength: template.content.length,
+                    category: template.category || 'general'
                 }));
                 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -936,7 +986,10 @@ async function startServer() {
                     }
                     
                     res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(template));
+                    res.end(JSON.stringify({
+                        ...template,
+                        functionName: functionName
+                    }));
                 } catch (err) {
                     res.writeHead(500, { 'Content-Type': 'text/plain' });
                     res.end('Error loading template: ' + err.message);
@@ -1967,11 +2020,15 @@ async function startServer() {
         }
     });
 
-    server.listen(PORT, '127.0.0.1', () => {
-        console.log(`\n🦐 Shrimp Task Manager Viewer Server v${VERSION}`);
-        console.log('===============================================');
-        console.log(`Server is running at: http://localhost:${PORT}`);
-        console.log(`Also accessible at: http://127.0.0.1:${PORT}`);
+    const listenPort = testPort !== null ? testPort : PORT;
+    
+    // Return a promise that resolves when the server is ready
+    return new Promise((resolve, reject) => {
+        server.listen(listenPort, '127.0.0.1', () => {
+            console.log(`\n🦐 Shrimp Task Manager Viewer Server v${VERSION}`);
+            console.log('===============================================');
+            console.log(`Server is running at: http://localhost:${listenPort}`);
+            console.log(`Also accessible at: http://127.0.0.1:${listenPort}`);
         console.log(`\nSettings file: ${SETTINGS_FILE}`);
         console.log('    ');
         console.log('Available projects:');
@@ -1989,15 +2046,20 @@ async function startServer() {
         console.log('  • Auto-refresh functionality');
         console.log('  • Profile management via web interface');
         console.log('\nOpen your browser to view tasks!');
+        
+        resolve(server);
     });
-
-    return server;
+    
+    server.on('error', reject);
+    });
 }
 
-// Start the server
-startServer().catch(err => {
-    console.error('Failed to start server:', err);
-    process.exit(1);
-});
+// Start the server only if not being imported for testing
+if (process.env.NODE_ENV !== 'test') {
+    startServer().catch(err => {
+        console.error('Failed to start server:', err);
+        process.exit(1);
+    });
+}
 
 export { startServer };

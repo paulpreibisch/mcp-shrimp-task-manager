@@ -15,19 +15,35 @@ import ProjectAgentsView from './components/ProjectAgentsView';
 import ToastContainer from './components/ToastContainer';
 import LanguageSelector from './components/LanguageSelector';
 import ChatAgent from './components/ChatAgent';
+import ErrorBoundary from './components/ErrorBoundary';
+import DebugPanel from './components/DebugPanel';
+import ExportModal from './components/ExportModal';
 import { useTranslation } from 'react-i18next';
 import { parseUrlState, updateUrl, pushUrlState, getInitialUrlState, cleanUrlStateForTab } from './utils/urlStateSync';
 import NestedTabs from './components/NestedTabs';
+import { debugLog, performanceMonitor } from './utils/debug';
+import { usePerformanceMonitoring } from './utils/optimizedHooks';
+import { exportToCSV, exportToMarkdown } from './utils/exportUtils';
 
 function AppContent() {
   const { t, i18n } = useTranslation();
   const currentLanguage = i18n.language;
   
+  // Performance monitoring for the main App component
+  const performanceData = usePerformanceMonitoring('AppContent', {
+    currentLanguage,
+    renderTime: Date.now()
+  });
+  
   // Initialize URL state
   const [urlStateInitialized, setUrlStateInitialized] = useState(false);
   const initialUrlState = useMemo(() => getInitialUrlState(), []);
   
-  const [profiles, setProfiles] = useState([]);
+  const [profiles, setProfiles] = useState(() => {
+    // Ensure profiles is always initialized as an array
+    debugLog('AppContent', 'Profiles State Init', { initialValue: [] });
+    return [];
+  });
   const [selectedProfile, setSelectedProfile] = useState(initialUrlState.profile || '');
   const [tasks, setTasks] = useState([]);
   const [initialRequest, setInitialRequest] = useState('');
@@ -94,6 +110,48 @@ function AppContent() {
   // Initial request collapse state
   const [initialRequestCollapsed, setInitialRequestCollapsed] = useState(false);
 
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  // Helper function to ensure profiles is always an array
+  const getSafeProfiles = () => {
+    const safe = Array.isArray(profiles) ? profiles : [];
+    if (!Array.isArray(profiles)) {
+      debugLog('AppContent', 'Profiles Not Array', { profiles, type: typeof profiles });
+    }
+    return safe;
+  };
+
+  // Safe wrapper for setProfiles to ensure it's always an array
+  const setSafeProfiles = (value) => {
+    try {
+      if (typeof value === 'function') {
+        setProfiles(prev => {
+          try {
+            const result = value(prev);
+            const safeResult = Array.isArray(result) ? result : [];
+            if (!Array.isArray(result)) {
+              debugLog('AppContent', 'Non-Array Profiles Function Result', { result, type: typeof result });
+            }
+            return safeResult;
+          } catch (err) {
+            debugLog('AppContent', 'Error in Profiles Function', { error: err.message, prev });
+            return Array.isArray(prev) ? prev : [];
+          }
+        });
+      } else {
+        const safeValue = Array.isArray(value) ? value : [];
+        if (!Array.isArray(value)) {
+          debugLog('AppContent', 'Non-Array Profiles Value', { value, type: typeof value });
+        }
+        setProfiles(safeValue);
+      }
+    } catch (err) {
+      debugLog('AppContent', 'Error in setSafeProfiles', { error: err.message, value });
+      setProfiles([]);  // Emergency fallback
+    }
+  };
+
   // Toast helper functions
   const showToast = (message, type = 'success', duration = 3000) => {
     const id = Date.now();
@@ -102,6 +160,50 @@ function AppContent() {
 
   const removeToast = (id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
+
+  // Export handler function
+  const handleExport = async ({ format, selectedStatuses, filteredTasks }) => {
+    try {
+      let content;
+      let filename;
+      let mimeType;
+
+      if (format === 'csv') {
+        content = exportToCSV(filteredTasks);
+        filename = 'tasks.csv';
+        mimeType = 'text/csv';
+      } else if (format === 'markdown') {
+        content = exportToMarkdown(filteredTasks);
+        filename = 'tasks.md';
+        mimeType = 'text/markdown';
+      } else {
+        showToast('Invalid export format', 'error');
+        return false;
+      }
+
+      // Create and trigger download
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showToast(t('exportSuccess', { 
+        count: filteredTasks.length, 
+        format: format.toUpperCase() 
+      }), 'success');
+
+      return true;
+    } catch (err) {
+      console.error('Export error:', err);
+      showToast('Failed to export tasks: ' + err.message, 'error');
+      return false;
+    }
   };
 
   // Auto-refresh interval
@@ -153,7 +255,7 @@ function AppContent() {
       if (urlState.tab && urlState.tab !== selectedOuterTab) {
         setSelectedOuterTab(urlState.tab);
         
-        if (urlState.tab === 'projects' && urlState.profile && profiles.some(p => p.id === urlState.profile)) {
+        if (urlState.tab === 'projects' && urlState.profile && getSafeProfiles().some(p => p.id === urlState.profile)) {
           setSelectedProfile(urlState.profile);
           loadTasks(urlState.profile);
         } else if (urlState.tab === 'templates') {
@@ -163,7 +265,7 @@ function AppContent() {
       
       // Update profile if on projects tab
       if (urlState.tab === 'projects' && urlState.profile && urlState.profile !== selectedProfile) {
-        if (profiles.some(p => p.id === urlState.profile)) {
+        if (getSafeProfiles().some(p => p.id === urlState.profile)) {
           setSelectedProfile(urlState.profile);
           loadTasks(urlState.profile);
         }
@@ -246,27 +348,30 @@ function AppContent() {
       const response = await fetch('/api/agents');
       if (!response.ok) throw new Error('Failed to load profiles');
       const data = await response.json();
-      setProfiles(data);
+      
+      // Ensure profiles is always an array to prevent TypeError
+      setSafeProfiles(data);
       
       // On initial load, restore state from URL
-      if (!urlStateInitialized && data.length > 0) {
+      const safeProfiles = Array.isArray(data) ? data : [];
+      if (!urlStateInitialized && safeProfiles.length > 0) {
         setUrlStateInitialized(true);
         
         // If on projects tab and profile is specified in URL
         if (initialUrlState.tab === 'projects' && initialUrlState.profile) {
-          if (data.some(p => p.id === initialUrlState.profile)) {
+          if (safeProfiles.some(p => p.id === initialUrlState.profile)) {
             handleProfileChange(initialUrlState.profile);
           } else {
             // Profile not found, use first one
-            handleProfileChange(data[0].id);
+            handleProfileChange(safeProfiles[0].id);
           }
         } else if (initialUrlState.tab === 'projects') {
           // No profile in URL, use saved or first profile
           const savedProfile = localStorage.getItem('selectedProfile');
-          if (savedProfile && data.some(p => p.id === savedProfile)) {
+          if (savedProfile && safeProfiles.some(p => p.id === savedProfile)) {
             handleProfileChange(savedProfile);
           } else {
-            handleProfileChange(data[0].id);
+            handleProfileChange(safeProfiles[0].id);
           }
         } else if (initialUrlState.tab === 'templates') {
           loadTemplates();
@@ -284,6 +389,8 @@ function AppContent() {
       }
     } catch (err) {
       setError('Failed to load profiles: ' + err.message);
+      // Ensure profiles remains an empty array even on error to prevent TypeError
+      setSafeProfiles([]);
     }
   };
 
@@ -410,10 +517,11 @@ function AppContent() {
       // When switching back to projects, ensure a profile is selected
       if (!selectedProfile || selectedProfile === 'release-notes' || selectedProfile === 'help' || selectedProfile === 'templates') {
         const savedProfile = localStorage.getItem('selectedProfile');
-        if (savedProfile && profiles.some(p => p.id === savedProfile)) {
+        const safeProfiles = getSafeProfiles();
+        if (savedProfile && safeProfiles.some(p => p.id === savedProfile)) {
           handleProfileChange(savedProfile);
-        } else {
-          handleProfileChange(profiles[0].id);
+        } else if (safeProfiles.length > 0) {
+          handleProfileChange(safeProfiles[0].id);
         }
       }
     }
@@ -517,8 +625,8 @@ function AppContent() {
         throw new Error('Failed to remove profile');
       }
 
-      // Find profile name for toast
-      const profile = profiles.find(p => p.id === profileId);
+      // Find profile name for toast with defensive check
+      const profile = getSafeProfiles().find(p => p.id === profileId);
       const profileName = profile ? profile.name : profileId;
       
       // Show success toast
@@ -553,10 +661,13 @@ function AppContent() {
 
       const updatedProfile = await response.json();
       
-      // Update profiles in state
-      setProfiles(prev => prev.map(p => 
-        p.id === profileId ? { ...p, ...updatedProfile } : p
-      ));
+      // Update profiles in state with defensive check
+      setSafeProfiles(prev => {
+        const safeProfiles = Array.isArray(prev) ? prev : [];
+        return safeProfiles.map(p => 
+          p.id === profileId ? { ...p, ...updatedProfile } : p
+        );
+      });
 
       // Update projectRoot if it was changed
       if (updates.projectRoot !== undefined) {
@@ -879,7 +990,7 @@ function AppContent() {
     newProfiles.splice(dropIndex, 0, draggedProfile);
     
     // Update state and clear drag indicators
-    setProfiles(newProfiles);
+    setSafeProfiles(newProfiles);
     setDraggedTabIndex(null);
     setDragOverIndex(null);
   };
@@ -891,12 +1002,31 @@ function AppContent() {
     const inProgress = tasks.filter(t => t.status === 'in_progress').length;
     const pending = tasks.filter(t => t.status === 'pending').length;
     
+    debugLog('AppContent', 'Stats Calculated', { total, completed, inProgress, pending });
     return { total, completed, inProgress, pending };
   }, [tasks]);
+  
+  // Debug panel state - only include relevant app state
+  const debugAppState = useMemo(() => ({
+    selectedProfile,
+    selectedOuterTab,
+    projectInnerTab,
+    urlStateInitialized,
+    loading,
+    stats,
+    profiles: profiles.length,
+    tasks: tasks.length,
+    currentLanguage,
+    performanceStats: {
+      renderCount: performanceData.renderCount,
+      lifespan: performanceData.getLifespan()
+    }
+  }), [selectedProfile, selectedOuterTab, projectInnerTab, urlStateInitialized, loading, stats, profiles.length, tasks.length, currentLanguage, performanceData]);
 
   return (
-    <div className="app">
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
+    <ErrorBoundary name="AppContent" logProps={false}>
+      <div className="app">
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
       
       {showActivationDialog && (
         <ActivationDialog 
@@ -1027,6 +1157,27 @@ function AppContent() {
                   </div>
 
                   <div className="controls-right" name="right-side-controls">
+                    <button
+                      name="export-tasks-button"
+                      className="export-button"
+                      onClick={() => setShowExportModal(true)}
+                      disabled={loading || !selectedProfile || tasks.length === 0}
+                      title="Export tasks to CSV or Markdown"
+                      style={{
+                        padding: '8px 12px',
+                        marginRight: '8px',
+                        backgroundColor: '#4fbdba',
+                        border: 'none',
+                        borderRadius: '4px',
+                        color: '#fff',
+                        cursor: tasks.length > 0 && selectedProfile && !loading ? 'pointer' : 'not-allowed',
+                        fontSize: '14px',
+                        opacity: tasks.length > 0 && selectedProfile && !loading ? 1 : 0.5
+                      }}
+                    >
+                      📤 Export
+                    </button>
+
                     <button 
                       name="refresh-profile-button"
                       className="refresh-button profile-refresh"
@@ -1251,7 +1402,7 @@ function AppContent() {
               <div className="content-container" name="settings-content-area">
                 <div className="settings-panel">
                   <h2>{t('projectSettings')}</h2>
-                  {profiles.find(p => p.id === selectedProfile) && (
+                  {getSafeProfiles().find(p => p.id === selectedProfile) && (
                     <form name="settings-form" onSubmit={(e) => {
                       e.preventDefault();
                       const formData = new FormData(e.target);
@@ -1278,7 +1429,7 @@ function AppContent() {
                           type="text" 
                           id="settingsProfileName"
                           name="name"
-                          defaultValue={profiles.find(p => p.id === selectedProfile)?.name}
+                          defaultValue={getSafeProfiles().find(p => p.id === selectedProfile)?.name}
                           placeholder="e.g., Team Alpha Tasks"
                           title="Edit the profile name"
                           required
@@ -1290,7 +1441,7 @@ function AppContent() {
                           type="text" 
                           id="settingsTaskPath"
                           name="taskPath"
-                          defaultValue={profiles.find(p => p.id === selectedProfile)?.taskPath || profiles.find(p => p.id === selectedProfile)?.filePath || profiles.find(p => p.id === selectedProfile)?.path || ''}
+                          defaultValue={getSafeProfiles().find(p => p.id === selectedProfile)?.taskPath || getSafeProfiles().find(p => p.id === selectedProfile)?.filePath || getSafeProfiles().find(p => p.id === selectedProfile)?.path || ''}
                           placeholder={t('taskPathPlaceholder')}
                           title={t('taskPathTitle')}
                           required
@@ -1305,7 +1456,7 @@ function AppContent() {
                           type="text" 
                           id="settingsProjectRoot"
                           name="projectRoot"
-                          defaultValue={profiles.find(p => p.id === selectedProfile)?.projectRoot || ''}
+                          defaultValue={getSafeProfiles().find(p => p.id === selectedProfile)?.projectRoot || ''}
                           placeholder={t('projectRootEditPlaceholder')}
                           title={t('projectRootEditTitle')}
                         />
@@ -1463,6 +1614,14 @@ function AppContent() {
           }}
         />
 
+      {/* Export Modal */}
+      <ExportModal 
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExport}
+        tasks={tasks}
+      />
+
       {showAddProfile && (
         <div className="modal-overlay" name="add-profile-modal-overlay" onClick={() => setShowAddProfile(false)} title="Click outside to close">
           <div className="modal-content" name="add-profile-modal" onClick={(e) => e.stopPropagation()} title="Add new profile form">
@@ -1554,7 +1713,7 @@ function AppContent() {
           currentTask={currentTask}
           tasks={tasks}
           profileId={selectedProfile}
-          profileName={profiles.find(p => p.id === selectedProfile)?.name}
+          profileName={getSafeProfiles().find(p => p.id === selectedProfile)?.name}
           projectRoot={projectRoot}
           showToast={showToast}
           projectInnerTab={projectInnerTab}
@@ -1610,7 +1769,17 @@ function AppContent() {
           }}
         />
       )}
-    </div>
+      
+      {/* Debug Panel - Available in development mode */}
+      <DebugPanel 
+        appState={debugAppState} 
+        onStateUpdate={(updates) => {
+          // Handle debug panel state updates if needed
+          debugLog('DebugPanel', 'State Update Request', updates);
+        }} 
+      />
+      </div>
+    </ErrorBoundary>
   );
 }
 

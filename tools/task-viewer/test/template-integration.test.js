@@ -1,47 +1,101 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, beforeAll } from 'vitest';
 import http from 'http';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-// Mock os module first
-vi.mock('os', () => ({
-  default: {
-    homedir: () => '/mock/home',
-    tmpdir: () => '/mock/tmp'
-  }
-}));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-// Mock fs module
+// Create mock functions that will be used throughout
 const mockFs = {
   readFile: vi.fn(),
   writeFile: vi.fn(),
   mkdir: vi.fn(),
   readdir: vi.fn(),
   stat: vi.fn(),
-  unlink: vi.fn()
+  unlink: vi.fn(),
+  rm: vi.fn(),
+  access: vi.fn()
 };
 
-vi.mock('fs', async () => {
-  const actual = await vi.importActual('fs');
-  return {
-    ...actual,
+// Mock synchronous fs methods
+const mockReadFileSync = vi.fn();
+const mockWriteFileSync = vi.fn();
+
+// Mock os module first
+vi.mock('os', () => ({
+  default: {
+    homedir: () => '/mock/home',
+    tmpdir: () => '/mock/tmp'
+  },
+  homedir: () => '/mock/home',
+  tmpdir: () => '/mock/tmp'
+}));
+
+// Mock fs module - must be done before importing server
+vi.mock('fs', () => ({
+  promises: mockFs,
+  readFileSync: mockReadFileSync,
+  writeFileSync: mockWriteFileSync,
+  default: {
     promises: mockFs,
-    default: actual
-  };
-});
+    readFileSync: mockReadFileSync,
+    writeFileSync: mockWriteFileSync
+  }
+}));
 
 // Mock glob module
 vi.mock('glob', () => ({
-  glob: vi.fn()
+  glob: vi.fn().mockResolvedValue([])
 }));
 
-// Import server after mocks are set up
-const { startServer } = await import('../server.js');
+// Import server after all mocks are set up
+let startServer;
+beforeAll(async () => {
+  // Setup default mocks that will be used during module import
+  const defaultSettings = JSON.stringify({ agents: [] });
+  const mockSettingsFile = path.join('/mock/home', '.shrimp-task-viewer-settings.json');
+  
+  // Ensure settings file mock is ready before importing server
+  mockFs.readFile.mockImplementation((filePath) => {
+    if (filePath === mockSettingsFile) {
+      return Promise.resolve(defaultSettings);
+    }
+    const error = new Error('ENOENT: no such file or directory');
+    error.code = 'ENOENT';
+    return Promise.reject(error);
+  });
+  
+  mockReadFileSync.mockImplementation((filePath) => {
+    if (filePath === mockSettingsFile) {
+      return defaultSettings;
+    }
+    const error = new Error('ENOENT: no such file or directory');
+    error.code = 'ENOENT';
+    throw error;
+  });
+  
+  // Mock other necessary fs operations for server initialization
+  mockFs.writeFile.mockResolvedValue();
+  mockFs.mkdir.mockResolvedValue();
+  mockFs.rm.mockResolvedValue();
+  mockFs.stat.mockImplementation((filePath) => {
+    const error = new Error('ENOENT');
+    error.code = 'ENOENT';
+    return Promise.reject(error);
+  });
+  mockFs.readdir.mockResolvedValue([]);
+  
+  const serverModule = await import('../server.js');
+  startServer = serverModule.startServer;
+});
 
 describe('Template Integration - Custom Templates Actually Used', () => {
   let server;
   const mockSettingsFile = path.join('/mock/home', '.shrimp-task-viewer-settings.json');
   const mockTemplatesDir = path.join('/mock/home', '.shrimp-task-viewer-templates');
-  const mockDefaultTemplatesDir = '/mock/project/src/prompts/templates_en';
+  const mockDefaultTemplatesDir = path.join(__dirname, '..', 'src', 'prompts', 'templates_en');
   
   const defaultPlanTaskTemplate = `## Default Plan Task Template
 This is the default template from the system.
@@ -61,11 +115,14 @@ Context: {context}`;
   beforeEach(async () => {
     vi.clearAllMocks();
     
-    // Setup mock file system
+    // Default settings file mock
+    const defaultSettings = JSON.stringify({ agents: [] });
+    
+    // Setup async fs methods
     mockFs.readFile.mockImplementation((filePath) => {
       // Settings file
       if (filePath === mockSettingsFile) {
-        return Promise.resolve(JSON.stringify({ agents: [] }));
+        return Promise.resolve(defaultSettings);
       }
       
       // Custom templates (these should take precedence)
@@ -86,8 +143,36 @@ Context: {context}`;
       return Promise.reject(error);
     });
     
+    // Setup sync fs methods
+    mockReadFileSync.mockImplementation((filePath) => {
+      // Settings file
+      if (filePath === mockSettingsFile) {
+        return defaultSettings;
+      }
+      
+      // Custom templates (these should take precedence)
+      if (filePath === path.join(mockTemplatesDir, 'planTask.txt')) {
+        return customPlanTaskTemplate;
+      }
+      if (filePath === path.join(mockTemplatesDir, 'executeTask.txt')) {
+        return customExecuteTaskTemplate;
+      }
+      
+      // Default templates (should be overridden by custom)
+      if (filePath.includes('templates_en') && filePath.includes('planTask')) {
+        return defaultPlanTaskTemplate;
+      }
+      
+      const error = new Error('ENOENT: no such file or directory');
+      error.code = 'ENOENT';
+      throw error;
+    });
+    
     mockFs.writeFile.mockResolvedValue();
+    mockWriteFileSync.mockReturnValue();
     mockFs.mkdir.mockResolvedValue();
+    mockFs.rm.mockResolvedValue();
+    mockFs.access.mockResolvedValue(); // Mock access to simulate file exists
     
     mockFs.stat.mockImplementation((filePath) => {
       if (filePath.includes('templates_en') || filePath.includes('.shrimp-task-viewer-templates')) {
@@ -108,7 +193,7 @@ Context: {context}`;
       return Promise.resolve([]);
     });
     
-    server = await startServer();
+    server = await startServer(0);  // Use port 0 to get a random available port
   });
 
   afterEach(async () => {

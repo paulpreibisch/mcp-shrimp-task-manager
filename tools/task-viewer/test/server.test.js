@@ -17,9 +17,32 @@ const mockFs = {
   mkdir: vi.fn()
 };
 
-vi.mock('fs', () => ({
-  promises: mockFs
-}));
+vi.mock('fs', () => {
+  console.log('Setting up fs mock');
+  const mockPromises = {
+    readFile: vi.fn((filePath, encoding) => {
+      console.log('Mock fs.readFile called with:', filePath, encoding);
+      return Promise.resolve(JSON.stringify({
+        agents: [],
+        lastUpdated: new Date().toISOString(),
+        version: '3.1.0'
+      }));
+    }),
+    writeFile: vi.fn((filePath, data) => {
+      console.log('Mock fs.writeFile called with:', filePath);
+      return Promise.resolve();
+    }),
+    mkdir: vi.fn(() => Promise.resolve())
+  };
+  
+  // Copy to the global mockFs for test access
+  Object.assign(mockFs, mockPromises);
+  
+  return {
+    default: {},
+    promises: mockPromises
+  };
+});
 
 // Import server after mocks are set up
 const { startServer } = await import('../server.js');
@@ -30,8 +53,10 @@ describe('Server', () => {
   const mockTempDir = '/mock/tmp/shrimp-task-viewer';
   
   beforeEach(() => {
-    // Reset all mocks
-    vi.clearAllMocks();
+    // Just reset call counts but keep implementations
+    mockFs.readFile.mockClear();
+    mockFs.writeFile.mockClear();
+    mockFs.mkdir.mockClear();
   });
 
   afterEach(async () => {

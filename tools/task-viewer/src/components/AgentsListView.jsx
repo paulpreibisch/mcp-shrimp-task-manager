@@ -199,9 +199,20 @@ function AgentsListView({
       accessorKey: 'aiInstruction',
       header: t('aiInstruction') || 'AI Instruction',
       cell: ({ row }) => {
+        // Use absolute paths for both global and project agents
         const agentPath = isGlobal 
-          ? `./claude/agents/${row.original.name}` 
-          : `./${row.original.projectPath || '.claude/agents'}/${row.original.name}`;
+          ? `${claudeFolderPath || './claude'}/agents/${row.original.name}` 
+          : `${projectRoot || '.'}/.claude/agents/${row.original.name}`;
+        
+        // Log for debugging
+        console.log('Agent instruction generation:', {
+          isGlobal,
+          projectRoot,
+          claudeFolderPath,
+          agentName: row.original.name,
+          agentPath
+        });
+        
         const instruction = `use subagent ${row.original.name} located in ${agentPath}:`;
         
         return (

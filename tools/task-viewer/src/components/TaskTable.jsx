@@ -22,10 +22,59 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   const [selectedRows, setSelectedRows] = useState(new Set());
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [localTaskUpdates, setLocalTaskUpdates] = useState({});
   
+  // Merge server data with local updates
+  const mergedData = useMemo(() => {
+    return data.map(task => {
+      const localUpdate = localTaskUpdates[task.id];
+      return localUpdate ? { ...task, ...localUpdate } : task;
+    });
+  }, [data, localTaskUpdates]);
+
   // Generate task number mapping
-  const taskNumberMap = useMemo(() => generateTaskNumbers(data), [data]);
+  const taskNumberMap = useMemo(() => generateTaskNumbers(mergedData), [mergedData]);
   
+  // Helper function to map agent filenames to display names
+  const mapAgentToDisplayName = (agentValue, availableAgents) => {
+    if (!agentValue || availableAgents.length === 0) return '';
+    
+    // First, check if it's already a display name
+    const exactMatch = availableAgents.find(agent => agent.name === agentValue);
+    if (exactMatch) return agentValue;
+    
+    // Check if it matches a raw filename by comparing the base names
+    // This handles cases like 'test-expert.md' → 'Test Expert'  
+    const normalizedAgentValue = agentValue.replace(/\.(md|yaml|yml)$/, '');
+    
+    for (const agent of availableAgents) {
+      const normalizedAgentName = (agent.metadata?.originalName || agent.id || '').replace(/\.(md|yaml|yml)$/, '');
+      
+      // Direct filename match (e.g., 'test-expert.md' matches 'test-expert.md')
+      if (normalizedAgentName === normalizedAgentValue) {
+        return agent.name;
+      }
+      
+      // Check if the agent filename processed matches what we expect
+      // e.g., 'ui-developer' → 'UI Developer'
+      const processedFromFilename = normalizedAgentName
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase());
+      
+      if (processedFromFilename === agent.name) {
+        const processedFromValue = normalizedAgentValue
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, l => l.toUpperCase());
+        if (processedFromValue === agent.name) {
+          return agent.name;
+        }
+      }
+    }
+    
+    // If no match found, return the original value
+    return agentValue;
+  };
+
   // Load available agents on mount
   useEffect(() => {
     const loadAgents = async () => {
@@ -35,10 +84,22 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
         const response = await fetch(`/api/agents/combined/${profileId}`);
         if (response.ok) {
           const agents = await response.json();
-          setAvailableAgents(agents);
+          
+          // Transform agent data for TaskTable use
+          const formattedAgents = agents.map(agent => ({
+            id: agent.name?.replace(/\.(md|yaml|yml)$/, '') || `agent-${Math.random()}`,
+            name: agent.metadata?.name || agent.name?.replace(/\.(md|yaml|yml)$/, '').replace(/-/g, ' ') || 'Unknown Agent',
+            description: agent.metadata?.description || '',
+            color: agent.metadata?.color || null,
+            type: agent.type,
+            tools: agent.metadata?.tools || []
+          }));
+          
+          setAvailableAgents(formattedAgents);
         }
       } catch (err) {
         console.error('Error loading agents:', err);
+        setAvailableAgents([]); // Ensure it's always an array
       }
     };
     
@@ -87,7 +148,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     {
       id: 'select',
       header: ({ table }) => {
-        const isIndeterminate = selectedRows.size > 0 && selectedRows.size < data.length;
+        const isIndeterminate = selectedRows.size > 0 && selectedRows.size < mergedData.length;
         const checkboxRef = React.useRef(null);
         
         React.useEffect(() => {
@@ -100,10 +161,10 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           <input
             ref={checkboxRef}
             type="checkbox"
-            checked={selectedRows.size === data.length && data.length > 0}
+            checked={selectedRows.size === mergedData.length && mergedData.length > 0}
             onChange={(e) => {
               if (e.target.checked) {
-                setSelectedRows(new Set(data.map(task => task.id)));
+                setSelectedRows(new Set(mergedData.map(task => task.id)));
               } else {
                 setSelectedRows(new Set());
               }
@@ -215,7 +276,8 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
       accessorKey: 'agent',
       header: 'Agent',
       cell: ({ row }) => {
-        const currentAgent = row.original.agent || '';
+        const rawAgent = row.original.agent || '';
+        const currentAgent = mapAgentToDisplayName(rawAgent, availableAgents);
         const taskId = row.original.id;
         const isSaving = savingAgents[taskId] || false;
         
@@ -243,6 +305,12 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
                 // Update saving state
                 setSavingAgents(prev => ({ ...prev, [taskId]: true }));
                 
+                // Immediately update local state for responsive UI
+                setLocalTaskUpdates(prev => ({
+                  ...prev,
+                  [taskId]: { ...prev[taskId], agent: newAgent }
+                }));
+                
                 try {
                   const response = await fetch(`/api/tasks/${profileId}/update`, {
                     method: 'PUT',
@@ -256,15 +324,43 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
                   });
                   
                   if (response.ok) {
-                    // Refresh task data
-                    if (onTaskSaved) {
-                      await onTaskSaved();
+                    // Success! No need to refresh - local state is already updated
+                    if (showToast) {
+                      showToast('success', `Agent assigned to task`);
                     }
                   } else {
+                    // Revert local state on error
+                    setLocalTaskUpdates(prev => {
+                      const newState = { ...prev };
+                      if (newState[taskId]) {
+                        delete newState[taskId].agent;
+                        if (Object.keys(newState[taskId]).length === 0) {
+                          delete newState[taskId];
+                        }
+                      }
+                      return newState;
+                    });
                     console.error('Failed to update agent');
+                    if (showToast) {
+                      showToast('error', 'Failed to update agent');
+                    }
                   }
                 } catch (err) {
+                  // Revert local state on error
+                  setLocalTaskUpdates(prev => {
+                    const newState = { ...prev };
+                    if (newState[taskId]) {
+                      delete newState[taskId].agent;
+                      if (Object.keys(newState[taskId]).length === 0) {
+                        delete newState[taskId];
+                      }
+                    }
+                    return newState;
+                  });
                   console.error('Error updating agent:', err);
+                  if (showToast) {
+                    showToast('error', 'Network error while updating agent');
+                  }
                 } finally {
                   // Clear saving state
                   setSavingAgents(prev => {
@@ -374,7 +470,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
               
               // Get task number for display
               const taskNumber = getTaskNumber(depId, taskNumberMap);
-              const depTask = data.find(t => t.id === depId);
+              const depTask = mergedData.find(t => t.id === depId);
               const depTaskName = depTask ? depTask.name : 'Unknown Task';
               
               return (
@@ -407,12 +503,17 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
         <div className="actions-cell">
           <button
             className="copy-button action-button"
+            style={{ border: '2px solid #FFD700', borderRadius: '4px', padding: '2px 6px' }}
+            data-testid={`copy-agent-instruction-${row.original.id}`}
             onClick={(e) => {
               e.stopPropagation();
               const agentName = row.original.agent || 'task manager';
+              const agentPath = projectRoot && projectRoot.trim() 
+                ? `${projectRoot}/.claude/agents/${agentName}`
+                : `./.claude/agents/${agentName}`;
               const instruction = agentName === 'task manager' 
                 ? `Use task manager to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`
-                : `use the built in subagent located in ./claude/agents/${agentName} to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`;
+                : `use the built in subagent located in ${agentPath} to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`;
               navigator.clipboard.writeText(instruction);
               const button = e.target;
               button.textContent = '✓';
@@ -422,12 +523,44 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             }}
             title={(() => {
               const agentName = row.original.agent || 'task manager';
+              const agentPath = projectRoot && projectRoot.trim() 
+                ? `${projectRoot}/.claude/agents/${agentName}`
+                : `./.claude/agents/${agentName}`;
               return agentName === 'task manager'
                 ? `Use task manager to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`
-                : `use the built in subagent located in ./claude/agents/${agentName} to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`;
+                : `use the built in subagent located in ${agentPath} to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`;
             })()}
           >
             🤖
+          </button>
+          <button
+            className="copy-button action-button direct-exec-button"
+            style={{ color: '#4CAF50', border: '2px solid #4CAF50', borderRadius: '4px', padding: '2px 6px' }}
+            data-testid={`copy-direct-instruction-${row.original.id}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              const agentName = row.original.agent || 'task manager';
+              const agentPath = projectRoot && projectRoot.trim() 
+                ? `${projectRoot}/.claude/agents/${agentName}`
+                : `./.claude/agents/${agentName}`;
+              const instruction = agentName === 'task manager' 
+                ? `Use task planner to execute this task: ${row.original.id}. Please mark the task as in progress when you start working.`
+                : `Use task planner to execute this task: ${row.original.id} using the role of ${agentName} agent. Apply the ${agentName} agent's specialized knowledge and approach, but execute the task yourself without launching a sub-agent. Please mark the task as in progress when you start working.`;
+              navigator.clipboard.writeText(instruction);
+              const button = e.target;
+              button.textContent = '✓';
+              setTimeout(() => {
+                button.textContent = '🦾';
+              }, 2000);
+            }}
+            title={(() => {
+              const agentName = row.original.agent || 'task manager';
+              return agentName === 'task manager'
+                ? `Use task planner to execute this task: ${row.original.id}`
+                : `Use task planner to execute task ${row.original.id} using the role of ${agentName} agent`;
+            })()}
+          >
+            🦾
           </button>
           <button
             className={`edit-button action-button ${row.original.status === 'completed' ? 'disabled' : ''}`}
@@ -456,12 +589,12 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           </button>
         </div>
       ),
-      size: 100,
+      size: 130,
     },
-  ], [data, setSelectedTask, t, taskNumberMap, onDeleteTask, availableAgents, savingAgents, profileId, onTaskSaved, selectedRows]);
+  ], [mergedData, setSelectedTask, t, taskNumberMap, onDeleteTask, availableAgents, savingAgents, profileId, showToast, selectedRows, localTaskUpdates]);
 
   const table = useReactTable({
-    data,
+    data: mergedData,
     columns,
     state: {
       globalFilter,
@@ -479,7 +612,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     },
   });
 
-  if (data.length === 0) {
+  if (mergedData.length === 0) {
     return (
       <div className="empty-state">
         <div className="empty-state-icon">📋</div>
@@ -504,13 +637,13 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             projectRoot={projectRoot}
             profileId={profileId}
             onNavigateToTask={(taskId) => {
-              const targetTask = data.find(t => t.id === taskId);
+              const targetTask = mergedData.find(t => t.id === taskId);
               if (targetTask) {
                 setSelectedTask(targetTask);
               }
             }}
-            taskIndex={data.findIndex(t => t.id === selectedTask.id)}
-            allTasks={data}
+            taskIndex={mergedData.findIndex(t => t.id === selectedTask.id)}
+            allTasks={mergedData}
             onSave={async (updatedTask) => {
               // Close the edit view immediately
               setSelectedTask(null);
@@ -533,13 +666,13 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           onBack={() => setSelectedTask(null)}
           projectRoot={projectRoot}
           onNavigateToTask={(taskId) => {
-            const targetTask = data.find(t => t.id === taskId);
+            const targetTask = mergedData.find(t => t.id === taskId);
             if (targetTask) {
               setSelectedTask(targetTask);
             }
           }}
-          taskIndex={data.findIndex(t => t.id === selectedTask.id)}
-          allTasks={data}
+          taskIndex={mergedData.findIndex(t => t.id === selectedTask.id)}
+          allTasks={mergedData}
           onEdit={() => {
             setSelectedTask({ ...selectedTask, editMode: true });
           }}
@@ -548,7 +681,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     }
   }
 
-  // Bulk assign agents function
+  // Bulk assign agents function (AI-powered)
   const handleBulkAssignAgents = async () => {
     const selectedTaskIds = Array.from(selectedRows);
     if (selectedTaskIds.length === 0) return;
@@ -633,18 +766,102 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     }
   };
 
+  // Manual bulk assign agent function
+  const handleManualBulkAssignAgent = async (agentName) => {
+    const selectedTaskIds = Array.from(selectedRows);
+    if (selectedTaskIds.length === 0) return;
+
+    setLoading(true);
+    
+    try {
+      // Update each selected task with the chosen agent
+      const updatePromises = selectedTaskIds.map(taskId => 
+        fetch(`/api/tasks/${profileId}/update`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            taskId: taskId,
+            updates: { agent: agentName }
+          })
+        })
+      );
+
+      const responses = await Promise.all(updatePromises);
+      const successfulUpdates = responses.filter(response => response.ok).length;
+      
+      if (successfulUpdates > 0) {
+        if (showToast) {
+          showToast('success', `Successfully assigned ${agentName || 'No agent'} to ${successfulUpdates} tasks`);
+        }
+        
+        // Update local state immediately for responsive UI
+        setLocalTaskUpdates(prev => {
+          const newUpdates = { ...prev };
+          selectedTaskIds.forEach(taskId => {
+            newUpdates[taskId] = { ...newUpdates[taskId], agent: agentName };
+          });
+          return newUpdates;
+        });
+        
+        // Clear selection
+        setSelectedRows(new Set());
+        setShowBulkActions(false);
+      } else {
+        if (showToast) {
+          showToast('error', 'Failed to update tasks');
+        }
+      }
+    } catch (error) {
+      console.error('Error bulk assigning agent:', error);
+      if (showToast) {
+        showToast('error', 'Network error while assigning agents');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Otherwise, show the table
   return (
     <>
       {showBulkActions && (
         <div className="bulk-actions-bar">
-          <button 
-            className="bulk-action-button ai-assign"
-            onClick={handleBulkAssignAgents}
-            disabled={loading}
-          >
-            {loading ? '⏳ Processing...' : `🤖 AI Assign Agents (${selectedRows.size} tasks selected)`}
-          </button>
+          <div className="bulk-actions-left">
+            <span className="bulk-actions-label">
+              {selectedRows.size} tasks selected:
+            </span>
+            <select 
+              className="bulk-agent-select"
+              onChange={(e) => {
+                const selectedAgent = e.target.value;
+                if (selectedAgent !== '') {
+                  handleManualBulkAssignAgent(selectedAgent);
+                  e.target.value = ''; // Reset dropdown
+                }
+              }}
+              disabled={loading}
+            >
+              <option value="">Assign Agent...</option>
+              <option value="">No agent</option>
+              {availableAgents.map((agent) => (
+                <option key={agent.name} value={agent.name}>
+                  {agent.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="bulk-actions-right">
+            <button 
+              className="bulk-action-button ai-assign"
+              data-testid="ai-assign-agents-button"
+              onClick={handleBulkAssignAgents}
+              disabled={loading}
+            >
+              {loading ? '⏳ Processing...' : `🤖 AI Assign Agents`}
+            </button>
+          </div>
         </div>
       )}
       <table className="table">
@@ -695,7 +912,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             table.getFilteredRowModel().rows.length
           )}{' '}
           {t('of')} {table.getFilteredRowModel().rows.length} {t('tasks')}
-          {globalFilter && ` (${t('filteredFrom')} ${data.length} ${t('total')})`}
+          {globalFilter && ` (${t('filteredFrom')} ${mergedData.length} ${t('total')})`}
         </div>
         
         <div className="pagination-controls">

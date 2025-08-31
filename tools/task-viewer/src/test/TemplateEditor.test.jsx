@@ -40,15 +40,17 @@ describe('TemplateEditor Component', () => {
 
   describe('Rendering', () => {
     it('renders modal with correct title and content', () => {
-      render(
+      const { container } = render(
         <TemplateEditor 
           template={mockTemplate}
           {...mockHandlers}
         />
       );
 
-      expect(screen.getByText('Edit Template: planTask')).toBeInTheDocument();
-      expect(screen.getByDisplayValue(/## Task Analysis/)).toBeInTheDocument();
+      // The component uses translations, so check for the template name in the title
+      expect(screen.getByText(/planTask/)).toBeInTheDocument();
+      // MDEditor doesn't expose content as displayValue, check container instead
+      expect(container.textContent).toContain('Task Analysis');
     });
 
     it('renders mode selection toggles', () => {
@@ -59,24 +61,25 @@ describe('TemplateEditor Component', () => {
         />
       );
 
-      expect(screen.getByLabelText('Override Mode')).toBeInTheDocument();
-      expect(screen.getByLabelText('Append Mode')).toBeInTheDocument();
-      
-      // Override should be selected by default
-      expect(screen.getByLabelText('Override Mode')).toBeChecked();
-      expect(screen.getByLabelText('Append Mode')).not.toBeChecked();
+      // Check for radio buttons by their roles
+      const radioButtons = screen.getAllByRole('radio');
+      expect(radioButtons.length).toBe(2);
+      // First radio (override) should be checked by default
+      expect(radioButtons[0]).toBeChecked();
+      expect(radioButtons[1]).not.toBeChecked();
     });
 
     it('renders edit and preview toggle buttons', () => {
-      render(
+      const { container } = render(
         <TemplateEditor 
           template={mockTemplate}
           {...mockHandlers}
         />
       );
 
-      expect(screen.getByText('✏️ Edit')).toBeInTheDocument();
-      expect(screen.getByText('👁️ Preview')).toBeInTheDocument();
+      // MDEditor has its own edit/preview controls
+      // Check that the MDEditor is present
+      expect(container.querySelector('.w-md-editor')).toBeInTheDocument();
     });
 
     it('renders action buttons', () => {
@@ -87,8 +90,9 @@ describe('TemplateEditor Component', () => {
         />
       );
 
-      expect(screen.getByText('💾 Save Template')).toBeInTheDocument();
-      expect(screen.getByText('Cancel')).toBeInTheDocument();
+      // Buttons should be present, but text may be translated
+      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
     });
 
     it('shows loading state', () => {

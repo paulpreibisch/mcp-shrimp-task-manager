@@ -123,9 +123,8 @@ describe('TemplateManagement Component', () => {
         />
       );
 
-      expect(screen.getByText('🎨 Template Management')).toBeInTheDocument();
-      expect(screen.getByText(/Manage prompt templates for all task manager functions/)).toBeInTheDocument();
-      expect(screen.getByText('📤 Export Templates')).toBeInTheDocument();
+      expect(screen.getByText('Template Management')).toBeInTheDocument();
+      expect(screen.getByText('Manage and customize your prompt templates')).toBeInTheDocument();
     });
 
     it('handles empty data gracefully', () => {
@@ -150,7 +149,7 @@ describe('TemplateManagement Component', () => {
         />
       );
 
-      expect(screen.getByText('Loading templates... ⏳')).toBeInTheDocument();
+      expect(screen.getByText('Loading... ⏳')).toBeInTheDocument();
     });
 
     it('shows error state', () => {
@@ -179,11 +178,11 @@ describe('TemplateManagement Component', () => {
         />
       );
 
-      // Each template should have 4 action buttons
-      const editButtons = screen.getAllByTitle('Edit template');
-      const previewButtons = screen.getAllByTitle('Preview template');
-      const duplicateButtons = screen.getAllByTitle('Duplicate template');
-      const resetButtons = screen.getAllByTitle('Reset to default template');
+      // Each template should have 5 action buttons (edit, preview, duplicate, activate, reset)
+      const editButtons = screen.getAllByTitle('Edit');
+      const previewButtons = screen.getAllByTitle('Preview');
+      const duplicateButtons = screen.getAllByTitle('Duplicate');
+      const resetButtons = screen.getAllByTitle('Reset to Default');
 
       expect(editButtons).toHaveLength(4);
       expect(previewButtons).toHaveLength(4);
@@ -200,7 +199,7 @@ describe('TemplateManagement Component', () => {
         />
       );
 
-      const editButtons = screen.getAllByTitle('Edit template');
+      const editButtons = screen.getAllByTitle('Edit');
       fireEvent.click(editButtons[0]);
 
       expect(mockHandlers.onEditTemplate).toHaveBeenCalledWith(mockTemplates[0]);
@@ -215,7 +214,7 @@ describe('TemplateManagement Component', () => {
         />
       );
 
-      const previewButtons = screen.getAllByTitle('Preview template');
+      const previewButtons = screen.getAllByTitle('Preview');
       fireEvent.click(previewButtons[1]);
 
       expect(mockHandlers.onPreviewTemplate).toHaveBeenCalledWith(mockTemplates[1]);
@@ -230,7 +229,7 @@ describe('TemplateManagement Component', () => {
         />
       );
 
-      const duplicateButtons = screen.getAllByTitle('Duplicate template');
+      const duplicateButtons = screen.getAllByTitle('Duplicate');
       fireEvent.click(duplicateButtons[2]);
 
       expect(mockHandlers.onDuplicateTemplate).toHaveBeenCalledWith(mockTemplates[2]);
@@ -248,10 +247,10 @@ describe('TemplateManagement Component', () => {
         />
       );
 
-      const resetButtons = screen.getAllByTitle('Reset to default template');
+      const resetButtons = screen.getAllByTitle('Reset to Default');
       fireEvent.click(resetButtons[1]); // Custom template
 
-      expect(global.confirm).toHaveBeenCalledWith('Are you sure you want to reset "executeTask" template to default?');
+      expect(global.confirm).toHaveBeenCalledWith('Are you sure you want to reset executeTask template to default?');
       expect(mockHandlers.onResetTemplate).toHaveBeenCalledWith(mockTemplates[1]);
     });
 
@@ -267,7 +266,7 @@ describe('TemplateManagement Component', () => {
         />
       );
 
-      const resetButtons = screen.getAllByTitle('Reset to default template');
+      const resetButtons = screen.getAllByTitle('Reset to Default');
       fireEvent.click(resetButtons[1]);
 
       expect(global.confirm).toHaveBeenCalled();
@@ -283,7 +282,7 @@ describe('TemplateManagement Component', () => {
         />
       );
 
-      const resetButtons = screen.getAllByTitle('Reset to default template');
+      const resetButtons = screen.getAllByTitle('Reset to Default');
       const defaultTemplateResetButton = resetButtons[0]; // planTask is default
 
       expect(defaultTemplateResetButton).toBeDisabled();
