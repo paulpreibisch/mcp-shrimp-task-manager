@@ -121,9 +121,9 @@ describe('exportUtils', () => {
       
       expect(result).toContain('# Tasks Export');
       expect(result).toContain('Total tasks: 3');
-      expect(result).toContain('## Complete project setup');
-      expect(result).toContain('## Implement user authentication');
-      expect(result).toContain('## Design homepage layout');
+      expect(result).toContain('## Task 1: Complete project setup');
+      expect(result).toContain('## Task 2: Implement user authentication');
+      expect(result).toContain('## Task 3: Design homepage layout');
     });
 
     it('should group tasks by status', () => {
@@ -172,6 +172,31 @@ describe('exportUtils', () => {
       expect(result).toContain('- **Completed:** 1');
       expect(result).toContain('- **In Progress:** 1');
       expect(result).toContain('- **Pending:** 1');
+    });
+
+    it('should include initial request when provided', () => {
+      const initialRequest = 'Create a web application with user authentication and task management';
+      const result = exportToMarkdown(mockTasks, initialRequest);
+      
+      expect(result).toContain('## Initial Request');
+      expect(result).toContain(initialRequest);
+    });
+
+    it('should include task numbering in headers', () => {
+      const result = exportToMarkdown(mockTasks);
+      
+      expect(result).toContain('## Task 1: Complete project setup');
+      expect(result).toContain('## Task 2: Implement user authentication');
+      expect(result).toContain('## Task 3: Design homepage layout');
+    });
+
+    it('should include initial request in empty export', () => {
+      const initialRequest = 'Test initial request for empty tasks';
+      const result = exportToMarkdown([], initialRequest);
+      
+      expect(result).toContain('## Initial Request');
+      expect(result).toContain(initialRequest);
+      expect(result).toContain('No tasks to export');
     });
   });
 });

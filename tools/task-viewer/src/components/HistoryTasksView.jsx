@@ -15,7 +15,9 @@ function HistoryTasksView({
   historyEntry,
   loading = false, 
   error = '',
-  onBack
+  onBack,
+  initialRequest = '',
+  finalSummary = ''
 }) {
   const { t } = useTranslation();
   const [selectedTask, setSelectedTask] = useState(null);
@@ -139,6 +141,7 @@ function HistoryTasksView({
         onBack={() => setSelectedTask(null)}
         projectRoot={null} // History doesn't have project root context
         isHistorical={true} // Indicate this is from history
+        finalSummary={finalSummary}
       />
     );
   }
@@ -193,6 +196,36 @@ function HistoryTasksView({
           </>
         )}
       </div>
+
+      {/* Initial Request Section */}
+      {initialRequest && (
+        <div className="task-detail-section collapsible-section" style={{ marginBottom: '20px' }}>
+          <h3 className="collapsible-header">
+            {t('initialRequest', 'Initial Request')}
+            <span className="expand-icon expanded">▼</span>
+          </h3>
+          <div className="collapsible-content expanded">
+            <div className="detail-content">
+              {initialRequest}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Final Summary Section */}
+      {finalSummary && (
+        <div className="task-detail-section collapsible-section" style={{ marginBottom: '20px' }}>
+          <h3 className="collapsible-header">
+            Final Summary
+            <span className="expand-icon expanded">▼</span>
+          </h3>
+          <div className="collapsible-content expanded">
+            <div className="detail-content">
+              {finalSummary}
+            </div>
+          </div>
+        </div>
+      )}
 
       {tasks.length === 0 ? (
         <div className="empty-tasks">

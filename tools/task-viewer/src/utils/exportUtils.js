@@ -119,17 +119,32 @@ const generateTaskStats = (tasks) => {
 /**
  * Exports tasks to Markdown format
  * @param {Array} tasks - Array of task objects
+ * @param {string} initialRequest - The initial request that started the task planning
  * @returns {string} Markdown formatted string
  */
-export const exportToMarkdown = (tasks) => {
+export const exportToMarkdown = (tasks, initialRequest = '') => {
   if (tasks.length === 0) {
-    return `# Tasks Export
+    let markdown = `# Tasks Export
 
 **Export Date:** ${new Date().toISOString().split('T')[0]}
 
-Total tasks: 0
+`;
+    
+    if (initialRequest) {
+      markdown += `## Initial Request
+
+${initialRequest}
+
+---
+
+`;
+    }
+    
+    markdown += `Total tasks: 0
 
 No tasks to export.`;
+    
+    return markdown;
   }
 
   const stats = generateTaskStats(tasks);
@@ -141,7 +156,20 @@ No tasks to export.`;
 
 Total tasks: ${stats.total}
 
-## Summary
+`;
+
+  // Add initial request if provided
+  if (initialRequest) {
+    markdown += `## Initial Request
+
+${initialRequest}
+
+---
+
+`;
+  }
+
+  markdown += `## Summary
 
 - **Completed:** ${stats.completed}
 - **In Progress:** ${stats.in_progress}
@@ -153,8 +181,14 @@ Total tasks: ${stats.total}
 
   markdown += '\n\n---\n';
 
-  // Sort statuses for consistent output
+  // Sort statuses for consistent output and create a flat list for numbering
   const sortedStatuses = Object.keys(groupedTasks).sort();
+  
+  // Create a flat list of all tasks with their original order for numbering
+  const allTasksFlat = [];
+  tasks.forEach((task, index) => {
+    allTasksFlat.push({ ...task, taskNumber: index + 1 });
+  });
   
   sortedStatuses.forEach(status => {
     const statusTasks = groupedTasks[status];
@@ -163,7 +197,10 @@ Total tasks: ${stats.total}
     markdown += `\n### Status: ${statusLabel}\n\n`;
     
     statusTasks.forEach(task => {
-      markdown += `## ${task.name}\n\n`;
+      // Find the task number from the original order
+      const taskWithNumber = allTasksFlat.find(t => t.id === task.id);
+      const taskNumber = taskWithNumber ? taskWithNumber.taskNumber : '?';
+      markdown += `## Task ${taskNumber}: ${task.name}\n\n`;
       
       if (task.description) {
         markdown += `**Description:**  \n${task.description}\n\n`;

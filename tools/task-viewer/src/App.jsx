@@ -47,6 +47,7 @@ function AppContent() {
   const [selectedProfile, setSelectedProfile] = useState(initialUrlState.profile || '');
   const [tasks, setTasks] = useState([]);
   const [initialRequest, setInitialRequest] = useState('');
+  const [finalSummary, setFinalSummary] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(() => {
@@ -100,6 +101,8 @@ function AppContent() {
   const [historyError, setHistoryError] = useState('');
   const [selectedHistoryEntry, setSelectedHistoryEntry] = useState(null);
   const [selectedHistoryTasks, setSelectedHistoryTasks] = useState([]);
+  const [selectedHistoryInitialRequest, setSelectedHistoryInitialRequest] = useState('');
+  const [selectedHistoryFinalSummary, setSelectedHistoryFinalSummary] = useState('');
   
   // Toast notifications state
   const [toasts, setToasts] = useState([]);
@@ -174,7 +177,7 @@ function AppContent() {
         filename = 'tasks.csv';
         mimeType = 'text/csv';
       } else if (format === 'markdown') {
-        content = exportToMarkdown(filteredTasks);
+        content = exportToMarkdown(filteredTasks, initialRequest);
         filename = 'tasks.md';
         mimeType = 'text/markdown';
       } else {
@@ -417,6 +420,7 @@ function AppContent() {
       setTasks(cachedData.tasks);
       setProjectRoot(cachedData.projectRoot);
       setInitialRequest(cachedData.initialRequest || '');
+      setFinalSummary(cachedData.finalSummary || '');
       return;
     }
 
@@ -445,16 +449,19 @@ function AppContent() {
       tasksCache.set(profileId, {
         tasks: data.tasks || [],
         projectRoot: data.projectRoot || null,
-        initialRequest: data.initialRequest || ''
+        initialRequest: data.initialRequest || '',
+        finalSummary: data.finalSummary || ''
       });
       
       setTasks(data.tasks || []);
       setProjectRoot(data.projectRoot || null);
       setInitialRequest(data.initialRequest || '');
+      setFinalSummary(data.finalSummary || '');
     } catch (err) {
       setError('❌ Error loading tasks: ' + err.message);
       setTasks([]);
       setInitialRequest('');
+      setFinalSummary('');
     } finally {
       setLoading(false);
       loadingRef.current = false;
@@ -481,6 +488,8 @@ function AppContent() {
       setHistoryData([]);
       setSelectedHistoryEntry(null);
       setSelectedHistoryTasks([]);
+      setSelectedHistoryInitialRequest('');
+      setSelectedHistoryFinalSummary('');
     }
     
     // Clear any stuck loading state and force reload
@@ -513,6 +522,8 @@ function AppContent() {
       setHistoryData([]);
       setSelectedHistoryEntry(null);
       setSelectedHistoryTasks([]);
+      setSelectedHistoryInitialRequest('');
+      setSelectedHistoryFinalSummary('');
       
       // When switching back to projects, ensure a profile is selected
       if (!selectedProfile || selectedProfile === 'release-notes' || selectedProfile === 'help' || selectedProfile === 'templates') {
@@ -944,11 +955,15 @@ function AppContent() {
       
       const data = await response.json();
       setSelectedHistoryTasks(data.tasks || []);
+      setSelectedHistoryInitialRequest(data.initialRequest || '');
+      setSelectedHistoryFinalSummary(data.finalSummary || '');
       setSelectedHistoryEntry(historyEntry);
       setHistoryView('details');
     } catch (err) {
       setHistoryError('❌ Error loading history tasks: ' + err.message);
       setSelectedHistoryTasks([]);
+      setSelectedHistoryInitialRequest('');
+      setSelectedHistoryFinalSummary('');
     } finally {
       setHistoryLoading(false);
     }
@@ -1340,6 +1355,7 @@ function AppContent() {
                       showToast('Failed to delete task: ' + err.message, 'error');
                     }
                   }}
+                  finalSummary={finalSummary}
                 />
               </div>
             ),
@@ -1351,10 +1367,14 @@ function AppContent() {
                     historyEntry={selectedHistoryEntry}
                     loading={historyLoading}
                     error={historyError}
+                    initialRequest={selectedHistoryInitialRequest}
+                    finalSummary={selectedHistoryFinalSummary}
                     onBack={() => {
                       setHistoryView('list');
                       setSelectedHistoryEntry(null);
                       setSelectedHistoryTasks([]);
+                      setSelectedHistoryInitialRequest('');
+                      setSelectedHistoryFinalSummary('');
                     }}
                   />
                 ) : (

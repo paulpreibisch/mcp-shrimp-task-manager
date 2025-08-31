@@ -58,15 +58,17 @@ describe('ExportModal', () => {
   it('should have CSV and Markdown format options', () => {
     render(<ExportModal {...defaultProps} />);
     
-    expect(screen.getByLabelText('CSV')).toBeInTheDocument();
-    expect(screen.getByLabelText('Markdown')).toBeInTheDocument();
+    expect(screen.getByText('CSV')).toBeInTheDocument();
+    expect(screen.getByText('Markdown')).toBeInTheDocument();
+    expect(screen.getByText('Basic task info for spreadsheets')).toBeInTheDocument();
+    expect(screen.getByText('Complete details including notes, files, dependencies')).toBeInTheDocument();
   });
 
   it('should have CSV selected by default', () => {
     render(<ExportModal {...defaultProps} />);
     
-    const csvRadio = screen.getByLabelText('CSV');
-    const markdownRadio = screen.getByLabelText('Markdown');
+    const csvRadio = screen.getByDisplayValue('csv');
+    const markdownRadio = screen.getByDisplayValue('markdown');
     
     expect(csvRadio).toBeChecked();
     expect(markdownRadio).not.toBeChecked();
@@ -75,11 +77,11 @@ describe('ExportModal', () => {
   it('should allow selecting Markdown format', () => {
     render(<ExportModal {...defaultProps} />);
     
-    const markdownRadio = screen.getByLabelText('Markdown');
+    const markdownRadio = screen.getByDisplayValue('markdown');
     fireEvent.click(markdownRadio);
     
     expect(markdownRadio).toBeChecked();
-    expect(screen.getByLabelText('CSV')).not.toBeChecked();
+    expect(screen.getByDisplayValue('csv')).not.toBeChecked();
   });
 
   it('should have status filter checkboxes', () => {
@@ -187,7 +189,7 @@ describe('ExportModal', () => {
     render(<ExportModal {...defaultProps} onExport={onExport} />);
     
     // Select Markdown format
-    fireEvent.click(screen.getByLabelText('Markdown'));
+    fireEvent.click(screen.getByDisplayValue('markdown'));
     fireEvent.click(screen.getByText('Export'));
     
     expect(onExport).toHaveBeenCalledWith({

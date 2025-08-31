@@ -728,6 +728,66 @@ async function startServer(testPort = null) {
                 res.end('Error deleting task: ' + err.message);
             }
             
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/final-summary') && req.method === 'POST') {
+            // Handle POST /api/tasks/{projectId}/final-summary
+            const pathParts = url.pathname.split('/');
+            const projectId = pathParts[pathParts.length - 2]; // Get projectId from path
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            
+            req.on('end', async () => {
+                try {
+                    const { completedTasks } = JSON.parse(body);
+                    
+                    if (!Array.isArray(completedTasks) || completedTasks.length === 0) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'No completed tasks provided' }));
+                        return;
+                    }
+                    
+                    // Generate summary from completed tasks
+                    const taskSummaries = completedTasks.map(task => `- ${task.name}: ${task.summary}`).join('\n');
+                    const finalSummary = `Project Summary:\n\nCompleted Tasks:\n${taskSummaries}\n\nOverall: Successfully completed ${completedTasks.length} task${completedTasks.length === 1 ? '' : 's'} with comprehensive implementation and testing.`;
+                    
+                    // Save the summary to tasks.json
+                    try {
+                        const data = await fs.readFile(project.path, 'utf8');
+                        let tasksData = JSON.parse(data);
+                        
+                        // Handle backward compatibility
+                        if (Array.isArray(tasksData)) {
+                            tasksData = { tasks: tasksData };
+                        }
+                        
+                        tasksData.finalSummary = finalSummary;
+                        tasksData.finalSummaryGeneratedAt = getLocalISOString();
+                        
+                        await fs.writeFile(project.path, JSON.stringify(tasksData, null, 2), 'utf8');
+                        
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ summary: finalSummary }));
+                    } catch (fileErr) {
+                        console.error('Error saving final summary:', fileErr);
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Failed to save summary' }));
+                    }
+                } catch (err) {
+                    console.error('Error generating final summary:', err);
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid request data' }));
+                }
+            });
+            
         } else if (url.pathname.startsWith('/api/tasks/')) {
             const projectId = url.pathname.split('?')[0].split('/').pop();
             const project = projects.find(p => p.id === projectId);
@@ -783,6 +843,8 @@ async function startServer(testPort = null) {
                 const response = {
                     tasks: tasksData.tasks || [],
                     initialRequest: tasksData.initialRequest || null,
+                    finalSummary: tasksData.finalSummary || null,
+                    finalSummaryGeneratedAt: tasksData.finalSummaryGeneratedAt || null,
                     projectRoot: project.projectRoot || null
                 };
                 

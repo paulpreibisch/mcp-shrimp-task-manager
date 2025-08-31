@@ -13,7 +13,7 @@ import AgentInfoModal from './AgentInfoModal';
 import { useTranslation } from 'react-i18next';
 import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
 
-function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask, showToast }) {
+function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask, showToast, finalSummary }) {
   const { t } = useTranslation();
   const [selectedTask, setSelectedTask] = useState(null);
   const [availableAgents, setAvailableAgents] = useState([]);
@@ -682,6 +682,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           }}
           taskIndex={mergedData.findIndex(t => t.id === selectedTask.id)}
           allTasks={mergedData}
+          finalSummary={finalSummary}
           onEdit={() => {
             setSelectedTask({ ...selectedTask, editMode: true });
           }}

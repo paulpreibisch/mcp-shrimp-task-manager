@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import FinalSummary from './FinalSummary';
 
-function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex, allTasks, isHistorical = false, onEdit }) {
+function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex, allTasks, isHistorical = false, onEdit, finalSummary }) {
   const { t } = useTranslation();
   
   // Keyboard navigation
@@ -308,6 +309,19 @@ function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex
               ))}
             </div>
           </div>
+        )}
+
+        {/* Final Summary - only show for project root view (when allTasks is available) */}
+        {allTasks && allTasks.length > 1 && !isHistorical && (
+          <FinalSummary
+            tasks={allTasks}
+            projectId={task.projectId || 'default'}
+            onSummaryGenerated={(summary) => {
+              // This callback could be used to update the project's summary
+              console.log('Final summary generated:', summary);
+            }}
+            existingSummary={finalSummary}
+          />
         )}
         
         <div className="keyboard-shortcuts-hint">
