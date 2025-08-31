@@ -1,6 +1,8 @@
 # 🦐 Shrimp Task Manager v3.1.0 Release Notes
 
-## 🎉 New Feature: Initial Request Display
+## 🎉 New Features
+
+### 1️⃣ Initial Request Display
 
 ### Overview
 Version 3.1.0 introduces a game-changing feature that addresses a common user need: **understanding the context behind task lists**. The new **Initial Request Display** feature captures and prominently displays the original user request that initiated task planning, providing essential context for why tasks were created.
@@ -102,10 +104,87 @@ Comprehensive test coverage ensures reliability:
 - New task plans automatically use the enhanced format
 - The viewer handles both formats seamlessly
 
+### 2️⃣ Project Setup Command
+
+#### Overview
+The new **`setup_project`** MCP command revolutionizes how you initialize projects for task management. With a single command, you can instantly configure any repository to work with the Shrimp Task Manager.
+
+#### 🎯 Key Features
+
+##### 🚀 **One-Command Setup**
+Simply say: `"use task-manager to set up new project"`
+- Automatically configures the current project
+- No manual configuration required
+- Works with any git repository or project folder
+
+##### 🤖 **Smart Profile Generation**
+- Auto-generates meaningful profile names from project paths
+- Intelligently uses folder names for context
+- Avoids generic parent folders (like 'repos', 'projects')
+- Example: `/home/user/projects/my-awesome-app` → `my_awesome_app`
+
+##### 📁 **Automatic File Management**
+- Creates data directory if it doesn't exist
+- Initializes `tasks.json` with project metadata
+- Updates `~/.shrimp-task-viewer-settings.json` automatically
+- Handles existing projects gracefully (updates instead of duplicating)
+
+#### 💻 How to Use
+
+**Basic Usage:**
+```
+"use task-manager to set up new project"
+```
+
+**With Custom Profile Name:**
+```
+"use setup_project with profileName: 'my-custom-name'"
+```
+
+**From Specific Path:**
+```
+"use setup_project with projectPath: '/path/to/project'"
+```
+
+#### 📝 What Gets Created
+
+1. **Settings Entry** in `~/.shrimp-task-viewer-settings.json`:
+   ```json
+   {
+     "profileName": "your_project_name",
+     "taskPath": "/path/to/data/your_project_name_tasks.json",
+     "projectRoot": "/path/to/your/project",
+     "addedAt": "2025-08-31T16:35:09.510Z"
+   }
+   ```
+
+2. **Tasks File** with initial metadata:
+   ```json
+   {
+     "tasks": [],
+     "initialRequest": "Project: your_project_name\nCreated: ...\nPath: ...",
+     "createdAt": "2025-08-31T16:35:09.521Z",
+     "updatedAt": "2025-08-31T16:35:09.521Z"
+   }
+   ```
+
+#### 🔄 Integration with Task Viewer
+- Project immediately appears in the Projects dropdown
+- Ready for task planning and management
+- Fully compatible with all existing features
+- Works seamlessly with the Initial Request Display feature
+
+#### 💡 Use Cases
+- **New Repository Setup**: Instantly configure a freshly cloned repo
+- **Multiple Projects**: Manage tasks across different projects easily
+- **Team Onboarding**: Quick setup for new team members
+- **Context Switching**: Effortlessly switch between project contexts
+
 ### 🐛 Bug Fixes
 - Fixed task file format handling in server response
 - Improved error handling for malformed JSON files
 - Enhanced cache management for better performance
+- Added directory creation for data paths to prevent ENOENT errors
 
 ---
 
