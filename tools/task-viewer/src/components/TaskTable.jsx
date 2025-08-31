@@ -35,43 +35,40 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   // Generate task number mapping
   const taskNumberMap = useMemo(() => generateTaskNumbers(mergedData), [mergedData]);
   
-  // Helper function to map agent filenames to display names
+  /**
+   * Maps agent assignment values to display names for the dropdown UI.
+   * 
+   * This function handles the mapping between different agent formats:
+   * - AI assignments: Uses raw filenames like 'test-expert.md'
+   * - UI assignments: Uses processed display names like 'Test Expert'
+   * 
+   * @param {string} agentValue - The agent value from task data (could be filename or display name)
+   * @param {Array} availableAgents - Array of available agents with id/name mappings
+   * @returns {string} The display name for the dropdown, or original value if no match
+   */
   const mapAgentToDisplayName = (agentValue, availableAgents) => {
-    if (!agentValue || availableAgents.length === 0) return '';
-    
-    // First, check if it's already a display name
-    const exactMatch = availableAgents.find(agent => agent.name === agentValue);
-    if (exactMatch) return agentValue;
-    
-    // Check if it matches a raw filename by comparing the base names
-    // This handles cases like 'test-expert.md' → 'Test Expert'  
-    const normalizedAgentValue = agentValue.replace(/\.(md|yaml|yml)$/, '');
-    
-    for (const agent of availableAgents) {
-      const normalizedAgentName = (agent.metadata?.originalName || agent.id || '').replace(/\.(md|yaml|yml)$/, '');
-      
-      // Direct filename match (e.g., 'test-expert.md' matches 'test-expert.md')
-      if (normalizedAgentName === normalizedAgentValue) {
-        return agent.name;
-      }
-      
-      // Check if the agent filename processed matches what we expect
-      // e.g., 'ui-developer' → 'UI Developer'
-      const processedFromFilename = normalizedAgentName
-        .replace(/-/g, ' ')
-        .replace(/\b\w/g, l => l.toUpperCase());
-      
-      if (processedFromFilename === agent.name) {
-        const processedFromValue = normalizedAgentValue
-          .replace(/-/g, ' ')
-          .replace(/\b\w/g, l => l.toUpperCase());
-        if (processedFromValue === agent.name) {
-          return agent.name;
-        }
-      }
+    // Handle empty or invalid inputs
+    if (!agentValue || typeof agentValue !== 'string' || availableAgents.length === 0) {
+      return '';
     }
     
-    // If no match found, return the original value
+    // Strategy 1: Check if it's already a display name (UI format)
+    const exactMatch = availableAgents.find(agent => agent.name === agentValue);
+    if (exactMatch) {
+      return agentValue; // Already in correct format
+    }
+    
+    // Strategy 2: Handle AI assignment format (filename with extension)
+    // Remove file extension for comparison with agent IDs
+    const normalizedValue = agentValue.replace(/\.(md|yaml|yml)$/i, '');
+    const idMatch = availableAgents.find(agent => agent.id === normalizedValue);
+    
+    if (idMatch) {
+      return idMatch.name; // Return the processed display name
+    }
+    
+    // Strategy 3: If no match found, return original value
+    // This maintains backward compatibility and handles edge cases
     return agentValue;
   };
 
@@ -86,14 +83,26 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           const agents = await response.json();
           
           // Transform agent data for TaskTable use
-          const formattedAgents = agents.map(agent => ({
-            id: agent.name?.replace(/\.(md|yaml|yml)$/, '') || `agent-${Math.random()}`,
-            name: agent.metadata?.name || agent.name?.replace(/\.(md|yaml|yml)$/, '').replace(/-/g, ' ') || 'Unknown Agent',
-            description: agent.metadata?.description || '',
-            color: agent.metadata?.color || null,
-            type: agent.type,
-            tools: agent.metadata?.tools || []
-          }));
+          // This creates the mapping between AI assignment format (filenames) and UI display format
+          const formattedAgents = agents.map(agent => {
+            const filename = agent.name || '';
+            const baseFilename = filename.replace(/\.(md|yaml|yml)$/, '');
+            
+            return {
+              // id: Used to match against AI assignments (filename without extension)
+              id: baseFilename || `agent-${Math.random()}`,
+              
+              // name: Display name shown in dropdown (processed from metadata or filename)
+              name: agent.metadata?.name || 
+                    baseFilename.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 
+                    'Unknown Agent',
+              
+              description: agent.metadata?.description || '',
+              color: agent.metadata?.color || null,
+              type: agent.type,
+              tools: agent.metadata?.tools || []
+            };
+          });
           
           setAvailableAgents(formattedAgents);
         }
@@ -851,8 +860,6 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
                 </option>
               ))}
             </select>
-          </div>
-          <div className="bulk-actions-right">
             <button 
               className="bulk-action-button ai-assign"
               data-testid="ai-assign-agents-button"
