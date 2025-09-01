@@ -126,15 +126,15 @@ Context: {context}`;
       }
       
       // Custom templates (these should take precedence)
-      if (filePath === path.join(mockTemplatesDir, 'planTask.txt')) {
+      if (filePath === path.join(mockTemplatesDir, 'planTask', 'index.md')) {
         return Promise.resolve(customPlanTaskTemplate);
       }
-      if (filePath === path.join(mockTemplatesDir, 'executeTask.txt')) {
+      if (filePath === path.join(mockTemplatesDir, 'executeTask', 'index.md')) {
         return Promise.resolve(customExecuteTaskTemplate);
       }
       
       // Default templates (should be overridden by custom)
-      if (filePath.includes('templates_en') && filePath.includes('planTask')) {
+      if (filePath.includes('templates_en') && filePath.includes('planTask') && filePath.includes('index.md')) {
         return Promise.resolve(defaultPlanTaskTemplate);
       }
       
@@ -151,15 +151,15 @@ Context: {context}`;
       }
       
       // Custom templates (these should take precedence)
-      if (filePath === path.join(mockTemplatesDir, 'planTask.txt')) {
+      if (filePath === path.join(mockTemplatesDir, 'planTask', 'index.md')) {
         return customPlanTaskTemplate;
       }
-      if (filePath === path.join(mockTemplatesDir, 'executeTask.txt')) {
+      if (filePath === path.join(mockTemplatesDir, 'executeTask', 'index.md')) {
         return customExecuteTaskTemplate;
       }
       
       // Default templates (should be overridden by custom)
-      if (filePath.includes('templates_en') && filePath.includes('planTask')) {
+      if (filePath.includes('templates_en') && filePath.includes('planTask') && filePath.includes('index.md')) {
         return defaultPlanTaskTemplate;
       }
       
@@ -185,10 +185,10 @@ Context: {context}`;
     
     mockFs.readdir.mockImplementation((dirPath) => {
       if (dirPath.includes('templates_en')) {
-        return Promise.resolve(['planTask.txt', 'executeTask.txt', 'analyzeTask.txt']);
+        return Promise.resolve(['planTask', 'executeTask', 'analyzeTask']);
       }
       if (dirPath.includes('.shrimp-task-viewer-templates')) {
-        return Promise.resolve(['planTask.txt', 'executeTask.txt']);
+        return Promise.resolve(['planTask', 'executeTask']);
       }
       return Promise.resolve([]);
     });

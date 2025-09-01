@@ -13,7 +13,7 @@ import AgentInfoModal from './AgentInfoModal';
 import { useTranslation } from 'react-i18next';
 import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
 
-function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask, showToast, finalSummary }) {
+function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask, showToast }) {
   const { t } = useTranslation();
   const [selectedTask, setSelectedTask] = useState(null);
   const [availableAgents, setAvailableAgents] = useState([]);
@@ -23,6 +23,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [localTaskUpdates, setLocalTaskUpdates] = useState({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Merge server data with local updates
   const mergedData = useMemo(() => {
@@ -682,7 +683,6 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           }}
           taskIndex={mergedData.findIndex(t => t.id === selectedTask.id)}
           allTasks={mergedData}
-          finalSummary={finalSummary}
           onEdit={() => {
             setSelectedTask({ ...selectedTask, editMode: true });
           }}
@@ -833,6 +833,39 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
     }
   };
 
+  // Bulk delete function
+  const handleBulkDelete = async () => {
+    const selectedTaskIds = Array.from(selectedRows);
+    if (selectedTaskIds.length === 0) return;
+
+    setLoading(true);
+    
+    try {
+      // Delete each selected task
+      const deletePromises = selectedTaskIds.map(taskId => 
+        onDeleteTask(taskId)
+      );
+
+      await Promise.all(deletePromises);
+
+      // Clear selection after successful deletion
+      setSelectedRows(new Set());
+      setShowBulkActions(false);
+      setShowDeleteConfirm(false);
+      
+      if (showToast) {
+        showToast('success', `Successfully deleted ${selectedTaskIds.length} task${selectedTaskIds.length > 1 ? 's' : ''}`);
+      }
+    } catch (error) {
+      console.error('Error bulk deleting tasks:', error);
+      if (showToast) {
+        showToast('error', 'Failed to delete some tasks');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Otherwise, show the table
   return (
     <>
@@ -868,6 +901,19 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
               disabled={loading}
             >
               {loading ? '⏳ Processing...' : `🤖 AI Assign Agents`}
+            </button>
+            <button 
+              className="bulk-action-button delete"
+              data-testid="bulk-delete-button"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={loading}
+              style={{
+                backgroundColor: '#dc2626',
+                color: 'white',
+                marginLeft: '10px'
+              }}
+            >
+              🗑️ Delete {selectedRows.size} task{selectedRows.size > 1 ? 's' : ''}
             </button>
           </div>
         </div>
@@ -999,6 +1045,97 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
           }
         }}
       />
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setShowDeleteConfirm(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div 
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#1a1a1a',
+              border: '1px solid #333',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '500px',
+              width: '90%',
+              color: '#fff'
+            }}
+          >
+            <h3 style={{ 
+              margin: '0 0 16px 0', 
+              color: '#dc2626',
+              fontSize: '20px'
+            }}>
+              ⚠️ Confirm Delete
+            </h3>
+            
+            <p style={{ 
+              marginBottom: '20px',
+              color: '#ccc',
+              lineHeight: '1.5'
+            }}>
+              Are you sure you want to delete {selectedRows.size} task{selectedRows.size > 1 ? 's' : ''}? 
+              This action cannot be undone.
+            </p>
+            
+            <div style={{ 
+              display: 'flex', 
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={loading}
+                style={{
+                  padding: '8px 20px',
+                  backgroundColor: '#4a5568',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={loading}
+                style={{
+                  padding: '8px 20px',
+                  backgroundColor: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  opacity: loading ? 0.6 : 1
+                }}
+              >
+                {loading ? '⏳ Deleting...' : `🗑️ Delete ${selectedRows.size} Task${selectedRows.size > 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

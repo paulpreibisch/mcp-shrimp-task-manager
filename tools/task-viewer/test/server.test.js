@@ -10,37 +10,23 @@ vi.mock('os', () => ({
   }
 }));
 
-// Mock fs module
+// Mock fs module - create promises interface that matches fs.promises
 const mockFs = {
   readFile: vi.fn(),
   writeFile: vi.fn(),
-  mkdir: vi.fn()
+  mkdir: vi.fn(),
+  readdir: vi.fn(),
+  stat: vi.fn(),
+  access: vi.fn(),
+  rm: vi.fn()
 };
 
 vi.mock('fs', () => {
   console.log('Setting up fs mock');
-  const mockPromises = {
-    readFile: vi.fn((filePath, encoding) => {
-      console.log('Mock fs.readFile called with:', filePath, encoding);
-      return Promise.resolve(JSON.stringify({
-        agents: [],
-        lastUpdated: new Date().toISOString(),
-        version: '3.1.0'
-      }));
-    }),
-    writeFile: vi.fn((filePath, data) => {
-      console.log('Mock fs.writeFile called with:', filePath);
-      return Promise.resolve();
-    }),
-    mkdir: vi.fn(() => Promise.resolve())
-  };
-  
-  // Copy to the global mockFs for test access
-  Object.assign(mockFs, mockPromises);
   
   return {
     default: {},
-    promises: mockPromises
+    promises: mockFs
   };
 });
 
@@ -53,10 +39,44 @@ describe('Server', () => {
   const mockTempDir = '/mock/tmp/shrimp-task-viewer';
   
   beforeEach(() => {
-    // Just reset call counts but keep implementations
+    // Reset all mock functions and set up default implementations
     mockFs.readFile.mockClear();
     mockFs.writeFile.mockClear();
     mockFs.mkdir.mockClear();
+    mockFs.readdir.mockClear();
+    mockFs.stat.mockClear();
+    mockFs.access.mockClear();
+    mockFs.rm.mockClear();
+
+    // Set up default implementations
+    mockFs.readFile.mockImplementation((filePath, encoding) => {
+      console.log('Mock fs.readFile called with:', filePath, encoding);
+      if (filePath === mockSettingsFile) {
+        return Promise.resolve(JSON.stringify({
+          agents: [],
+          projects: [],
+          lastUpdated: new Date().toISOString(),
+          version: '3.1.0'
+        }));
+      }
+      const error = new Error('ENOENT: no such file or directory');
+      error.code = 'ENOENT';
+      return Promise.reject(error);
+    });
+
+    mockFs.writeFile.mockImplementation((filePath, data) => {
+      console.log('Mock fs.writeFile called with:', filePath);
+      return Promise.resolve();
+    });
+
+    mockFs.mkdir.mockImplementation(() => Promise.resolve());
+    mockFs.readdir.mockImplementation(() => Promise.resolve([]));
+    mockFs.stat.mockImplementation(() => Promise.resolve({ 
+      isDirectory: () => false,
+      isFile: () => true 
+    }));
+    mockFs.access.mockImplementation(() => Promise.resolve());
+    mockFs.rm.mockImplementation(() => Promise.resolve());
   });
 
   afterEach(async () => {

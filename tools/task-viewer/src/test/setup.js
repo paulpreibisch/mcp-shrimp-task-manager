@@ -74,6 +74,12 @@ beforeAll(async () => {
           noTasksMessage: 'No tasks available',
           filteredFrom: 'filtered from',
           total: 'total',
+          // TemplateEditor specific translations
+          saving: 'Saving...',
+          saveTemplate: '💾 Save Template',
+          // TaskDetailView specific translations
+          description: 'Description',
+          noDescriptionProvided: '—',
         },
       },
     },
@@ -316,6 +322,8 @@ const mockApiResponses = {
       name: 'Test Profile',
       taskFolderPath: '/test/tasks',
       projectRootPath: '/test/project',
+      path: '/test/tasks/tasks.json',
+      projectRoot: '/test/project',
       isActive: true,
     },
     {
@@ -323,6 +331,8 @@ const mockApiResponses = {
       name: 'Another Profile',
       taskFolderPath: '/test/other',
       projectRootPath: '/test/other-project',
+      path: '/test/other/tasks.json',
+      projectRoot: '/test/other-project',
       isActive: false,
     },
   ]),

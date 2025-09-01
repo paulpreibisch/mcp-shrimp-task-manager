@@ -313,5 +313,23 @@
   "inProgress": "进行中",
   "pending": "待处理",
   "autoRefresh": "自动刷新",
-  "searchTasksPlaceholder": "搜索任务..."
+  "searchTasksPlaceholder": "搜索任务...",
+  "archive": "归档",
+  "archiveButton": "归档任务",
+  "archiveModal": {
+    "title": "归档当前任务",
+    "message": "是否归档此项目的所有当前任务？",
+    "projectName": "项目",
+    "taskCount": "任务总数"
+  },
+  "archiveTab": "归档",
+  "archivedTaskLists": "已归档任务列表",
+  "importArchive": "导入",
+  "deleteArchive": "删除",
+  "viewArchive": "查看",
+  "appendTasks": "添加到当前任务",
+  "replaceTasks": "替换所有当前任务",
+  "importWarning": "警告：这将删除所有当前任务",
+  "archiveSuccess": "任务归档成功",
+  "noArchivesFound": "未找到已归档的任务列表"
 }

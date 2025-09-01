@@ -728,8 +728,8 @@ async function startServer(testPort = null) {
                 res.end('Error deleting task: ' + err.message);
             }
             
-        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/final-summary') && req.method === 'POST') {
-            // Handle POST /api/tasks/{projectId}/final-summary
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/summarize') && req.method === 'POST') {
+            // Handle POST /api/tasks/{projectId}/summarize
             const pathParts = url.pathname.split('/');
             const projectId = pathParts[pathParts.length - 2]; // Get projectId from path
             const project = projects.find(p => p.id === projectId);
@@ -747,7 +747,7 @@ async function startServer(testPort = null) {
             
             req.on('end', async () => {
                 try {
-                    const { completedTasks } = JSON.parse(body);
+                    const { completedTasks, totalTasks, incompleteTasks } = JSON.parse(body);
                     
                     if (!Array.isArray(completedTasks) || completedTasks.length === 0) {
                         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -755,9 +755,198 @@ async function startServer(testPort = null) {
                         return;
                     }
                     
-                    // Generate summary from completed tasks
-                    const taskSummaries = completedTasks.map(task => `- ${task.name}: ${task.summary}`).join('\n');
-                    const finalSummary = `Project Summary:\n\nCompleted Tasks:\n${taskSummaries}\n\nOverall: Successfully completed ${completedTasks.length} task${completedTasks.length === 1 ? '' : 's'} with comprehensive implementation and testing.`;
+                    // Generate summary using OpenAI
+                    let summary;
+                    
+                    try {
+                        // Try to get OpenAI API key
+                        let openaiApiKey = null;
+                        try {
+                            const globalSettings = JSON.parse(await fs.readFile(GLOBAL_SETTINGS_FILE, 'utf8'));
+                            openaiApiKey = globalSettings.openAIKey || globalSettings.openaiApiKey;
+                        } catch (settingsErr) {
+                            // Try environment variable as fallback
+                            openaiApiKey = process.env.OPENAI_API_KEY;
+                        }
+
+                        if (openaiApiKey) {
+                            // Create the prompt for OpenAI
+                            const taskSummaries = completedTasks.map(task => `- ${task.name}: ${task.summary}`).join('\n');
+                            
+                            const incompleteTasksInfo = incompleteTasks && incompleteTasks.length > 0
+                                ? `\n\nINCOMPLETE TASKS:\n${incompleteTasks.map(task => `- ${task.name} (${task.status})`).join('\n')}`
+                                : '';
+                                
+                            const totalTasksInfo = totalTasks && completedTasks.length < totalTasks 
+                                ? `\n\nIMPORTANT: Only ${completedTasks.length} out of ${totalTasks} total tasks are completed. This is a PARTIAL progress report.${incompleteTasksInfo}`
+                                : totalTasks 
+                                    ? `\n\nAll ${completedTasks.length} tasks in this project are completed.`
+                                    : '';
+
+                            const prompt = `Generate an executive summary for these completed tasks:
+
+${taskSummaries}${totalTasksInfo}
+
+Create a brief, impactful summary that highlights business value and key achievements. If this is partial progress, clearly indicate remaining work and include the incomplete tasks in a red warning section.`;
+
+                            // Call OpenAI API
+                            const response = await new Promise((resolve, reject) => {
+                                const postData = JSON.stringify({
+                                    model: 'gpt-4',
+                                    messages: [
+                                        {
+                                            role: 'system',
+                                            content: `You are an experienced Project Manager who excels at delivering concise executive reports. 
+
+Your reports use:
+✅ Green checkmarks for completed items
+🚀 Rockets for launches/deployments  
+🎯 Targets for objectives met
+🔧 Wrenches for technical implementations
+📊 Charts for metrics/analysis
+⚡ Lightning for performance improvements
+🛡️ Shields for security features
+📝 Notes for documentation
+
+Format your response with:
+- **Bold** markdown headings for sections
+- Bullet points with relevant emojis
+- Maximum 150 words total
+- Focus on business value and outcomes
+- No technical jargon
+
+IMPORTANT: 
+- If there are 7 or fewer completed tasks, list ALL of them individually. Only use "X more" notation if there are 8+ completed tasks.
+- If this is partial progress (not all tasks completed), clearly indicate this in the Project Status and mention remaining work.
+
+Structure for COMPLETE projects:
+**Project Status:**
+🎉 All X tasks completed successfully
+
+**Key Deliverables:**
+• ✅ [List ALL completed tasks if 7 or fewer, otherwise first 5 + "X more"]
+
+**Impact:**
+Business value achieved
+
+Structure for PARTIAL progress:
+**Project Status:**  
+🚧 X of Y tasks completed (Y% progress)
+
+**Completed Deliverables:**
+• ✅ [List completed tasks]
+
+**⚠️ Remaining Tasks:**
+• ❌ [List incomplete tasks by name]
+
+**Impact:**
+Progress achieved so far and remaining scope`
+                                        },
+                                        {
+                                            role: 'user',
+                                            content: prompt
+                                        }
+                                    ],
+                                    max_tokens: 300,
+                                    temperature: 0.2
+                                });
+
+                                const options = {
+                                    hostname: 'api.openai.com',
+                                    port: 443,
+                                    path: '/v1/chat/completions',
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${openaiApiKey}`,
+                                        'Content-Length': Buffer.byteLength(postData)
+                                    }
+                                };
+
+                                const req = https.request(options, (res) => {
+                                    let data = '';
+                                    res.on('data', (chunk) => data += chunk);
+                                    res.on('end', () => {
+                                        if (res.statusCode === 200) {
+                                            try {
+                                                const result = JSON.parse(data);
+                                                resolve(result.choices[0].message.content.trim());
+                                            } catch (parseErr) {
+                                                reject(new Error('Invalid JSON from OpenAI'));
+                                            }
+                                        } else {
+                                            reject(new Error('OpenAI API error: ' + res.statusCode + ' - ' + data));
+                                        }
+                                    });
+                                });
+
+                                req.on('error', reject);
+                                req.write(postData);
+                                req.end();
+                            });
+
+                            summary = response;
+                        } else {
+                            // Fallback to basic summary generation if no OpenAI key
+                            // Show all tasks if 7 or fewer, otherwise show first 5 with remaining count
+                            const maxToShow = completedTasks.length <= 7 ? completedTasks.length : 5;
+                            const taskList = completedTasks.slice(0, maxToShow).map(task => `• ✅ ${task.name}`).join('\n');
+                            const remaining = completedTasks.length > maxToShow ? `\n• ➕ ${completedTasks.length - maxToShow} additional tasks completed` : '';
+                            
+                            // Create a more descriptive impact based on task summaries
+                            const impact = completedTasks.length > 0 && completedTasks[0].summary 
+                                ? `📊 ${completedTasks.filter(t => t.summary).length} features fully implemented and tested`
+                                : `📊 All ${completedTasks.length} objectives achieved`;
+                            
+                            const isPartialProgress = totalTasks && completedTasks.length < totalTasks;
+                            const statusLine = isPartialProgress 
+                                ? `🚧 ${completedTasks.length} of ${totalTasks} tasks completed (${Math.round((completedTasks.length / totalTasks) * 100)}% progress)`
+                                : `🚀 ${completedTasks.length} task${completedTasks.length === 1 ? '' : 's'} completed successfully`;
+                            
+                            const sectionTitle = isPartialProgress ? 'Completed Deliverables' : 'Key Deliverables';
+                            
+                            // Add warning section for incomplete tasks
+                            const warningSection = isPartialProgress && incompleteTasks && incompleteTasks.length > 0
+                                ? `\n\n**⚠️ Remaining Tasks:**\n${incompleteTasks.map(task => `• ❌ ${task.name}`).join('\n')}`
+                                : '';
+                            
+                            const impactMessage = isPartialProgress 
+                                ? `Partial progress achieved. Project completion pending ${totalTasks - completedTasks.length} remaining task${totalTasks - completedTasks.length === 1 ? '' : 's'}.`
+                                : impact;
+                            
+                            summary = `**Project Status:**\n${statusLine}\n\n**${sectionTitle}:**\n${taskList}${remaining}${warningSection}\n\n**Impact:**\n${impactMessage}`;
+                        }
+                    } catch (openaiError) {
+                        console.error('Error generating AI summary, using fallback:', openaiError);
+                        // Fallback summary generation
+                        // Show all tasks if 7 or fewer, otherwise show first 5 with remaining count
+                        const maxToShow = completedTasks.length <= 7 ? completedTasks.length : 5;
+                        const taskList = completedTasks.slice(0, maxToShow).map(task => `• ✅ ${task.name}`).join('\n');
+                        const remaining = completedTasks.length > maxToShow ? `\n• ➕ ${completedTasks.length - maxToShow} additional tasks completed` : '';
+                        
+                        // Create a more descriptive impact based on task summaries
+                        const impact = completedTasks.length > 0 && completedTasks[0].summary 
+                            ? `📊 ${completedTasks.filter(t => t.summary).length} features fully implemented and tested`
+                            : `📊 All ${completedTasks.length} objectives achieved`;
+                        
+                        const isPartialProgress = totalTasks && completedTasks.length < totalTasks;
+                        const statusLine = isPartialProgress 
+                            ? `🚧 ${completedTasks.length} of ${totalTasks} tasks completed (${Math.round((completedTasks.length / totalTasks) * 100)}% progress)`
+                            : `🚀 ${completedTasks.length} task${completedTasks.length === 1 ? '' : 's'} completed successfully`;
+                        
+                        const sectionTitle = isPartialProgress ? 'Completed Deliverables' : 'Key Deliverables';
+                        
+                        // Add warning section for incomplete tasks
+                        const warningSection = isPartialProgress && incompleteTasks && incompleteTasks.length > 0
+                            ? `\n\n**⚠️ Remaining Tasks:**\n${incompleteTasks.map(task => `• ❌ ${task.name}`).join('\n')}`
+                            : '';
+                        
+                        const impactMessage = isPartialProgress 
+                            ? `Partial progress achieved. Project completion pending ${totalTasks - completedTasks.length} remaining task${totalTasks - completedTasks.length === 1 ? '' : 's'}.`
+                            : impact;
+                        
+                        finalSummary = `**Project Status:**\n${statusLine}\n\n**${sectionTitle}:**\n${taskList}${remaining}${warningSection}\n\n**Impact:**\n${impactMessage}`;
+                    }
                     
                     // Save the summary to tasks.json
                     try {
@@ -769,20 +958,20 @@ async function startServer(testPort = null) {
                             tasksData = { tasks: tasksData };
                         }
                         
-                        tasksData.finalSummary = finalSummary;
-                        tasksData.finalSummaryGeneratedAt = getLocalISOString();
+                        tasksData.summary = summary;
+                        tasksData.summaryGeneratedAt = getLocalISOString();
                         
                         await fs.writeFile(project.path, JSON.stringify(tasksData, null, 2), 'utf8');
                         
                         res.writeHead(200, { 'Content-Type': 'application/json' });
-                        res.end(JSON.stringify({ summary: finalSummary }));
+                        res.end(JSON.stringify({ summary: summary }));
                     } catch (fileErr) {
-                        console.error('Error saving final summary:', fileErr);
+                        console.error('Error saving summary:', fileErr);
                         res.writeHead(500, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify({ error: 'Failed to save summary' }));
                     }
                 } catch (err) {
-                    console.error('Error generating final summary:', err);
+                    console.error('Error generating summary:', err);
                     res.writeHead(400, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'Invalid request data' }));
                 }
@@ -843,8 +1032,8 @@ async function startServer(testPort = null) {
                 const response = {
                     tasks: tasksData.tasks || [],
                     initialRequest: tasksData.initialRequest || null,
-                    finalSummary: tasksData.finalSummary || null,
-                    finalSummaryGeneratedAt: tasksData.finalSummaryGeneratedAt || null,
+                    summary: tasksData.summary || null,
+                    summaryGeneratedAt: tasksData.summaryGeneratedAt || null,
                     projectRoot: project.projectRoot || null
                 };
                 

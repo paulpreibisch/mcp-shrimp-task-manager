@@ -437,7 +437,7 @@ function AgentsListView({
             </>
           ) : (
             <>
-              No agents found in {emptyPath}. 
+              No agents found in {emptyPath}.{' '}
               {isGlobal ? (
                 <>
                   Make sure this directory exists and contains .md or .yaml agent files, or update the Claude folder path in{' '}

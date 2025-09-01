@@ -141,7 +141,6 @@ function HistoryTasksView({
         onBack={() => setSelectedTask(null)}
         projectRoot={null} // History doesn't have project root context
         isHistorical={true} // Indicate this is from history
-        finalSummary={finalSummary}
       />
     );
   }

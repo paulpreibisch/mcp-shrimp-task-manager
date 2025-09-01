@@ -33,6 +33,7 @@ describe('TaskDetailView Component', () => {
   };
 
   const mockOnBack = vi.fn();
+  const mockOnNavigateToTask = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,7 +42,13 @@ describe('TaskDetailView Component', () => {
   describe('Rendering', () => {
     it('renders null when no task provided', () => {
       const { container } = render(
-        <TaskDetailView task={null} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={null} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(container.firstChild).toBeNull();
@@ -49,7 +56,13 @@ describe('TaskDetailView Component', () => {
 
     it('renders task header with name and back button', () => {
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={mockTask} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[mockTask]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.getByText('Implement authentication system')).toBeInTheDocument();
@@ -58,7 +71,13 @@ describe('TaskDetailView Component', () => {
 
     it('displays all basic task information', () => {
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={mockTask} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[mockTask]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       // Check labels
@@ -74,7 +93,13 @@ describe('TaskDetailView Component', () => {
 
     it('displays status with correct color', () => {
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={mockTask} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[mockTask]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       const statusBadge = screen.getByText('in progress');
@@ -84,7 +109,13 @@ describe('TaskDetailView Component', () => {
 
     it('shows completed date for completed tasks', () => {
       render(
-        <TaskDetailView task={mockCompletedTask} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={mockCompletedTask} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[mockCompletedTask]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.getByText('Completed:')).toBeInTheDocument();
@@ -93,7 +124,13 @@ describe('TaskDetailView Component', () => {
 
     it('does not show completed date for incomplete tasks', () => {
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={mockTask} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[mockTask]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.queryByText('Completed:')).not.toBeInTheDocument();
@@ -112,7 +149,13 @@ describe('TaskDetailView Component', () => {
     it('shows default text when description is missing', () => {
       const taskWithoutDesc = { ...mockTask, description: null };
       render(
-        <TaskDetailView task={taskWithoutDesc} onBack={mockOnBack} taskIndex={0} allTasks={[taskWithoutDesc]} />
+        <TaskDetailView 
+          task={taskWithoutDesc} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[taskWithoutDesc]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.getByText('—')).toBeInTheDocument();
@@ -120,7 +163,13 @@ describe('TaskDetailView Component', () => {
 
     it('displays notes section when notes exist', () => {
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={mockTask} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[mockTask]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.getByText('Notes')).toBeInTheDocument();
@@ -130,7 +179,13 @@ describe('TaskDetailView Component', () => {
     it('hides notes section when notes are null', () => {
       const taskWithoutNotes = { ...mockTask, notes: null };
       render(
-        <TaskDetailView task={taskWithoutNotes} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={taskWithoutNotes} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[taskWithoutNotes]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.queryByText('Notes')).not.toBeInTheDocument();
@@ -138,7 +193,13 @@ describe('TaskDetailView Component', () => {
 
     it('displays implementation guide when present', () => {
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={mockTask} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[mockTask]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.getByText('Implementation Guide')).toBeInTheDocument();
@@ -147,7 +208,13 @@ describe('TaskDetailView Component', () => {
 
     it('displays verification criteria when present', () => {
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={mockTask} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[mockTask]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.getByText('Verification Criteria')).toBeInTheDocument();
@@ -156,7 +223,13 @@ describe('TaskDetailView Component', () => {
 
     it('displays summary when present', () => {
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={mockTask} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[mockTask]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.getByText('Summary')).toBeInTheDocument();
@@ -197,7 +270,13 @@ describe('TaskDetailView Component', () => {
     it('hides dependencies section when null', () => {
       const taskWithNullDeps = { ...mockTask, dependencies: null };
       render(
-        <TaskDetailView task={taskWithNullDeps} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={taskWithNullDeps} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[taskWithNullDeps]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.queryByText('Dependencies')).not.toBeInTheDocument();
@@ -207,7 +286,13 @@ describe('TaskDetailView Component', () => {
   describe('Related Files', () => {
     it('displays related files section with all files', () => {
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} />
+        <TaskDetailView 
+          task={mockTask} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[mockTask]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
       );
 
       expect(screen.getByText('Related Files')).toBeInTheDocument();

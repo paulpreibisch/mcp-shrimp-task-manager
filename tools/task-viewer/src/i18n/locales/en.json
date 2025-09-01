@@ -216,5 +216,23 @@
   "inProgress": "IN PROGRESS",
   "pending": "PENDING",
   "autoRefresh": "Auto Refresh",
-  "searchTasksPlaceholder": "Search tasks..."
+  "searchTasksPlaceholder": "Search tasks...",
+  "archive": "Archive",
+  "archiveButton": "Archive Tasks",
+  "archiveModal": {
+    "title": "Archive Current Tasks",
+    "message": "Archive all current tasks for this project?",
+    "projectName": "Project",
+    "taskCount": "Total Tasks"
+  },
+  "archiveTab": "Archive",
+  "archivedTaskLists": "Archived Task Lists",
+  "importArchive": "Import",
+  "deleteArchive": "Delete",
+  "viewArchive": "View",
+  "appendTasks": "Append to current tasks",
+  "replaceTasks": "Replace all current tasks",
+  "importWarning": "Warning: This will remove all current tasks",
+  "archiveSuccess": "Tasks archived successfully",
+  "noArchivesFound": "No archived task lists found"
 }

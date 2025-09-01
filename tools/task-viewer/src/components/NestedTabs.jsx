@@ -126,8 +126,8 @@ const NestedTabs = ({
                     <Tab.Panel key={profile.id}>
                       {/* Inner project tabs */}
                       <div className="inner-tabs-wrapper">
-                        <Tab.Group selectedIndex={projectInnerTab === 'tasks' ? 0 : projectInnerTab === 'history' ? 1 : projectInnerTab === 'agents' ? 2 : 3} 
-                                   onChange={(index) => setProjectInnerTab(['tasks', 'history', 'agents', 'settings'][index])}>
+                        <Tab.Group selectedIndex={projectInnerTab === 'tasks' ? 0 : projectInnerTab === 'history' ? 1 : projectInnerTab === 'agents' ? 2 : projectInnerTab === 'settings' ? 3 : 4} 
+                                   onChange={(index) => setProjectInnerTab(['tasks', 'history', 'agents', 'settings', 'archive'][index])}>
                           <Tab.List className="inner-tabs-list project-inner-tabs">
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}
                                onClick={() => {
@@ -153,6 +153,9 @@ const NestedTabs = ({
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
                             <span>⚙️ {t('settings')}</span>
                           </Tab>
+                          <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
+                            <span>📦 {t('archive')}</span>
+                          </Tab>
                         </Tab.List>
 
                         <Tab.Panels className="inner-tab-panels">
@@ -171,6 +174,10 @@ const NestedTabs = ({
                           <Tab.Panel>
                             {/* Settings content */}
                             {children.settings}
+                          </Tab.Panel>
+                          <Tab.Panel>
+                            {/* Archive content */}
+                            {children.archive}
                           </Tab.Panel>
                         </Tab.Panels>
                       </Tab.Group>

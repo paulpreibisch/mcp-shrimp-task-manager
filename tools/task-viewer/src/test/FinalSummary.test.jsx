@@ -45,8 +45,13 @@ describe('FinalSummary Component', () => {
       );
 
       expect(screen.getByText('Final Summary')).toBeInTheDocument();
-      expect(screen.getByText('Generate')).toBeInTheDocument();
-      expect(screen.queryByText('Regenerate')).not.toBeInTheDocument();
+      
+      // Click to expand the section
+      const header = screen.getByText('Final Summary');
+      fireEvent.click(header);
+      
+      expect(screen.getByRole('button', { name: /Generate/ })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Regenerate/ })).not.toBeInTheDocument();
     });
 
     it('shows expanded section when clicked', () => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import TaskTable from './components/TaskTable';
+import FinalSummary from './components/FinalSummary';
 import ReleaseNotes from './components/ReleaseNotes';
 import Help from './components/Help';
 import TemplateManagement from './components/TemplateManagement';
@@ -9,6 +10,8 @@ import ActivationDialog from './components/ActivationDialog';
 import DuplicateTemplateView from './components/DuplicateTemplateView';
 import HistoryView from './components/HistoryView';
 import HistoryTasksView from './components/HistoryTasksView';
+import ArchiveView from './components/ArchiveView';
+import ArchiveDetailView from './components/ArchiveDetailView';
 import GlobalSettingsView from './components/GlobalSettingsView';
 import SubAgentsView from './components/SubAgentsView';
 import ProjectAgentsView from './components/ProjectAgentsView';
@@ -18,6 +21,8 @@ import ChatAgent from './components/ChatAgent';
 import ErrorBoundary from './components/ErrorBoundary';
 import DebugPanel from './components/DebugPanel';
 import ExportModal from './components/ExportModal';
+import ArchiveModal from './components/ArchiveModal';
+import ImportArchiveModal from './components/ImportArchiveModal';
 import { useTranslation } from 'react-i18next';
 import { parseUrlState, updateUrl, pushUrlState, getInitialUrlState, cleanUrlStateForTab } from './utils/urlStateSync';
 import NestedTabs from './components/NestedTabs';
@@ -47,7 +52,7 @@ function AppContent() {
   const [selectedProfile, setSelectedProfile] = useState(initialUrlState.profile || '');
   const [tasks, setTasks] = useState([]);
   const [initialRequest, setInitialRequest] = useState('');
-  const [finalSummary, setFinalSummary] = useState('');
+  const [summary, setSummary] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(() => {
@@ -90,7 +95,7 @@ function AppContent() {
   const [globalSettingsLoaded, setGlobalSettingsLoaded] = useState(false);
   
   // Inner project tab state (tasks, history, settings)
-  const [projectInnerTab, setProjectInnerTab] = useState(initialUrlState.projectTab || 'tasks'); // 'tasks', 'history', 'settings'
+  const [projectInnerTab, setProjectInnerTab] = useState(initialUrlState.projectTab || 'tasks'); // 'tasks', 'history', 'archive', 'settings'
   const [agentsTabRefresh, setAgentsTabRefresh] = useState(0); // Trigger for refreshing agents view
   const [tasksTabRefresh, setTasksTabRefresh] = useState(0); // Trigger for refreshing tasks view
   
@@ -102,7 +107,7 @@ function AppContent() {
   const [selectedHistoryEntry, setSelectedHistoryEntry] = useState(null);
   const [selectedHistoryTasks, setSelectedHistoryTasks] = useState([]);
   const [selectedHistoryInitialRequest, setSelectedHistoryInitialRequest] = useState('');
-  const [selectedHistoryFinalSummary, setSelectedHistoryFinalSummary] = useState('');
+  const [selectedHistorySummary, setSelectedHistorySummary] = useState('');
   
   // Toast notifications state
   const [toasts, setToasts] = useState([]);
@@ -115,6 +120,13 @@ function AppContent() {
 
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false);
+
+  // Archive modal states
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [selectedArchive, setSelectedArchive] = useState(null);
+  const [archiveView, setArchiveView] = useState('list'); // 'list' or 'details'
+  const [archives, setArchives] = useState([]);
 
   // Helper function to ensure profiles is always an array
   const getSafeProfiles = () => {
@@ -209,6 +221,136 @@ function AppContent() {
     }
   };
 
+  // Archive handler function
+  const handleArchive = () => {
+    if (!selectedProfile || tasks.length === 0) {
+      showToast('No tasks to archive', 'error');
+      return;
+    }
+
+    try {
+      // Create archive object
+      const archiveData = {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toISOString(),
+        projectId: selectedProfile,
+        projectName: profiles?.find(p => p.id === selectedProfile)?.name || 'Unknown Project',
+        initialRequest: initialRequest || '',
+        tasks: tasks,
+        stats: {
+          total: tasks.length,
+          completed: tasks.filter(t => t.status === 'completed').length,
+          inProgress: tasks.filter(t => t.status === 'in_progress').length,
+          pending: tasks.filter(t => t.status === 'pending').length
+        },
+        summary: summary || ''
+      };
+
+      // Get existing archives from localStorage
+      const storageKey = `task-archives-${selectedProfile}`;
+      const existingArchives = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      
+      // Add new archive to the beginning
+      const updatedArchives = [archiveData, ...existingArchives];
+      
+      // Limit to 50 archives to prevent localStorage overflow
+      const limitedArchives = updatedArchives.slice(0, 50);
+      
+      // Save to localStorage
+      localStorage.setItem(storageKey, JSON.stringify(limitedArchives));
+      
+      // Update state
+      setArchives(limitedArchives);
+      
+      showToast(`Archived ${tasks.length} tasks successfully`, 'success');
+    } catch (err) {
+      console.error('Archive error:', err);
+      showToast('Failed to archive tasks: ' + err.message, 'error');
+    }
+  };
+
+  // Handle archive deletion
+  const handleDeleteArchive = (archive) => {
+    if (!archive || !selectedProfile) return;
+
+    try {
+      const storageKey = `task-archives-${selectedProfile}`;
+      const existingArchives = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      
+      // Remove the archive by ID
+      const updatedArchives = existingArchives.filter(a => a.id !== archive.id);
+      
+      // Save to localStorage
+      localStorage.setItem(storageKey, JSON.stringify(updatedArchives));
+      
+      // Update state
+      setArchives(updatedArchives);
+      
+      showToast('Archive deleted successfully', 'success');
+    } catch (err) {
+      console.error('Delete archive error:', err);
+      showToast('Failed to delete archive: ' + err.message, 'error');
+    }
+  };
+
+  // Handle archive import
+  const handleImportArchive = (mode) => {
+    if (!selectedArchive || !selectedProfile) {
+      showToast('No archive selected for import', 'error');
+      return;
+    }
+
+    try {
+      let newTasks = [...selectedArchive.tasks];
+      
+      if (mode === 'append') {
+        // Add archived tasks to existing tasks
+        const existingTaskIds = new Set(tasks.map(t => t.id));
+        
+        // Filter out tasks that already exist to avoid duplicates
+        const uniqueArchivedTasks = newTasks.filter(t => !existingTaskIds.has(t.id));
+        
+        if (uniqueArchivedTasks.length === 0) {
+          showToast('All tasks from this archive already exist', 'info');
+          setShowImportModal(false);
+          return;
+        }
+        
+        newTasks = [...tasks, ...uniqueArchivedTasks];
+        showToast(`Appended ${uniqueArchivedTasks.length} tasks from archive`, 'success');
+      } else if (mode === 'replace') {
+        // Replace all current tasks with archived tasks
+        showToast(`Replaced ${tasks.length} tasks with ${newTasks.length} archived tasks`, 'success');
+      }
+
+      // Update tasks state
+      setTasks(newTasks);
+      
+      // Update initial request if present
+      if (selectedArchive.initialRequest) {
+        setInitialRequest(selectedArchive.initialRequest);
+      }
+      
+      // Update summary if present
+      if (selectedArchive.summary) {
+        setSummary(selectedArchive.summary);
+      }
+
+      // Close modal
+      setShowImportModal(false);
+      setSelectedArchive(null);
+    } catch (err) {
+      console.error('Import archive error:', err);
+      showToast('Failed to import archive: ' + err.message, 'error');
+    }
+  };
+
+  // Handle viewing archive
+  const handleViewArchive = (archive) => {
+    setSelectedArchive(archive);
+    setArchiveView('details');
+  };
+
   // Auto-refresh interval
   useEffect(() => {
     let interval;
@@ -279,6 +421,9 @@ function AppContent() {
         setProjectInnerTab(urlState.projectTab);
         if (urlState.projectTab === 'history' && !historyData.length && urlState.profile) {
           loadHistory(urlState.profile);
+        }
+        if (urlState.projectTab === 'archive' && urlState.profile) {
+          loadArchives(urlState.profile);
         }
       }
       
@@ -420,7 +565,7 @@ function AppContent() {
       setTasks(cachedData.tasks);
       setProjectRoot(cachedData.projectRoot);
       setInitialRequest(cachedData.initialRequest || '');
-      setFinalSummary(cachedData.finalSummary || '');
+      setSummary(cachedData.summary || '');
       return;
     }
 
@@ -450,18 +595,18 @@ function AppContent() {
         tasks: data.tasks || [],
         projectRoot: data.projectRoot || null,
         initialRequest: data.initialRequest || '',
-        finalSummary: data.finalSummary || ''
+        summary: data.summary || ''
       });
       
       setTasks(data.tasks || []);
       setProjectRoot(data.projectRoot || null);
       setInitialRequest(data.initialRequest || '');
-      setFinalSummary(data.finalSummary || '');
+      setSummary(data.summary || '');
     } catch (err) {
       setError('❌ Error loading tasks: ' + err.message);
       setTasks([]);
       setInitialRequest('');
-      setFinalSummary('');
+      setSummary('');
     } finally {
       setLoading(false);
       loadingRef.current = false;
@@ -489,7 +634,7 @@ function AppContent() {
       setSelectedHistoryEntry(null);
       setSelectedHistoryTasks([]);
       setSelectedHistoryInitialRequest('');
-      setSelectedHistoryFinalSummary('');
+      setSelectedHistorySummary('');
     }
     
     // Clear any stuck loading state and force reload
@@ -523,7 +668,7 @@ function AppContent() {
       setSelectedHistoryEntry(null);
       setSelectedHistoryTasks([]);
       setSelectedHistoryInitialRequest('');
-      setSelectedHistoryFinalSummary('');
+      setSelectedHistorySummary('');
       
       // When switching back to projects, ensure a profile is selected
       if (!selectedProfile || selectedProfile === 'release-notes' || selectedProfile === 'help' || selectedProfile === 'templates') {
@@ -956,16 +1101,34 @@ function AppContent() {
       const data = await response.json();
       setSelectedHistoryTasks(data.tasks || []);
       setSelectedHistoryInitialRequest(data.initialRequest || '');
-      setSelectedHistoryFinalSummary(data.finalSummary || '');
+      setSelectedHistorySummary(data.summary || '');
       setSelectedHistoryEntry(historyEntry);
       setHistoryView('details');
     } catch (err) {
       setHistoryError('❌ Error loading history tasks: ' + err.message);
       setSelectedHistoryTasks([]);
       setSelectedHistoryInitialRequest('');
-      setSelectedHistoryFinalSummary('');
+      setSelectedHistorySummary('');
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  // Archive management function
+  const loadArchives = (profileId) => {
+    if (!profileId) {
+      setArchives([]);
+      return;
+    }
+
+    try {
+      const storageKey = `task-archives-${profileId}`;
+      const archivedData = localStorage.getItem(storageKey);
+      const archives = archivedData ? JSON.parse(archivedData) : [];
+      setArchives(archives);
+    } catch (err) {
+      console.error('Error loading archives:', err);
+      setArchives([]);
     }
   };
 
@@ -1094,6 +1257,17 @@ function AppContent() {
             if (tab === 'history' && !historyData.length && selectedProfile) {
               loadHistory(selectedProfile);
             }
+            if (tab === 'archive' && selectedProfile) {
+              loadArchives(selectedProfile);
+              // Reset archive view to list when entering archive tab
+              setArchiveView('list');
+              setSelectedArchive(null);
+            }
+            // Reset archive view when leaving archive tab
+            if (projectInnerTab === 'archive' && tab !== 'archive') {
+              setArchiveView('list');
+              setSelectedArchive(null);
+            }
             // Trigger refresh for agents tab to reset viewing state
             if (tab === 'agents') {
               setAgentsTabRefresh(prev => prev + 1);
@@ -1191,6 +1365,27 @@ function AppContent() {
                       }}
                     >
                       📤 Export
+                    </button>
+
+                    <button
+                      name="archive-tasks-button"
+                      className="archive-button"
+                      onClick={() => setShowArchiveModal(true)}
+                      disabled={loading || !selectedProfile || tasks.length === 0}
+                      title="Archive current tasks"
+                      style={{
+                        padding: '8px 12px',
+                        marginRight: '8px',
+                        backgroundColor: '#8b5cf6',
+                        border: 'none',
+                        borderRadius: '4px',
+                        color: '#fff',
+                        cursor: tasks.length > 0 && selectedProfile && !loading ? 'pointer' : 'not-allowed',
+                        fontSize: '14px',
+                        opacity: tasks.length > 0 && selectedProfile && !loading ? 1 : 0.5
+                      }}
+                    >
+                      📦 Archive
                     </button>
 
                     <button 
@@ -1293,6 +1488,17 @@ function AppContent() {
                   </div>
                 )}
 
+                {/* Summarize - positioned at task list level */}
+                <FinalSummary
+                  tasks={tasks}
+                  projectId={selectedProfile}
+                  onSummaryGenerated={(summary) => {
+                    // Update the summary state when generated
+                    setSummary(summary);
+                  }}
+                  existingSummary={summary}
+                />
+
                 <TaskTable 
                   data={tasks} 
                   globalFilter={globalFilter}
@@ -1355,7 +1561,6 @@ function AppContent() {
                       showToast('Failed to delete task: ' + err.message, 'error');
                     }
                   }}
-                  finalSummary={finalSummary}
                 />
               </div>
             ),
@@ -1368,13 +1573,13 @@ function AppContent() {
                     loading={historyLoading}
                     error={historyError}
                     initialRequest={selectedHistoryInitialRequest}
-                    finalSummary={selectedHistoryFinalSummary}
+                    summary={selectedHistorySummary}
                     onBack={() => {
                       setHistoryView('list');
                       setSelectedHistoryEntry(null);
                       setSelectedHistoryTasks([]);
                       setSelectedHistoryInitialRequest('');
-                      setSelectedHistoryFinalSummary('');
+                      setSelectedHistorySummary('');
                     }}
                   />
                 ) : (
@@ -1385,6 +1590,33 @@ function AppContent() {
                     onViewTasks={loadHistoryTasks}
                     onBack={null} // No back button needed in tab view
                     profileId={selectedProfile}
+                  />
+                )}
+              </div>
+            ),
+            archive: (
+              <div className="content-container" name="archive-content-area">
+                {archiveView === 'details' && selectedArchive ? (
+                  <ArchiveDetailView
+                    archive={selectedArchive}
+                    onBack={() => {
+                      setArchiveView('list');
+                      setSelectedArchive(null);
+                    }}
+                    projectRoot={projectRoot}
+                  />
+                ) : (
+                  <ArchiveView
+                    archives={archives}
+                    loading={false}
+                    error=""
+                    onViewArchive={handleViewArchive}
+                    onDeleteArchive={handleDeleteArchive}
+                    onImportArchive={(archive) => {
+                      setSelectedArchive(archive);
+                      setShowImportModal(true);
+                    }}
+                    projectId={selectedProfile}
                   />
                 )}
               </div>
@@ -1641,6 +1873,29 @@ function AppContent() {
         onExport={handleExport}
         tasks={tasks}
       />
+
+      {/* Archive Modal */}
+      <ArchiveModal
+        isOpen={showArchiveModal}
+        onClose={() => setShowArchiveModal(false)}
+        onConfirm={handleArchive}
+        projectName={profiles?.find(p => p.id === selectedProfile)?.name || 'Unknown Project'}
+        tasks={tasks}
+        initialRequest={initialRequest}
+      />
+
+      {/* Import Archive Modal */}
+      <ImportArchiveModal
+        isOpen={showImportModal}
+        onClose={() => {
+          setShowImportModal(false);
+          setSelectedArchive(null);
+        }}
+        onImport={handleImportArchive}
+        archive={selectedArchive}
+        currentTaskCount={tasks.length}
+      />
+
 
       {showAddProfile && (
         <div className="modal-overlay" name="add-profile-modal-overlay" onClick={() => setShowAddProfile(false)} title="Click outside to close">

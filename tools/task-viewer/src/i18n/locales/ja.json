@@ -313,5 +313,23 @@
   "inProgress": "進行中",
   "pending": "保留中",
   "autoRefresh": "自動更新",
-  "searchTasksPlaceholder": "タスクを検索..."
+  "searchTasksPlaceholder": "タスクを検索...",
+  "archive": "アーカイブ",
+  "archiveButton": "タスクをアーカイブ",
+  "archiveModal": {
+    "title": "現在のタスクをアーカイブ",
+    "message": "このプロジェクトの全ての現在のタスクをアーカイブしますか？",
+    "projectName": "プロジェクト",
+    "taskCount": "総タスク数"
+  },
+  "archiveTab": "アーカイブ",
+  "archivedTaskLists": "アーカイブされたタスクリスト",
+  "importArchive": "インポート",
+  "deleteArchive": "削除",
+  "viewArchive": "表示",
+  "appendTasks": "現在のタスクに追加",
+  "replaceTasks": "すべての現在のタスクを置換",
+  "importWarning": "警告：これによりすべての現在のタスクが削除されます",
+  "archiveSuccess": "タスクが正常にアーカイブされました",
+  "noArchivesFound": "アーカイブされたタスクリストが見つかりません"
 }
