@@ -84,6 +84,27 @@ Click any task row to open the detailed task view with comprehensive information
 - **Context Preservation**: Stay in detail view while moving between tasks
 - **Keyboard Support**: Use arrow keys for even faster navigation
 
+#### 📤 Export Feature
+
+Export your task data in multiple formats for reporting, backup, or sharing purposes:
+
+**Export Options:**
+- **JSON Format**: Complete task data with all metadata, perfect for backup and data interchange
+- **CSV Format**: Tabular format ideal for spreadsheet analysis and reporting
+- **Markdown Format**: Human-readable format with numbered tasks and initial request display
+
+**Export Features:**
+- **Numbered Tasks**: All export formats include sequential task numbering for easy reference
+- **Initial Request Display**: Exported files include the project's initial request for context
+- **Complete Data**: All task information including descriptions, status, dependencies, and metadata
+- **Download Ready**: Files are automatically formatted and ready for immediate download
+
+**How to Export:**
+1. Navigate to any project's task list
+2. Click the "Export" button in the top-right area
+3. Choose your preferred format (JSON, CSV, or Markdown)
+4. File downloads automatically with a timestamped filename
+
 ### 📜 Project History Page
 
 The Project History page provides valuable insights into your project's evolution by displaying snapshots of completed tasks saved by the Shrimp Task Manager.
@@ -147,6 +168,38 @@ Manage AI instruction templates that guide how the Shrimp Task Manager analyzes 
 - **Live Preview**: See template effects before activation
 - **Export/Import**: Share templates with team members
 
+### 📦 Archive Page
+
+The Archive page provides powerful task list archiving and restoration capabilities, allowing you to save snapshots of your current tasks and restore them later.
+
+**Key Features:**
+- **Task List Archiving**: Save the current state of all tasks as a timestamped archive
+- **Archive Management**: View all archived task lists with detailed information
+- **Flexible Import Options**: Choose to append archived tasks to current tasks or replace all current tasks
+- **Archive Statistics**: See completion statistics for each archived task list
+- **Data Export**: Export task lists in multiple formats (JSON, CSV, Markdown) with numbered tasks
+
+**Archive Workflow:**
+
+1. **Create Archive**: Click the "Archive Tasks" button to save current task state
+2. **Browse Archives**: View all archived task lists with timestamps and statistics
+3. **Import Tasks**: Restore archived tasks with two options:
+   - **Append**: Add archived tasks to your current task list
+   - **Replace**: Replace all current tasks with archived tasks (warning provided)
+4. **Export Data**: Download task data in your preferred format
+
+**Archive Data Structure:**
+Each archive contains:
+- **Timestamp**: When the archive was created
+- **Initial Request**: The original project request or description
+- **Task Statistics**: Completed, in-progress, and pending task counts
+- **Full Task Data**: Complete task information including descriptions, dependencies, and metadata
+
+**Export Formats:**
+- **JSON**: Complete task data with all metadata
+- **CSV**: Tabular format suitable for spreadsheets
+- **Markdown**: Human-readable format with numbered tasks and initial request display
+
 ### ⚙️ Global Settings
 
 Configure system-wide settings including the Claude folder path for accessing global agents.
@@ -193,6 +246,14 @@ Configure system-wide settings including the Claude folder path for accessing gl
 - **Complete Audit Trail**: Review the full history of task modifications using standard Git tools
 - **Non-Blocking Operations**: Git failures don't interrupt task management
 - **Isolated Repository**: Task history tracked separately from your project repository
+
+### 📦 Archive & Data Management
+- **Task List Archiving**: Save complete snapshots of task states with timestamps
+- **Flexible Restoration**: Import archived tasks by appending to current tasks or replacing entirely
+- **Archive Statistics**: View completion metrics for each archived task list
+- **Multi-Format Export**: Download task data as JSON, CSV, or Markdown with numbered tasks
+- **Data Preservation**: Archives include initial project requests and complete task metadata
+- **Storage Management**: View, delete, and organize archived task lists efficiently
 
 ### 🎨 Professional UI/UX
 - **Dark Theme**: Optimized for development environments

@@ -108,6 +108,7 @@ function AppContent() {
   const [selectedHistoryTasks, setSelectedHistoryTasks] = useState([]);
   const [selectedHistoryInitialRequest, setSelectedHistoryInitialRequest] = useState('');
   const [selectedHistorySummary, setSelectedHistorySummary] = useState('');
+  const [selectedHistoryGeneratedRequest, setSelectedHistoryGeneratedRequest] = useState(false);
   
   // Toast notifications state
   const [toasts, setToasts] = useState([]);
@@ -126,6 +127,9 @@ function AppContent() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedArchive, setSelectedArchive] = useState(null);
   const [archiveView, setArchiveView] = useState('list'); // 'list' or 'details'
+  
+  // History import modal state
+  const [showImportHistoryModal, setShowImportHistoryModal] = useState(false);
   const [archives, setArchives] = useState([]);
 
   // Helper function to ensure profiles is always an array
@@ -349,6 +353,87 @@ function AppContent() {
   const handleViewArchive = (archive) => {
     setSelectedArchive(archive);
     setArchiveView('details');
+  };
+
+  // Handle history deletion
+  const handleDeleteHistory = async (historyEntry) => {
+    if (!historyEntry || !selectedProfile) return;
+
+    // Show confirmation dialog
+    if (!window.confirm(`Are you sure you want to delete this history entry from ${new Date(historyEntry.timestamp).toLocaleDateString()}?`)) {
+      return;
+    }
+
+    try {
+      // Call API to delete history file
+      const response = await fetch(`/api/history/${selectedProfile}/${historyEntry.filename}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete history: ${response.status}`);
+      }
+
+      // Update state - remove the deleted entry
+      setHistoryData(prevData => prevData.filter(h => h.filename !== historyEntry.filename));
+      
+      showToast('History entry deleted successfully', 'success');
+    } catch (err) {
+      console.error('Delete history error:', err);
+      showToast('Failed to delete history: ' + err.message, 'error');
+    }
+  };
+
+  // Handle history import
+  const handleImportHistory = (mode) => {
+    if (!selectedHistoryEntry || !selectedProfile) {
+      showToast('No history entry selected for import', 'error');
+      return;
+    }
+
+    try {
+      let newTasks = [...selectedHistoryTasks];
+      
+      if (mode === 'append') {
+        // Add history tasks to existing tasks
+        const existingTaskIds = new Set(tasks.map(t => t.id));
+        
+        // Filter out tasks that already exist to avoid duplicates
+        const uniqueHistoryTasks = newTasks.filter(t => !existingTaskIds.has(t.id));
+        
+        if (uniqueHistoryTasks.length === 0) {
+          showToast('All tasks from this history already exist', 'info');
+          setShowImportHistoryModal(false);
+          return;
+        }
+        
+        newTasks = [...tasks, ...uniqueHistoryTasks];
+        showToast(`Appended ${uniqueHistoryTasks.length} tasks from history`, 'success');
+      } else if (mode === 'replace') {
+        // Replace all current tasks with history tasks
+        showToast(`Replaced ${tasks.length} tasks with ${newTasks.length} history tasks`, 'success');
+      }
+
+      // Update tasks state
+      setTasks(newTasks);
+      
+      // Update initial request if present
+      if (selectedHistoryInitialRequest) {
+        setInitialRequest(selectedHistoryInitialRequest);
+      }
+      
+      // Update summary if present
+      if (selectedHistorySummary) {
+        setSummary(selectedHistorySummary);
+      }
+
+      // Close modal and reset selection
+      setShowImportHistoryModal(false);
+      setSelectedHistoryEntry(null);
+    } catch (err) {
+      console.error('Import history error:', err);
+      showToast('Failed to import history: ' + err.message, 'error');
+    }
   };
 
   // Auto-refresh interval
@@ -635,6 +720,7 @@ function AppContent() {
       setSelectedHistoryTasks([]);
       setSelectedHistoryInitialRequest('');
       setSelectedHistorySummary('');
+      setSelectedHistoryGeneratedRequest(false);
     }
     
     // Clear any stuck loading state and force reload
@@ -669,6 +755,7 @@ function AppContent() {
       setSelectedHistoryTasks([]);
       setSelectedHistoryInitialRequest('');
       setSelectedHistorySummary('');
+      setSelectedHistoryGeneratedRequest(false);
       
       // When switching back to projects, ensure a profile is selected
       if (!selectedProfile || selectedProfile === 'release-notes' || selectedProfile === 'help' || selectedProfile === 'templates') {
@@ -1102,6 +1189,7 @@ function AppContent() {
       setSelectedHistoryTasks(data.tasks || []);
       setSelectedHistoryInitialRequest(data.initialRequest || '');
       setSelectedHistorySummary(data.summary || '');
+      setSelectedHistoryGeneratedRequest(data.generatedInitialRequest || false);
       setSelectedHistoryEntry(historyEntry);
       setHistoryView('details');
     } catch (err) {
@@ -1109,6 +1197,7 @@ function AppContent() {
       setSelectedHistoryTasks([]);
       setSelectedHistoryInitialRequest('');
       setSelectedHistorySummary('');
+      setSelectedHistoryGeneratedRequest(false);
     } finally {
       setHistoryLoading(false);
     }
@@ -1574,12 +1663,14 @@ function AppContent() {
                     error={historyError}
                     initialRequest={selectedHistoryInitialRequest}
                     summary={selectedHistorySummary}
+                    generatedInitialRequest={selectedHistoryGeneratedRequest}
                     onBack={() => {
                       setHistoryView('list');
                       setSelectedHistoryEntry(null);
                       setSelectedHistoryTasks([]);
                       setSelectedHistoryInitialRequest('');
                       setSelectedHistorySummary('');
+                      setSelectedHistoryGeneratedRequest(false);
                     }}
                   />
                 ) : (
@@ -1589,6 +1680,13 @@ function AppContent() {
                     error={historyError}
                     onViewTasks={loadHistoryTasks}
                     onBack={null} // No back button needed in tab view
+                    onDeleteHistory={handleDeleteHistory}
+                    onImportHistory={(historyEntry) => {
+                      setSelectedHistoryEntry(historyEntry);
+                      setShowImportHistoryModal(true);
+                      // Load the full history data for import
+                      loadHistoryTasks(historyEntry);
+                    }}
                     profileId={selectedProfile}
                   />
                 )}
@@ -1893,6 +1991,26 @@ function AppContent() {
         }}
         onImport={handleImportArchive}
         archive={selectedArchive}
+        currentTaskCount={tasks.length}
+      />
+
+      {/* Import History Modal - reuse ImportArchiveModal */}
+      <ImportArchiveModal
+        isOpen={showImportHistoryModal}
+        onClose={() => {
+          setShowImportHistoryModal(false);
+          setSelectedHistoryEntry(null);
+        }}
+        onImport={handleImportHistory}
+        archive={selectedHistoryEntry ? {
+          id: selectedHistoryEntry.filename,
+          date: selectedHistoryEntry.timestamp,
+          projectName: selectedProfile,
+          tasks: selectedHistoryTasks,
+          initialRequest: selectedHistoryInitialRequest,
+          summary: selectedHistorySummary,
+          stats: selectedHistoryEntry.stats
+        } : null}
         currentTaskCount={tasks.length}
       />
 

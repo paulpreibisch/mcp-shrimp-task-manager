@@ -1114,7 +1114,9 @@ Progress achieved so far and remaining scope`
                             timestamp,
                             taskCount: tasks.length,
                             stats,
-                            hasData: tasks.length > 0
+                            hasData: tasks.length > 0,
+                            initialRequest: data.initialRequest || null,
+                            summary: data.summary || null
                         };
                     } catch (err) {
                         console.error(`Error reading memory file ${filename}:`, err);
@@ -1136,7 +1138,6 @@ Progress achieved so far and remaining scope`
             }
             
         } else if (url.pathname.startsWith('/api/history/') && url.pathname.split('/').length === 5) {
-            // Handle /api/history/{projectId}/{filename}
             const pathParts = url.pathname.split('/');
             const projectId = pathParts[3];
             const filename = pathParts[4];
@@ -1155,34 +1156,134 @@ Progress achieved so far and remaining scope`
                 return;
             }
             
-            try {
-                const tasksPath = project.path || project.filePath;
-                const memoryDir = path.join(path.dirname(tasksPath), 'memory');
-                const filePath = path.join(memoryDir, filename);
-                
-                // Check if file exists
-                const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
-                if (!fileExists) {
-                    res.writeHead(404, { 'Content-Type': 'text/plain' });
-                    res.end('History file not found');
-                    return;
-                }
-                
-                // Read and parse the memory file
-                const content = await fs.readFile(filePath, 'utf8');
-                const data = JSON.parse(content);
-                
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(data));
-                
-            } catch (err) {
-                console.error('Error loading history file:', err);
-                if (err instanceof SyntaxError) {
-                    res.writeHead(400, { 'Content-Type': 'text/plain' });
-                    res.end('Invalid JSON in memory file');
-                } else {
+            if (req.method === 'DELETE') {
+                // Handle DELETE /api/history/{projectId}/{filename}
+                try {
+                    const tasksPath = project.path || project.filePath;
+                    const memoryDir = path.join(path.dirname(tasksPath), 'memory');
+                    const filePath = path.join(memoryDir, filename);
+                    
+                    // Check if file exists
+                    const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
+                    if (!fileExists) {
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('History file not found');
+                        return;
+                    }
+                    
+                    // Delete the file
+                    await fs.unlink(filePath);
+                    
+                    console.log(`[History] Deleted history file: ${filePath}`);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, message: 'History entry deleted successfully' }));
+                    
+                } catch (err) {
+                    console.error('Error deleting history file:', err);
                     res.writeHead(500, { 'Content-Type': 'text/plain' });
-                    res.end('Error loading history file');
+                    res.end('Error deleting history file: ' + err.message);
+                }
+            } else {
+                // Handle GET /api/history/{projectId}/{filename}
+                try {
+                    const tasksPath = project.path || project.filePath;
+                    const memoryDir = path.join(path.dirname(tasksPath), 'memory');
+                    const filePath = path.join(memoryDir, filename);
+                    
+                    // Check if file exists
+                    const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
+                    if (!fileExists) {
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('History file not found');
+                        return;
+                    }
+                    
+                    // Read and parse the memory file
+                    const content = await fs.readFile(filePath, 'utf8');
+                    const data = JSON.parse(content);
+                    
+                    // Generate initial request if missing
+                    if (!data.initialRequest && data.tasks && data.tasks.length > 0) {
+                        // Generate a descriptive initial request from task data
+                        const taskCategories = {};
+                        
+                        // Group tasks by common themes
+                        data.tasks.forEach(task => {
+                            // Extract key themes from task names
+                            const name = task.name.toLowerCase();
+                            if (name.includes('test')) {
+                                taskCategories.testing = (taskCategories.testing || 0) + 1;
+                            } else if (name.includes('fix') || name.includes('bug')) {
+                                taskCategories.bugfixes = (taskCategories.bugfixes || 0) + 1;
+                            } else if (name.includes('add') || name.includes('create') || name.includes('implement')) {
+                                taskCategories.features = (taskCategories.features || 0) + 1;
+                            } else if (name.includes('update') || name.includes('refactor')) {
+                                taskCategories.improvements = (taskCategories.improvements || 0) + 1;
+                            } else if (name.includes('document')) {
+                                taskCategories.documentation = (taskCategories.documentation || 0) + 1;
+                            } else {
+                                taskCategories.other = (taskCategories.other || 0) + 1;
+                            }
+                        });
+                        
+                        // Build the generated initial request
+                        const parts = [];
+                        
+                        // Add main task types
+                        const mainCategories = Object.entries(taskCategories)
+                            .filter(([key]) => key !== 'other')
+                            .sort(([,a], [,b]) => b - a)
+                            .slice(0, 3);
+                        
+                        if (mainCategories.length > 0) {
+                            const categoryDescriptions = {
+                                testing: 'write tests',
+                                bugfixes: 'fix bugs',
+                                features: 'implement new features',
+                                improvements: 'improve existing functionality',
+                                documentation: 'update documentation'
+                            };
+                            
+                            const descriptions = mainCategories.map(([cat]) => categoryDescriptions[cat]);
+                            if (descriptions.length === 1) {
+                                parts.push(`Request to ${descriptions[0]}`);
+                            } else if (descriptions.length === 2) {
+                                parts.push(`Request to ${descriptions[0]} and ${descriptions[1]}`);
+                            } else {
+                                const last = descriptions.pop();
+                                parts.push(`Request to ${descriptions.join(', ')}, and ${last}`);
+                            }
+                        }
+                        
+                        // Add some specific task examples
+                        const exampleTasks = data.tasks
+                            .filter(t => t.name.length < 60)
+                            .slice(0, 3)
+                            .map(t => t.name);
+                        
+                        if (exampleTasks.length > 0) {
+                            parts.push(`Tasks include: ${exampleTasks.join(', ')}`);
+                        }
+                        
+                        // Add task count
+                        parts.push(`(${data.tasks.length} total tasks)`);
+                        
+                        data.initialRequest = parts.join('. ');
+                        data.generatedInitialRequest = true; // Mark as generated
+                    }
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(data));
+                    
+                } catch (err) {
+                    console.error('Error loading history file:', err);
+                    if (err instanceof SyntaxError) {
+                        res.writeHead(400, { 'Content-Type': 'text/plain' });
+                        res.end('Invalid JSON in memory file');
+                    } else {
+                        res.writeHead(500, { 'Content-Type': 'text/plain' });
+                        res.end('Error loading history file');
+                    }
                 }
             }
             

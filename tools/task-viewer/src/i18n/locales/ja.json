@@ -331,5 +331,7 @@
   "replaceTasks": "すべての現在のタスクを置換",
   "importWarning": "警告：これによりすべての現在のタスクが削除されます",
   "archiveSuccess": "タスクが正常にアーカイブされました",
-  "noArchivesFound": "アーカイブされたタスクリストが見つかりません"
+  "noArchivesFound": "アーカイブされたタスクリストが見つかりません",
+  "initialRequest": "初期リクエスト",
+  "noInitialRequest": "初期リクエストが提供されていません"
 }

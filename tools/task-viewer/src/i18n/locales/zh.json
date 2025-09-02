@@ -331,5 +331,7 @@
   "replaceTasks": "替换所有当前任务",
   "importWarning": "警告：这将删除所有当前任务",
   "archiveSuccess": "任务归档成功",
-  "noArchivesFound": "未找到已归档的任务列表"
+  "noArchivesFound": "未找到已归档的任务列表",
+  "initialRequest": "初始请求",
+  "noInitialRequest": "未提供初始请求"
 }

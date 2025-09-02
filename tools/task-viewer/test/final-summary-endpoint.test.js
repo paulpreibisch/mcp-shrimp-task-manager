@@ -7,7 +7,7 @@ import path from 'path';
 vi.mock('fs/promises');
 vi.mock('http');
 
-describe('Final Summary Endpoint', () => {
+describe('Summarize Endpoint', () => {
   let server;
   let mockRequest;
   let mockResponse;
@@ -15,7 +15,7 @@ describe('Final Summary Endpoint', () => {
   beforeEach(() => {
     mockRequest = {
       method: 'POST',
-      url: '/api/tasks/test-project-id/final-summary',
+      url: '/api/tasks/test-project-id/summarize',
       on: vi.fn(),
       headers: {}
     };
@@ -89,7 +89,7 @@ describe('Final Summary Endpoint', () => {
   });
 
   it('should return 404 if project not found', async () => {
-    mockRequest.url = '/api/tasks/unknown-project-id/final-summary';
+    mockRequest.url = '/api/tasks/unknown-project-id/summarize';
     
     // Should return 404 for unknown project
     const projectId = 'unknown-project-id';
@@ -132,15 +132,15 @@ describe('Final Summary Endpoint', () => {
 
     // Test complete project summary generation
     const taskList = completedTasks.slice(0, 3).map(task => `• ✅ ${task.name}`).join('\n');
-    const finalSummary = `**Project Status:**\n🎉 All ${completedTasks.length} tasks completed successfully\n\n**Key Deliverables:**\n${taskList}\n\n**Impact:**\n📊 All objectives achieved`;
+    const summary = `**Project Status:**\n🎉 All ${completedTasks.length} tasks completed successfully\n\n**Key Deliverables:**\n${taskList}\n\n**Impact:**\n📊 All objectives achieved`;
 
-    expect(finalSummary).toContain('**Project Status:**');
-    expect(finalSummary).toContain('🎉 All');
-    expect(finalSummary).toContain('✅');
-    expect(finalSummary).toContain('**Key Deliverables:**');
-    expect(finalSummary).toContain('**Impact:**');
-    expect(finalSummary).not.toContain('🚧');
-    expect(finalSummary).not.toContain('⚠️');
+    expect(summary).toContain('**Project Status:**');
+    expect(summary).toContain('🎉 All');
+    expect(summary).toContain('✅');
+    expect(summary).toContain('**Key Deliverables:**');
+    expect(summary).toContain('**Impact:**');
+    expect(summary).not.toContain('🚧');
+    expect(summary).not.toContain('⚠️');
   });
 
   it('should generate partial progress summary with warning section', () => {
@@ -163,7 +163,7 @@ describe('Final Summary Endpoint', () => {
     const incompleteList = incompleteTaskNames.map(name => `• ❌ ${name}`).join('\n');
     const incompleteCount = totalTasks - completedTasks.length;
 
-    const finalSummary = `**Project Status:**
+    const summary = `**Project Status:**
 🚧 ${completedTasks.length} of ${totalTasks} tasks completed (${progress}% progress)
 
 **Completed Deliverables:**
@@ -175,16 +175,16 @@ ${incompleteList}
 **Impact:**
 Partial progress achieved. Project completion pending ${incompleteCount} remaining tasks.`;
 
-    expect(finalSummary).toContain('**Project Status:**');
-    expect(finalSummary).toContain('🚧 4 of 7 tasks completed (57% progress)');
-    expect(finalSummary).toContain('**Completed Deliverables:**');
-    expect(finalSummary).toContain('**⚠️ Remaining Tasks:**');
-    expect(finalSummary).toContain('❌ Add Archive button');
-    expect(finalSummary).toContain('❌ Add Archive tab');
-    expect(finalSummary).toContain('❌ Add i18n translations');
-    expect(finalSummary).toContain('pending 3 remaining tasks');
-    expect(finalSummary).not.toContain('🎉 All');
-    expect(finalSummary).not.toContain('completed successfully');
+    expect(summary).toContain('**Project Status:**');
+    expect(summary).toContain('🚧 4 of 7 tasks completed (57% progress)');
+    expect(summary).toContain('**Completed Deliverables:**');
+    expect(summary).toContain('**⚠️ Remaining Tasks:**');
+    expect(summary).toContain('❌ Add Archive button');
+    expect(summary).toContain('❌ Add Archive tab');
+    expect(summary).toContain('❌ Add i18n translations');
+    expect(summary).toContain('pending 3 remaining tasks');
+    expect(summary).not.toContain('🎉 All');
+    expect(summary).not.toContain('completed successfully');
   });
 
   it('should handle single remaining task correctly', () => {
@@ -200,7 +200,7 @@ Partial progress achieved. Project completion pending ${incompleteCount} remaini
     const incompleteList = incompleteTaskNames.map(name => `• ❌ ${name}`).join('\n');
     const incompleteCount = totalTasks - completedTasks.length;
 
-    const finalSummary = `**Project Status:**
+    const summary = `**Project Status:**
 🚧 ${completedTasks.length} of ${totalTasks} tasks completed (${progress}% progress)
 
 **Completed Deliverables:**
@@ -212,11 +212,11 @@ ${incompleteList}
 **Impact:**
 Partial progress achieved. Project completion pending ${incompleteCount} remaining task.`;
 
-    expect(finalSummary).toContain('🚧 2 of 3 tasks completed (67% progress)');
-    expect(finalSummary).toContain('**⚠️ Remaining Tasks:**');
-    expect(finalSummary).toContain('❌ Task C');
-    expect(finalSummary).toContain('pending 1 remaining task');
-    expect(finalSummary).not.toContain('remaining tasks'); // Should be singular
+    expect(summary).toContain('🚧 2 of 3 tasks completed (67% progress)');
+    expect(summary).toContain('**⚠️ Remaining Tasks:**');
+    expect(summary).toContain('❌ Task C');
+    expect(summary).toContain('pending 1 remaining task');
+    expect(summary).not.toContain('remaining tasks'); // Should be singular
   });
 
   it('should handle JSON parse errors', async () => {
@@ -254,15 +254,15 @@ Partial progress achieved. Project completion pending ${incompleteCount} remaini
     // Simulate saving summary
     const dataToSave = {
       ...existingData,
-      finalSummary: expectedSummary,
-      finalSummaryGeneratedAt: new Date().toISOString()
+      summary: expectedSummary,
+      summaryGeneratedAt: new Date().toISOString()
     };
 
     await fs.writeFile('/path/to/tasks.json', JSON.stringify(dataToSave, null, 2), 'utf8');
 
     expect(fs.writeFile).toHaveBeenCalledWith(
       '/path/to/tasks.json',
-      expect.stringContaining('finalSummary'),
+      expect.stringContaining('summary'),
       'utf8'
     );
   });

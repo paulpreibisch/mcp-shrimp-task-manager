@@ -1,6 +1,12 @@
 // Release metadata only - actual content is loaded from /releases/*.md files
 export const releaseMetadata = [
   {
+    version: 'v4.0.0',
+    date: '2025-01-02',
+    title: 'Enhanced Release Notes & Archive System',
+    summary: 'Major UI overhaul with interactive Release Notes, comprehensive Archive management, and critical scrolling fixes'
+  },
+  {
     version: 'v3.1.0',
     date: '2025-08-31',
     title: 'Initial Request Display',

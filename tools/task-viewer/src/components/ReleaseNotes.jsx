@@ -11,6 +11,8 @@ function ReleaseNotes() {
   const [selectedVersion, setSelectedVersion] = useState(releaseMetadata[0]?.version || '');
   const [releaseContent, setReleaseContent] = useState('');
   const [loading, setLoading] = useState(true);
+  const [expandedVersions, setExpandedVersions] = useState({});
+  const [tableOfContents, setTableOfContents] = useState({});
   const { t, i18n } = useTranslation();
   const currentLanguage = i18n.language;
   const uiStrings = getUIStrings('releaseNotes', currentLanguage);
@@ -20,8 +22,32 @@ function ReleaseNotes() {
   useEffect(() => {
     if (selectedVersion) {
       loadReleaseContent(selectedVersion);
+      // Auto-expand the selected version to show TOC
+      setExpandedVersions(prev => ({ ...prev, [selectedVersion]: true }));
     }
   }, [selectedVersion, currentLanguage]);
+  
+  // Load TOC for all versions on mount
+  useEffect(() => {
+    const loadAllTOCs = async () => {
+      for (const release of releaseMetadata) {
+        if (!tableOfContents[release.version]) {
+          try {
+            let releaseFile = getReleaseFile(release.version);
+            const response = await fetch(releaseFile);
+            if (response.ok) {
+              const content = await response.text();
+              const toc = extractTableOfContents(content);
+              setTableOfContents(prev => ({ ...prev, [release.version]: toc }));
+            }
+          } catch (error) {
+            console.error(`Error loading TOC for ${release.version}:`, error);
+          }
+        }
+      }
+    };
+    loadAllTOCs();
+  }, []);
 
   const loadReleaseContent = async (version) => {
     setLoading(true);
@@ -30,8 +56,11 @@ function ReleaseNotes() {
     try {
       // First check if we have translated content in the language files
       const translatedContent = getReleaseContent(version, currentLanguage);
+      let content = '';
+      
       if (translatedContent && translatedContent.content) {
-        setReleaseContent(translatedContent.content);
+        content = translatedContent.content;
+        setReleaseContent(content);
       } else {
         // Try to load language-specific markdown file
         let releaseFile;
@@ -41,28 +70,94 @@ function ReleaseNotes() {
           const response = await fetch(releaseFile);
           
           if (response.ok) {
-            const content = await response.text();
+            content = await response.text();
             setReleaseContent(content);
-            return; // Exit early if language-specific file found
+          } else {
+            // Fallback to English version
+            releaseFile = getReleaseFile(version);
+            const resp = await fetch(releaseFile);
+            
+            if (resp.ok) {
+              content = await resp.text();
+              setReleaseContent(content);
+            } else {
+              content = `# ${version}\n\n${uiStrings.notFound}`;
+              setReleaseContent(content);
+            }
+          }
+        } else {
+          // Fallback to English version
+          releaseFile = getReleaseFile(version);
+          const response = await fetch(releaseFile);
+          
+          if (response.ok) {
+            content = await response.text();
+            setReleaseContent(content);
+          } else {
+            content = `# ${version}\n\n${uiStrings.notFound}`;
+            setReleaseContent(content);
           }
         }
-        
-        // Fallback to English version
-        releaseFile = getReleaseFile(version);
-        const response = await fetch(releaseFile);
-        
-        if (response.ok) {
-          const content = await response.text();
-          setReleaseContent(content);
-        } else {
-          setReleaseContent(`# ${version}\n\n${uiStrings.notFound}`);
-        }
       }
+      
+      // Generate TOC for this version
+      const toc = extractTableOfContents(content);
+      setTableOfContents(prev => ({ ...prev, [version]: toc }));
+      
     } catch (error) {
       console.error('Error loading release content:', error);
-      setReleaseContent(`# ${version}\n\n${uiStrings.error}`);
+      const errorContent = `# ${version}\n\n${uiStrings.error}`;
+      setReleaseContent(errorContent);
+      setTableOfContents(prev => ({ ...prev, [version]: [] }));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const extractTableOfContents = (content) => {
+    if (!content) return [];
+    
+    const lines = content.split('\n');
+    const tocItems = [];
+    
+    lines.forEach((line) => {
+      if (line.startsWith('## ') && !line.includes('Table of Contents')) {
+        const text = line.substring(3);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        tocItems.push({ level: 2, text, id });
+      } else if (line.startsWith('### ')) {
+        const text = line.substring(4);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        tocItems.push({ level: 3, text, id });
+      } else if (line.startsWith('#### ')) {
+        const text = line.substring(5);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        tocItems.push({ level: 4, text, id });
+      }
+    });
+    
+    return tocItems;
+  };
+  
+  const toggleVersionExpanded = async (version) => {
+    setExpandedVersions(prev => ({
+      ...prev,
+      [version]: !prev[version]
+    }));
+    
+    // Load TOC if not already loaded
+    if (!tableOfContents[version]) {
+      try {
+        let releaseFile = getReleaseFile(version);
+        const response = await fetch(releaseFile);
+        if (response.ok) {
+          const content = await response.text();
+          const toc = extractTableOfContents(content);
+          setTableOfContents(prev => ({ ...prev, [version]: toc }));
+        }
+      } catch (error) {
+        console.error(`Error loading TOC for ${version}:`, error);
+      }
     }
   };
 
@@ -184,7 +279,10 @@ function ReleaseNotes() {
         const text = line.substring(2);
         const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h1 key={i} id={id} className="release-h1">
+          <h1 key={i} id={id} className="release-h1" style={{
+            color: '#ff69b4',
+            fontSize: '2.5rem'
+          }}>
             {parseInlineMarkdown(text)}
           </h1>
         );
@@ -192,8 +290,17 @@ function ReleaseNotes() {
       } else if (line.startsWith('## ')) {
         const text = line.substring(3);
         const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        // Check if it's "New Features" or "Bug Fixes" to apply different colors
+        const isNewFeatures = text.includes('New Features');
+        const isBugFixes = text.includes('Bug Fixes');
+        let color = '#ff69b4'; // default pink
+        if (isNewFeatures) color = '#ffffff'; // white for New Features
+        if (isBugFixes) color = '#ffa500'; // orange for Bug Fixes
         elements.push(
-          <h2 key={i} id={id} className="release-h2">
+          <h2 key={i} id={id} className="release-h2" style={{
+            color: color,
+            fontSize: '2rem'
+          }}>
             {parseInlineMarkdown(text)}
           </h2>
         );
@@ -202,16 +309,39 @@ function ReleaseNotes() {
         const text = line.substring(4);
         const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h3 key={i} id={id} className="release-h3">
+          <h3 key={i} id={id} className="release-h3" style={{
+            color: '#ff69b4',
+            fontSize: '1.5rem'
+          }}>
             {parseInlineMarkdown(text)}
           </h3>
+        );
+        i++;
+      } else if (line.startsWith('##### ')) {
+        const text = line.substring(6);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        elements.push(
+          <h5 key={i} id={id} className="release-h5" style={{
+            color: '#87CEEB',
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            marginTop: '1rem',
+            marginBottom: '0.5rem'
+          }}>
+            {parseInlineMarkdown(text)}
+          </h5>
         );
         i++;
       } else if (line.startsWith('#### ')) {
         const text = line.substring(5);
         const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        // Apply light blue for Overview and Key Highlights
+        const isOverviewOrHighlights = text.includes('Overview') || text.includes('Key Highlights') || text.includes('Key Features') || text.includes('Key Improvements');
         elements.push(
-          <h4 key={i} id={id} className="release-h4">
+          <h4 key={i} id={id} className="release-h4" style={{
+            color: isOverviewOrHighlights ? '#87CEEB' : '#ff69b4',
+            fontSize: '1.25rem'
+          }}>
             {parseInlineMarkdown(text)}
           </h4>
         );
@@ -341,39 +471,146 @@ function ReleaseNotes() {
   };
 
   return (
-    <div className="release-notes-tab-content">
-      <div className="release-notes-inner">
-        <div className="release-notes-header">
+    <div className="release-notes-tab-content" style={{
+      height: 'calc(100vh - 140px)',
+      maxHeight: '900px',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }}>
+      <div className="release-notes-inner" style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        <div className="release-notes-header" style={{
+          flexShrink: 0
+        }}>
           <h2>{uiStrings.header}</h2>
         </div>
         
-        <div className="release-notes-content">
-          <div className="release-sidebar">
+        <div className="release-notes-content" style={{
+          display: 'flex',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+          height: '100%'
+        }}>
+          <div className="release-sidebar" style={{
+            width: '300px',
+            minWidth: '300px',
+            overflowY: 'scroll',
+            borderRight: '1px solid rgba(79, 189, 186, 0.2)',
+            paddingRight: '1rem'
+          }}>
             <h3>{uiStrings.versions}</h3>
-            <ul className="version-list">
+            <ul className="version-list" style={{ listStyle: 'none', padding: 0 }}>
               {releaseMetadata.map((release) => (
-                <li key={release.version}>
-                  <button
-                    className={`version-button ${selectedVersion === release.version ? 'active' : ''}`}
-                    onClick={() => setSelectedVersion(release.version)}
-                    title={release.summary}
-                  >
-                    <span className="version-number">{release.version}</span>
-                    <span className="version-date">{release.date}</span>
-                    {release.title && (
-                      <span className="version-title">{release.title}</span>
+                <li key={release.version} style={{ marginBottom: '0.5rem' }}>
+                  <div>
+                    <button
+                      className={`version-button ${selectedVersion === release.version ? 'active' : ''}`}
+                      onClick={() => setSelectedVersion(release.version)}
+                      title={release.summary}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}
+                    >
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        <div>
+                          <span className="version-number">{release.version}</span>
+                          <span className="version-date" style={{ marginLeft: '0.5rem' }}>{release.date}</span>
+                        </div>
+                        {release.title && (
+                          <span className="version-title" style={{ fontSize: '0.9em', opacity: 0.8 }}>{release.title}</span>
+                        )}
+                      </div>
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleVersionExpanded(release.version);
+                        }}
+                        style={{
+                          display: 'inline-block',
+                          color: selectedVersion === release.version ? '#ffffff' : '#ffa500',
+                          cursor: 'pointer',
+                          padding: '0 0.5rem',
+                          fontSize: '1rem',
+                          transform: expandedVersions[release.version] ? 'rotate(90deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.3s ease, color 0.3s ease',
+                          filter: 'drop-shadow(0 0 2px rgba(255, 165, 0, 0.5))'
+                        }}
+                      >▶</span>
+                    </button>
+                    
+                    {expandedVersions[release.version] && tableOfContents[release.version] && (
+                      <div style={{
+                        marginLeft: '1rem',
+                        marginTop: '0.5rem',
+                        paddingLeft: '0.5rem',
+                        borderLeft: '2px solid rgba(79, 189, 186, 0.2)'
+                      }}>
+                        {tableOfContents[release.version].map((item, index) => (
+                          <a
+                            key={index}
+                            href={`#${item.id}`}
+                            style={{
+                              display: 'block',
+                              color: '#87CEEB',
+                              textDecoration: 'none',
+                              fontSize: item.level === 4 ? '0.8rem' : item.level === 3 ? '0.85rem' : '0.9rem',
+                              marginLeft: item.level === 4 ? '2rem' : item.level === 3 ? '1rem' : '0',
+                              marginBottom: '0.3rem',
+                              padding: '0.2rem 0',
+                              transition: 'color 0.2s ease'
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const element = document.getElementById(item.id);
+                              if (element) {
+                                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              }
+                            }}
+                            onMouseEnter={(e) => {
+                              e.target.style.color = '#ADD8E6';
+                              e.target.style.textDecoration = 'underline';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.target.style.color = '#87CEEB';
+                              e.target.style.textDecoration = 'none';
+                            }}
+                          >
+                            {item.level === 4 ? '◦ ' : item.level === 3 ? '• ' : '▸ '}{item.text}
+                          </a>
+                        ))}
+                      </div>
                     )}
-                  </button>
+                  </div>
                 </li>
               ))}
             </ul>
           </div>
           
-          <div className="release-details">
+          <div className="release-details" style={{
+            flex: 1,
+            overflowY: 'scroll',
+            overflowX: 'hidden',
+            paddingLeft: '2rem',
+            paddingRight: '2rem',
+            minWidth: 0,
+            minHeight: 0,
+            maxHeight: '100%',
+            position: 'relative'
+          }}>
             {loading ? (
               <div className="release-loading">{uiStrings.loading}</div>
             ) : (
-              <div className="release-markdown-content">
+              <div className="release-markdown-content" style={{ paddingBottom: '2rem' }}>
                 {renderMarkdown(releaseContent)}
               </div>
             )}

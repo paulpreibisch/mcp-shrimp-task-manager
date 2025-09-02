@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import TaskTable from './TaskTable';
+import MDEditor from '@uiw/react-md-editor';
 
 const ArchiveDetailView = ({ 
   archive, 
@@ -7,6 +8,7 @@ const ArchiveDetailView = ({
   projectRoot = ''
 }) => {
   const [globalFilter, setGlobalFilter] = useState('');
+  const [summaryExpanded, setSummaryExpanded] = useState(true);
   
   // Handle undefined or null archive
   const safeArchive = archive || {
@@ -52,6 +54,7 @@ const ArchiveDetailView = ({
     <div className="archive-detail-view">
       {/* Header with Back Button */}
       <div style={{ 
+        marginTop: '20px',
         marginBottom: '20px',
         marginLeft: '20px',
         marginRight: '20px',
@@ -174,6 +177,61 @@ const ArchiveDetailView = ({
             }}>
               {safeArchive.initialRequest}
             </div>
+          </div>
+        )}
+
+        {/* Summary Section */}
+        {safeArchive.summary && (
+          <div style={{
+            marginBottom: '20px',
+            backgroundColor: '#1a1a1a',
+            borderRadius: '8px',
+            padding: '16px',
+            border: '1px solid #333'
+          }}>
+            <div 
+              onClick={() => setSummaryExpanded(!summaryExpanded)}
+              style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#4fbdba',
+                marginBottom: summaryExpanded ? '8px' : '0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+            >
+              Summary
+              <span style={{ 
+                fontSize: '12px', 
+                color: '#888',
+                transform: summaryExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                transition: 'transform 0.2s ease'
+              }}>▼</span>
+            </div>
+            {summaryExpanded && (
+              <div style={{
+                maxHeight: '200px',
+                overflowY: 'auto',
+                border: '1px solid #333',
+                borderRadius: '6px',
+                animation: 'fadeIn 0.2s ease'
+              }}>
+                <MDEditor.Markdown 
+                  source={safeArchive.summary}
+                  style={{
+                    backgroundColor: '#1a1a1a',
+                    color: '#e0e0e0',
+                    fontSize: '14px',
+                    lineHeight: '1.5',
+                    padding: '12px'
+                  }}
+                  data-color-mode="dark"
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

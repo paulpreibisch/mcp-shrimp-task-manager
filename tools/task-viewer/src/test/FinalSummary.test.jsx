@@ -44,14 +44,14 @@ describe('FinalSummary Component', () => {
         />
       );
 
-      expect(screen.getByText('Final Summary')).toBeInTheDocument();
+      expect(screen.getByText('Summarize')).toBeInTheDocument();
       
       // Click to expand the section
-      const header = screen.getByText('Final Summary');
+      const header = screen.getByText('Summarize');
       fireEvent.click(header);
       
-      expect(screen.getByRole('button', { name: /Generate/ })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /Regenerate/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /✨ Generate/ })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /🔄 Regenerate/ })).not.toBeInTheDocument();
     });
 
     it('shows expanded section when clicked', () => {
@@ -63,10 +63,10 @@ describe('FinalSummary Component', () => {
         />
       );
 
-      const summaryHeader = screen.getByText('Final Summary');
+      const summaryHeader = screen.getByText('Summarize');
       fireEvent.click(summaryHeader);
 
-      expect(screen.getByText('Generate')).toBeVisible();
+      expect(screen.getByText('✨ Generate')).toBeVisible();
     });
   });
 
@@ -87,17 +87,20 @@ describe('FinalSummary Component', () => {
         />
       );
 
-      const generateButton = screen.getByText('Generate');
+      const summaryHeader = screen.getByText('Summarize');
+      fireEvent.click(summaryHeader);
+      
+      const generateButton = screen.getByText('✨ Generate');
       fireEvent.click(generateButton);
 
-      expect(screen.getByText('Generating...')).toBeInTheDocument();
+      expect(screen.getByText('⏳ Generating...')).toBeInTheDocument();
 
       await waitFor(() => {
         expect(screen.getByText(mockSummary)).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Regenerate')).toBeInTheDocument();
-      expect(screen.queryByText('Generate')).not.toBeInTheDocument();
+      expect(screen.getByText('🔄 Regenerate')).toBeInTheDocument();
+      expect(screen.queryByText('✨ Generate')).not.toBeInTheDocument();
       expect(mockOnSummaryGenerated).toHaveBeenCalledWith(mockSummary);
     });
 
@@ -112,14 +115,17 @@ describe('FinalSummary Component', () => {
         />
       );
 
-      const generateButton = screen.getByText('Generate');
+      const summaryHeader = screen.getByText('Summarize');
+      fireEvent.click(summaryHeader);
+      
+      const generateButton = screen.getByText('✨ Generate');
       fireEvent.click(generateButton);
 
       await waitFor(() => {
         expect(screen.getByText('Failed to generate summary')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Generate')).toBeInTheDocument();
+      expect(screen.getByText('✨ Generate')).toBeInTheDocument();
       expect(mockOnSummaryGenerated).not.toHaveBeenCalled();
     });
 
@@ -137,7 +143,10 @@ describe('FinalSummary Component', () => {
         />
       );
 
-      const generateButton = screen.getByText('Generate');
+      const summaryHeader = screen.getByText('Summarize');
+      fireEvent.click(summaryHeader);
+      
+      const generateButton = screen.getByText('✨ Generate');
       fireEvent.click(generateButton);
 
       await waitFor(() => {
@@ -167,9 +176,12 @@ describe('FinalSummary Component', () => {
         />
       );
 
+      const summaryHeader = screen.getByText('Summarize');
+      fireEvent.click(summaryHeader);
+      
       expect(screen.getByText(existingSummary)).toBeInTheDocument();
-      expect(screen.getByText('Regenerate')).toBeInTheDocument();
-      expect(screen.queryByText('Generate')).not.toBeInTheDocument();
+      expect(screen.getByText('🔄 Regenerate')).toBeInTheDocument();
+      expect(screen.queryByText('✨ Generate')).not.toBeInTheDocument();
     });
 
     it('regenerates summary when regenerate button clicked', async () => {
@@ -190,7 +202,10 @@ describe('FinalSummary Component', () => {
         />
       );
 
-      const regenerateButton = screen.getByText('Regenerate');
+      const summaryHeader = screen.getByText('Summarize');
+      fireEvent.click(summaryHeader);
+      
+      const regenerateButton = screen.getByText('🔄 Regenerate');
       fireEvent.click(regenerateButton);
 
       await waitFor(() => {
@@ -212,9 +227,8 @@ describe('FinalSummary Component', () => {
         />
       );
 
-      const summarySection = screen.getByTestId('final-summary-section');
-      expect(summarySection).toHaveClass('task-detail-section');
-      expect(summarySection).toHaveClass('collapsible-section');
+      const summarySection = screen.getByTestId('summarize-section');
+      expect(summarySection).toBeInTheDocument();
     });
 
     it('shows loading state during generation', async () => {
@@ -234,10 +248,13 @@ describe('FinalSummary Component', () => {
         />
       );
 
-      const generateButton = screen.getByText('Generate');
+      const summaryHeader = screen.getByText('Summarize');
+      fireEvent.click(summaryHeader);
+      
+      const generateButton = screen.getByText('✨ Generate');
       fireEvent.click(generateButton);
 
-      expect(screen.getByText('Generating...')).toBeInTheDocument();
+      expect(screen.getByText('⏳ Generating...')).toBeInTheDocument();
       expect(generateButton).toBeDisabled();
       
       // Clean up

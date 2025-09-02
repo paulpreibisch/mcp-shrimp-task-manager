@@ -234,5 +234,7 @@
   "replaceTasks": "Replace all current tasks",
   "importWarning": "Warning: This will remove all current tasks",
   "archiveSuccess": "Tasks archived successfully",
-  "noArchivesFound": "No archived task lists found"
+  "noArchivesFound": "No archived task lists found",
+  "initialRequest": "Initial Request",
+  "noInitialRequest": "No initial request provided"
 }

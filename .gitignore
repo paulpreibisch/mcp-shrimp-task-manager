@@ -70,3 +70,6 @@ Screenshots/
 
 # Task viewer history and agents
 tools/task-viewer/history-and-agents/
+
+# Snagit files
+*.snagx
