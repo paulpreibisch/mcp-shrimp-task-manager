@@ -9,6 +9,7 @@ import ImageLightbox, { useLightbox } from './ImageLightbox';
 function Help() {
   const [readmeContent, setReadmeContent] = useState('');
   const [loading, setLoading] = useState(true);
+  const [tableOfContents, setTableOfContents] = useState([]);
   const { t, i18n } = useTranslation();
   const currentLanguage = i18n.language;
   const uiStrings = getUIStrings('help', currentLanguage);
@@ -23,36 +24,152 @@ function Help() {
     setLoading(true);
     
     try {
+      let content = '';
+      
+      // Add archive feature documentation
+      const archiveDocumentation = `
+## Archive Feature
+
+### What is the Archive Feature?
+
+The Archive feature is a powerful tool that allows you to save your current task lists for later use. This is particularly useful when you need to switch between different projects or features without losing your planning work.
+
+### When to Use Archives
+
+- **Multiple Projects**: When working on multiple features simultaneously
+- **Context Switching**: When you need to temporarily work on something else
+- **Task Preservation**: When you want to save a complex task list before starting fresh
+- **Template Creation**: When you have a set of tasks that could be reused
+
+### How to Archive Tasks
+
+![Archive Dialog](/home/fire/claude/mcp-shrimp-task-manager/Screenshots/Screenshot 2025-09-02 215030.png)
+
+To archive your current tasks:
+1. Click the **Archive** button in the main toolbar
+2. The archive dialog will show:
+   - Your current project name
+   - Total number of tasks
+   - Task status breakdown (completed, in progress, pending)
+   - The initial request that created these tasks
+3. Click **Continue** to save the archive
+4. Your tasks will be stored locally and persist across sessions
+
+### Viewing Archives
+
+![Archive Details View](/home/fire/claude/mcp-shrimp-task-manager/Screenshots/Screenshot 2025-09-02 215236.png)
+
+Navigate to the **Archive** tab to see all your saved task lists:
+- View the date each archive was created
+- See the project name and task statistics
+- Review the initial request that spawned the tasks
+- Access the full task list with all details
+
+### Importing from an Archive
+
+![Import Archive Dialog](/home/fire/claude/mcp-shrimp-task-manager/Screenshots/Screenshot 2025-09-02 215208.png)
+
+To restore tasks from an archive:
+1. Go to the **Archive** tab
+2. Click the import icon (📥) next to the archive you want to restore
+3. Choose your import mode:
+   - **Append to current tasks**: Adds archived tasks to your existing task list
+   - **Replace all current tasks**: Removes existing tasks and imports only the archived ones
+4. Click **Import** to restore the tasks
+
+### Archive Management
+
+- Archives are stored locally in your browser's storage
+- Each archive preserves:
+  - All task details and descriptions
+  - Task dependencies and relationships
+  - The original initial request
+  - Task completion status
+  - Agent assignments
+- You can maintain multiple archives simultaneously
+- Archives persist across browser sessions
+
+---
+
+`;
+      
       // First check if we have translated content
       const translatedContent = getReadmeContent(currentLanguage);
       if (translatedContent && translatedContent.content) {
-        setReadmeContent(translatedContent.content);
+        content = archiveDocumentation + translatedContent.content;
+        setReadmeContent(content);
       } else if (currentLanguage === 'en') {
         // Load from README.md for English
         const response = await fetch('/api/readme');
         
         if (response.ok) {
-          const content = await response.text();
+          const readmeText = await response.text();
+          content = archiveDocumentation + readmeText;
           setReadmeContent(content);
         } else {
-          setReadmeContent(`# Help\n\n${uiStrings.notFound}`);
+          content = archiveDocumentation + `# Help\n\n${uiStrings.notFound}`;
+          setReadmeContent(content);
         }
       } else {
         // Fallback to English if translation not available
         const response = await fetch('/api/readme');
         
         if (response.ok) {
-          const content = await response.text();
+          const readmeText = await response.text();
+          content = archiveDocumentation + readmeText;
           setReadmeContent(content);
         } else {
-          setReadmeContent(`# Help\n\n${uiStrings.notFound}`);
+          content = archiveDocumentation + `# Help\n\n${uiStrings.notFound}`;
+          setReadmeContent(content);
         }
       }
+      
+      // Generate table of contents
+      const toc = extractTableOfContents(content);
+      setTableOfContents(toc);
+      
     } catch (error) {
       console.error('Error loading README:', error);
       setReadmeContent(`# Help\n\n${uiStrings.error}`);
+      setTableOfContents([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const extractTableOfContents = (content) => {
+    if (!content) return [];
+    
+    const lines = content.split('\n');
+    const tocItems = [];
+    
+    lines.forEach((line) => {
+      if (line.startsWith('# ') && !line.includes('Help')) {
+        const text = line.substring(2);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        tocItems.push({ level: 1, text, id });
+      } else if (line.startsWith('## ')) {
+        const text = line.substring(3);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        tocItems.push({ level: 2, text, id });
+      } else if (line.startsWith('### ')) {
+        const text = line.substring(4);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        tocItems.push({ level: 3, text, id });
+      } else if (line.startsWith('#### ')) {
+        const text = line.substring(5);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        tocItems.push({ level: 4, text, id });
+      }
+    });
+    
+    return tocItems;
+  };
+
+  const scrollToSection = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -160,30 +277,38 @@ function Help() {
       const line = lines[i];
       
       if (line.startsWith('# ')) {
+        const text = line.substring(2);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h1 key={i} className="release-h1">
-            {parseInlineMarkdown(line.substring(2))}
+          <h1 key={i} id={id} className="release-h1">
+            {parseInlineMarkdown(text)}
           </h1>
         );
         i++;
       } else if (line.startsWith('## ')) {
+        const text = line.substring(3);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h2 key={i} className="release-h2">
-            {parseInlineMarkdown(line.substring(3))}
+          <h2 key={i} id={id} className="release-h2">
+            {parseInlineMarkdown(text)}
           </h2>
         );
         i++;
       } else if (line.startsWith('### ')) {
+        const text = line.substring(4);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h3 key={i} className="release-h3">
-            {parseInlineMarkdown(line.substring(4))}
+          <h3 key={i} id={id} className="release-h3">
+            {parseInlineMarkdown(text)}
           </h3>
         );
         i++;
       } else if (line.startsWith('#### ')) {
+        const text = line.substring(5);
+        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         elements.push(
-          <h4 key={i} className="release-h4">
-            {parseInlineMarkdown(line.substring(5))}
+          <h4 key={i} id={id} className="release-h4">
+            {parseInlineMarkdown(text)}
           </h4>
         );
         i++;
@@ -310,18 +435,91 @@ function Help() {
   };
 
   return (
-    <div className="release-notes-tab-content">
-      <div className="release-notes-inner">
-        <div className="release-notes-header">
+    <div className="release-notes-tab-content" style={{
+      height: 'calc(100vh - 140px)',
+      maxHeight: '900px',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    }}>
+      <div className="release-notes-inner" style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        <div className="release-notes-header" style={{
+          flexShrink: 0
+        }}>
           <h2>{uiStrings.header}</h2>
         </div>
         
-        <div className="release-notes-content" style={{ maxWidth: '100%' }}>
-          <div className="release-details" style={{ maxWidth: '100%' }}>
+        <div className="release-notes-content" style={{
+          display: 'flex',
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+          height: '100%'
+        }}>
+          <div className="release-sidebar" style={{
+            width: '300px',
+            minWidth: '300px',
+            overflowY: 'auto',
+            borderRight: '1px solid rgba(79, 189, 186, 0.2)',
+            paddingRight: '1rem'
+          }}>
+            <h3 style={{ color: '#4fbdba', marginBottom: '1rem' }}>Table of Contents</h3>
+            <div className="toc-list" style={{ padding: 0 }}>
+              {tableOfContents.map((item, index) => (
+                <a
+                  key={index}
+                  href={`#${item.id}`}
+                  style={{
+                    display: 'block',
+                    color: '#87CEEB',
+                    textDecoration: 'none',
+                    fontSize: item.level === 4 ? '0.85rem' : item.level === 3 ? '0.9rem' : item.level === 2 ? '0.95rem' : '1rem',
+                    marginLeft: item.level === 4 ? '2.5rem' : item.level === 3 ? '1.5rem' : item.level === 2 ? '0.5rem' : '0',
+                    marginBottom: '0.5rem',
+                    padding: '0.3rem 0.5rem',
+                    borderRadius: '4px',
+                    transition: 'all 0.2s ease',
+                    fontWeight: item.level === 1 ? 'bold' : 'normal'
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    scrollToSection(item.id);
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.1)';
+                    e.target.style.color = '#ADD8E6';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'transparent';
+                    e.target.style.color = '#87CEEB';
+                  }}
+                >
+                  {item.level === 4 ? '◦ ' : item.level === 3 ? '• ' : item.level === 2 ? '▸ ' : '▪ '}{item.text}
+                </a>
+              ))}
+            </div>
+          </div>
+          
+          <div className="release-details" style={{
+            flex: 1,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            paddingLeft: '2rem',
+            paddingRight: '2rem',
+            minWidth: 0,
+            minHeight: 0,
+            maxHeight: '100%',
+            position: 'relative'
+          }}>
             {loading ? (
               <div className="release-loading">{uiStrings.loading}</div>
             ) : (
-              <div className="release-markdown-content">
+              <div className="release-markdown-content" style={{ paddingBottom: '2rem' }}>
                 {renderMarkdown(readmeContent)}
               </div>
             )}

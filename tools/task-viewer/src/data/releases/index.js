@@ -3,8 +3,8 @@ export const releaseMetadata = [
   {
     version: 'v4.0.0',
     date: '2025-01-02',
-    title: 'Enhanced Release Notes & Archive System',
-    summary: 'Major UI overhaul with interactive Release Notes, comprehensive Archive management, and critical scrolling fixes'
+    title: 'Initial Request Display & Interactive Release Notes',
+    summary: 'Context tracking with Initial Request Display, AI-powered summaries, enhanced Release Notes with TOC, and comprehensive Archive management'
   },
   {
     version: 'v3.1.0',
