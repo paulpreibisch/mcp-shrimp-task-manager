@@ -5,6 +5,7 @@ import { dark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useTranslation } from 'react-i18next';
 import { getUIStrings, getReadmeContent } from '../i18n/documentation/index.js';
 import ImageLightbox, { useLightbox } from './ImageLightbox';
+import { Link as ScrollLink, Element as ScrollElement, Events, scrollSpy, scroller } from 'react-scroll';
 
 function Help() {
   const [readmeContent, setReadmeContent] = useState('');
@@ -31,60 +32,63 @@ function Help() {
     loadReadmeContent();
   }, [currentLanguage]);
 
-  // Scroll spy effect
+  // Initialize react-scroll after content loads
   useEffect(() => {
+    if (readmeContent && tableOfContents.length > 0 && contentRef.current) {
+      // Small delay to ensure DOM is fully rendered
+      const timer = setTimeout(() => {
+        // Configure scrollSpy to use our container
+        scrollSpy.update();
+        console.log('ScrollSpy updated for Help page with container');
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [readmeContent, tableOfContents]);
+
+  // Set up scroll spy for container
+  useEffect(() => {
+    if (!contentRef.current) return;
+    
+    const container = contentRef.current;
+    
     const handleScroll = () => {
-      if (!contentRef.current || tableOfContents.length === 0) return;
-
-      // Get all section IDs from the table of contents
-      const sectionIds = [];
-      const extractIds = (items) => {
-        items.forEach(item => {
-          sectionIds.push(item.id);
-          if (item.children && item.children.length > 0) {
-            extractIds(item.children);
-          }
-        });
-      };
-      extractIds(tableOfContents);
-
-      // Find which section is currently visible
-      let currentSection = '';
-      // Offset of about 150px (roughly 4-5 lines of text) before the top
-      const scrollPosition = contentRef.current.scrollTop + 150;
-
-      for (const id of sectionIds) {
-        const element = document.getElementById(id);
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          const containerRect = contentRef.current.getBoundingClientRect();
-          const elementTop = rect.top - containerRect.top + contentRef.current.scrollTop;
-          
-          if (elementTop <= scrollPosition) {
-            currentSection = id;
-          }
+      // Find which section is currently in view
+      const scrollTop = container.scrollTop;
+      const containerTop = container.getBoundingClientRect().top;
+      
+      // Get all ScrollElement targets
+      const elements = container.querySelectorAll('[data-scroll-element]');
+      let activeElement = null;
+      
+      // Find the element that's most visible in the viewport
+      for (let i = elements.length - 1; i >= 0; i--) {
+        const element = elements[i];
+        const rect = element.getBoundingClientRect();
+        const relativeTop = rect.top - containerTop;
+        
+        if (relativeTop <= 100) { // 100px threshold
+          activeElement = element;
+          break;
         }
       }
-
-      if (currentSection !== activeSection) {
-        setActiveSection(currentSection);
+      
+      if (activeElement) {
+        const activeId = activeElement.getAttribute('data-scroll-element');
+        if (activeId && activeId !== activeSection) {
+          setActiveSection(activeId);
+        }
       }
     };
-
-    // Attach scroll listener to content container
-    const container = contentRef.current;
-    if (container) {
-      container.addEventListener('scroll', handleScroll);
-      // Initial check
-      handleScroll();
-    }
-
+    
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    // Initial check
+    handleScroll();
+    
     return () => {
-      if (container) {
-        container.removeEventListener('scroll', handleScroll);
-      }
+      container.removeEventListener('scroll', handleScroll);
     };
-  }, [tableOfContents, activeSection]);
+  }, [activeSection, readmeContent]);
 
   const loadReadmeContent = async () => {
     setLoading(true);
@@ -474,20 +478,9 @@ To restore tasks from an archive:
     return tocItems;
   };
 
-  const scrollToSection = (id) => {
-    const element = document.getElementById(id);
-    const container = contentRef.current;
-    if (element && container) {
-      // Get the element's position relative to the container
-      const containerRect = container.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      const scrollTop = container.scrollTop + elementRect.top - containerRect.top - 20;
-      
-      container.scrollTo({
-        top: scrollTop,
-        behavior: 'smooth'
-      });
-    }
+  // Handle active section updates for styling
+  const handleSetActive = (to) => {
+    setActiveSection(to);
   };
 
   const toggleSection = (sectionKey) => {
@@ -588,8 +581,16 @@ To restore tasks from an archive:
               {isExpanded ? '▼' : '▶'}
             </button>
           )}
-          <a
-            href={`#${item.id}`}
+          <div
+            onClick={() => {
+              scroller.scrollTo(item.id, {
+                duration: 500,
+                delay: 0,
+                smooth: 'easeInOutQuart',
+                containerId: 'help-content-container',
+                offset: -20
+              });
+            }}
             style={{
               display: 'block',
               color: isActive ? '#FFFFFF' : getItemColor(item),
@@ -602,11 +603,8 @@ To restore tasks from an archive:
               fontWeight: isActive ? 'bold' : (item.level === 1 || isPageHeader ? 'bold' : item.level === 2 ? '600' : 'normal'),
               backgroundColor: isActive ? 'rgba(79, 189, 186, 0.6)' : 'transparent',
               borderLeft: isActive ? '3px solid #4fbdba' : '3px solid transparent',
-              flex: 1
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              scrollToSection(item.id);
+              flex: 1,
+              cursor: 'pointer'
             }}
             onMouseEnter={(e) => {
               if (!isActive) {
@@ -625,7 +623,7 @@ To restore tasks from an archive:
             }}
           >
             {item.text}
-          </a>
+          </div>
         </div>
         {hasChildren && isExpanded && (
           <div style={{ marginLeft: '1rem' }}>
@@ -747,9 +745,11 @@ To restore tasks from an archive:
         parentPath.push(text);
         const id = generateUniqueId(text, parentPath.slice(0, -1));
         elements.push(
-          <h1 key={i} id={id} className="release-h1">
-            {parseInlineMarkdown(text)}
-          </h1>
+          <ScrollElement key={i} name={id}>
+            <h1 id={id} className="release-h1" data-scroll-element={id}>
+              {parseInlineMarkdown(text)}
+            </h1>
+          </ScrollElement>
         );
         i++;
       } else if (line.startsWith('## ')) {
@@ -758,9 +758,11 @@ To restore tasks from an archive:
         parentPath.push(text);
         const id = generateUniqueId(text, parentPath.slice(0, -1));
         elements.push(
-          <h2 key={i} id={id} className="release-h2">
-            {parseInlineMarkdown(text)}
-          </h2>
+          <ScrollElement key={i} name={id}>
+            <h2 id={id} className="release-h2" data-scroll-element={id}>
+              {parseInlineMarkdown(text)}
+            </h2>
+          </ScrollElement>
         );
         i++;
       } else if (line.startsWith('### ')) {
@@ -769,9 +771,11 @@ To restore tasks from an archive:
         parentPath.push(text);
         const id = generateUniqueId(text, parentPath.slice(0, -1));
         elements.push(
-          <h3 key={i} id={id} className="release-h3">
-            {parseInlineMarkdown(text)}
-          </h3>
+          <ScrollElement key={i} name={id}>
+            <h3 id={id} className="release-h3" data-scroll-element={id}>
+              {parseInlineMarkdown(text)}
+            </h3>
+          </ScrollElement>
         );
         i++;
       } else if (line.startsWith('#### ')) {
@@ -780,9 +784,11 @@ To restore tasks from an archive:
         parentPath.push(text);
         const id = generateUniqueId(text, parentPath.slice(0, -1));
         elements.push(
-          <h4 key={i} id={id} className="release-h4">
-            {parseInlineMarkdown(text)}
-          </h4>
+          <ScrollElement key={i} name={id}>
+            <h4 id={id} className="release-h4" data-scroll-element={id}>
+              {parseInlineMarkdown(text)}
+            </h4>
+          </ScrollElement>
         );
         i++;
       } else if (line.match(/^\s*```/)) {
@@ -998,7 +1004,7 @@ To restore tasks from an archive:
             </div>
           </div>
           
-          <div className="release-details" ref={contentRef} style={{
+          <div id="help-content-container" className="release-details" ref={contentRef} style={{
             flex: 1,
             overflowY: 'auto',
             overflowX: 'hidden',

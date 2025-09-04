@@ -6,6 +6,7 @@ import { dark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useTranslation } from 'react-i18next';
 import { getUIStrings, getReleaseContent } from '../i18n/documentation/index.js';
 import ImageLightbox, { useLightbox } from './ImageLightbox';
+import { Link as ScrollLink, Element as ScrollElement, Events, scrollSpy, scroller } from 'react-scroll';
 
 function ReleaseNotes() {
   const [selectedVersion, setSelectedVersion] = useState(releaseMetadata[0]?.version || '');
@@ -77,63 +78,49 @@ function ReleaseNotes() {
     loadAllTOCs();
   }, []);
 
-  // Scroll spy effect
+  // React-scroll based scroll spy for container
   useEffect(() => {
+    if (!contentRef.current || !tableOfContents[selectedVersion]) return;
+    
+    const container = contentRef.current;
+    
     const handleScroll = () => {
-      if (!contentRef.current || !tableOfContents[selectedVersion]) return;
-
-      const toc = tableOfContents[selectedVersion];
-      if (!toc || toc.length === 0) return;
-
-      // Get all section IDs from the table of contents
-      const sectionIds = [];
-      const extractIds = (items) => {
-        items.forEach(item => {
-          sectionIds.push(item.id);
-          if (item.children && item.children.length > 0) {
-            extractIds(item.children);
-          }
-        });
-      };
-      extractIds(toc);
-
-      // Find which section is currently visible
-      let currentSection = '';
-      // Offset of about 150px (roughly 4-5 lines of text) before the top
-      const scrollPosition = contentRef.current.scrollTop + 150;
-
-      for (const id of sectionIds) {
-        const element = document.getElementById(id);
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          const containerRect = contentRef.current.getBoundingClientRect();
-          const elementTop = rect.top - containerRect.top + contentRef.current.scrollTop;
-          
-          if (elementTop <= scrollPosition) {
-            currentSection = id;
-          }
+      // Find which section is currently in view
+      const scrollTop = container.scrollTop;
+      const containerTop = container.getBoundingClientRect().top;
+      
+      // Get all ScrollElement targets
+      const elements = container.querySelectorAll('[data-scroll-element]');
+      let activeElement = null;
+      
+      // Find the element that's most visible in the viewport
+      for (let i = elements.length - 1; i >= 0; i--) {
+        const element = elements[i];
+        const rect = element.getBoundingClientRect();
+        const relativeTop = rect.top - containerTop;
+        
+        if (relativeTop <= 100) { // 100px threshold
+          activeElement = element;
+          break;
         }
       }
-
-      if (currentSection !== activeSection) {
-        setActiveSection(currentSection);
+      
+      if (activeElement) {
+        const activeId = activeElement.getAttribute('data-scroll-element');
+        if (activeId && activeId !== activeSection) {
+          setActiveSection(activeId);
+        }
       }
     };
-
-    // Attach scroll listener to content container
-    const container = contentRef.current;
-    if (container) {
-      container.addEventListener('scroll', handleScroll);
-      // Initial check
-      handleScroll();
-    }
-
+    
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    // Initial check
+    handleScroll();
+    
     return () => {
-      if (container) {
-        container.removeEventListener('scroll', handleScroll);
-      }
+      container.removeEventListener('scroll', handleScroll);
     };
-  }, [tableOfContents, selectedVersion, activeSection]);
+  }, [activeSection, tableOfContents, selectedVersion]);
 
   const loadReleaseContent = async (version) => {
     setLoading(true);
@@ -357,8 +344,16 @@ function ReleaseNotes() {
               ▶
             </button>
           )}
-          <a
-            href={`#${item.id}`}
+          <div
+            onClick={() => {
+              scroller.scrollTo(item.id, {
+                duration: 500,
+                delay: 0,
+                smooth: 'easeInOutQuart',
+                containerId: 'release-content-container',
+                offset: -20
+              });
+            }}
             style={{
               display: 'block',
               color: isActive ? '#FFFFFF' : itemColor,
@@ -371,23 +366,8 @@ function ReleaseNotes() {
               backgroundColor: isActive ? 'rgba(79, 189, 186, 0.6)' : 'transparent',
               borderLeft: isActive ? '3px solid #4fbdba' : '3px solid transparent',
               transition: 'all 0.2s ease',
-              flex: 1
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              const element = document.getElementById(item.id);
-              const container = contentRef.current;
-              if (element && container) {
-                // Get the element's position relative to the container
-                const containerRect = container.getBoundingClientRect();
-                const elementRect = element.getBoundingClientRect();
-                const scrollTop = container.scrollTop + elementRect.top - containerRect.top - 20;
-                
-                container.scrollTo({
-                  top: scrollTop,
-                  behavior: 'smooth'
-                });
-              }
+              flex: 1,
+              cursor: 'pointer'
             }}
             onMouseEnter={(e) => {
               if (!isActive) {
@@ -406,7 +386,7 @@ function ReleaseNotes() {
             }}
           >
             {item.text}
-          </a>
+          </div>
         </div>
         {hasChildren && isExpanded && (
           <div style={{ marginLeft: '1rem' }}>
@@ -467,19 +447,13 @@ function ReleaseNotes() {
             onClick={isAnchor ? (e) => {
               e.preventDefault();
               const targetId = href.substring(1);
-              const element = document.getElementById(targetId);
-              const container = contentRef.current;
-              if (element && container) {
-                // Get the element's position relative to the container
-                const containerRect = container.getBoundingClientRect();
-                const elementRect = element.getBoundingClientRect();
-                const scrollTop = container.scrollTop + elementRect.top - containerRect.top - 20;
-                
-                container.scrollTo({
-                  top: scrollTop,
-                  behavior: 'smooth'
-                });
-              }
+              scroller.scrollTo(targetId, {
+                duration: 500,
+                delay: 0,
+                smooth: 'easeInOutQuart',
+                containerId: 'release-content-container',
+                offset: -20
+              });
             } : undefined}
           >
             {linkMatch[1]}
@@ -569,12 +543,14 @@ function ReleaseNotes() {
         const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
         elements.push(
-          <h1 key={i} id={id} className="release-h1" style={{
-            color: '#ff69b4',
-            fontSize: '2.5rem'
-          }}>
-            {parseInlineMarkdown(text)}
-          </h1>
+          <ScrollElement key={i} name={id}>
+            <h1 id={id} className="release-h1" data-scroll-element={id} style={{
+              color: '#ff69b4',
+              fontSize: '2.5rem'
+            }}>
+              {parseInlineMarkdown(text)}
+            </h1>
+          </ScrollElement>
         );
         i++;
       } else if (line.startsWith('## ')) {
@@ -589,12 +565,14 @@ function ReleaseNotes() {
         if (isNewFeatures) color = '#ffffff'; // white for New Features
         if (isBugFixes) color = '#ffa500'; // orange for Bug Fixes
         elements.push(
-          <h2 key={i} id={id} className="release-h2" style={{
-            color: color,
-            fontSize: '2rem'
-          }}>
-            {parseInlineMarkdown(text)}
-          </h2>
+          <ScrollElement key={i} name={id}>
+            <h2 id={id} className="release-h2" data-scroll-element={id} style={{
+              color: color,
+              fontSize: '2rem'
+            }}>
+              {parseInlineMarkdown(text)}
+            </h2>
+          </ScrollElement>
         );
         i++;
       } else if (line.startsWith('### ')) {
@@ -603,12 +581,14 @@ function ReleaseNotes() {
         const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
         elements.push(
-          <h3 key={i} id={id} className="release-h3" style={{
-            color: '#ff69b4',
-            fontSize: '1.5rem'
-          }}>
-            {parseInlineMarkdown(text)}
-          </h3>
+          <ScrollElement key={i} name={id}>
+            <h3 id={id} className="release-h3" data-scroll-element={id} style={{
+              color: '#ff69b4',
+              fontSize: '1.5rem'
+            }}>
+              {parseInlineMarkdown(text)}
+            </h3>
+          </ScrollElement>
         );
         i++;
       } else if (line.startsWith('##### ')) {
@@ -617,15 +597,17 @@ function ReleaseNotes() {
         const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
         elements.push(
-          <h5 key={i} id={id} className="release-h5" style={{
-            color: '#87CEEB',
-            fontSize: '1.1rem',
-            fontWeight: 'bold',
-            marginTop: '1rem',
-            marginBottom: '0.5rem'
-          }}>
-            {parseInlineMarkdown(text)}
-          </h5>
+          <ScrollElement key={i} name={id}>
+            <h5 id={id} className="release-h5" data-scroll-element={id} style={{
+              color: '#87CEEB',
+              fontSize: '1.1rem',
+              fontWeight: 'bold',
+              marginTop: '1rem',
+              marginBottom: '0.5rem'
+            }}>
+              {parseInlineMarkdown(text)}
+            </h5>
+          </ScrollElement>
         );
         i++;
       } else if (line.startsWith('#### ')) {
@@ -636,12 +618,14 @@ function ReleaseNotes() {
         // Apply light blue for Overview and Key Highlights
         const isOverviewOrHighlights = text.includes('Overview') || text.includes('Key Highlights') || text.includes('Key Features') || text.includes('Key Improvements');
         elements.push(
-          <h4 key={i} id={id} className="release-h4" style={{
-            color: isOverviewOrHighlights ? '#87CEEB' : '#ff69b4',
-            fontSize: '1.25rem'
-          }}>
-            {parseInlineMarkdown(text)}
-          </h4>
+          <ScrollElement key={i} name={id}>
+            <h4 id={id} className="release-h4" data-scroll-element={id} style={{
+              color: isOverviewOrHighlights ? '#87CEEB' : '#ff69b4',
+              fontSize: '1.25rem'
+            }}>
+              {parseInlineMarkdown(text)}
+            </h4>
+          </ScrollElement>
         );
         i++;
       } else if (line.startsWith('```')) {
@@ -924,7 +908,7 @@ function ReleaseNotes() {
             </ul>
           </div>
           
-          <div className="release-details" ref={contentRef} style={{
+          <div id="release-content-container" className="release-details" ref={contentRef} style={{
             flex: 1,
             overflowY: 'scroll',
             overflowX: 'hidden',
