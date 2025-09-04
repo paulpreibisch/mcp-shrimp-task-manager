@@ -221,7 +221,7 @@ function HistoryTasksView({
           </h3>
           <div className="collapsible-content expanded">
             <div className="detail-content">
-              {initialRequest}
+              {initialRequest.replace(/\n要求:/g, '\nRequirements:').replace(/\n需求:/g, '\nRequirements:')}
             </div>
           </div>
         </div>

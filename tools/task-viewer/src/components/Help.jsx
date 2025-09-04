@@ -10,15 +10,81 @@ function Help() {
   const [readmeContent, setReadmeContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [tableOfContents, setTableOfContents] = useState([]);
+  const [expandedSections, setExpandedSections] = useState({});
+  const [activeSection, setActiveSection] = useState('');
   const { t, i18n } = useTranslation();
   const currentLanguage = i18n.language;
   const uiStrings = getUIStrings('help', currentLanguage);
   const lightbox = useLightbox();
   const imagesRef = useRef([]);
+  const contentRef = useRef(null);
+
+  // Centralized ID generation function to ensure consistency
+  const generateUniqueId = (text, parentPath) => {
+    const cleanPath = [...parentPath, text].map(part => 
+      part.toLowerCase().replace(/[^\\w\\s-]/g, '').replace(/\\s+/g, '-')
+    ).filter(part => part.length > 0);
+    return cleanPath.join('-');
+  };
 
   useEffect(() => {
     loadReadmeContent();
   }, [currentLanguage]);
+
+  // Scroll spy effect
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!contentRef.current || tableOfContents.length === 0) return;
+
+      // Get all section IDs from the table of contents
+      const sectionIds = [];
+      const extractIds = (items) => {
+        items.forEach(item => {
+          sectionIds.push(item.id);
+          if (item.children && item.children.length > 0) {
+            extractIds(item.children);
+          }
+        });
+      };
+      extractIds(tableOfContents);
+
+      // Find which section is currently visible
+      let currentSection = '';
+      // Offset of about 150px (roughly 4-5 lines of text) before the top
+      const scrollPosition = contentRef.current.scrollTop + 150;
+
+      for (const id of sectionIds) {
+        const element = document.getElementById(id);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          const containerRect = contentRef.current.getBoundingClientRect();
+          const elementTop = rect.top - containerRect.top + contentRef.current.scrollTop;
+          
+          if (elementTop <= scrollPosition) {
+            currentSection = id;
+          }
+        }
+      }
+
+      if (currentSection !== activeSection) {
+        setActiveSection(currentSection);
+      }
+    };
+
+    // Attach scroll listener to content container
+    const container = contentRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      // Initial check
+      handleScroll();
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [tableOfContents, activeSection]);
 
   const loadReadmeContent = async () => {
     setLoading(true);
@@ -26,24 +92,92 @@ function Help() {
     try {
       let content = '';
       
-      // Add archive feature documentation
+      // Quick Start section to be inserted at the top
+      const quickStartSection = `
+# 🦐 Shrimp Task Manager Viewer
+
+## 🚀 Quick Start
+
+### Installation & Setup
+
+1. **Clone and navigate to the task viewer directory**
+   \`\`\`bash
+   cd path/to/mcp-shrimp-task-manager/tools/task-viewer
+   \`\`\`
+
+2. **Install dependencies**
+   \`\`\`bash
+   npm install
+   \`\`\`
+
+3. **Build the React application**
+   \`\`\`bash
+   npm run build
+   \`\`\`
+
+4. **Start the server**
+   \`\`\`bash
+   npm start
+   \`\`\`
+
+   The viewer will be available at \`http://localhost:9998\`
+
+### Development Mode
+
+For development with hot reload:
+
+\`\`\`bash
+# Starting both the API server and development server together
+npm run start:all
+
+# Running servers separately if needed:
+npm start          # API server on port 9998
+npm run dev        # Vite dev server on port 3000
+\`\`\`
+
+The app will be available at \`http://localhost:3000\` with automatic rebuilding on file changes.
+
+### Production Deployment
+
+#### Standard Deployment
+
+\`\`\`bash
+# Building the application for production
+npm run build
+
+# Starting the production server
+npm start
+\`\`\`
+
+---
+
+`;
+      
+      // Archive documentation will be added after main content  
       const archiveDocumentation = `
+
+---
+
 ## Archive Feature
 
-### What is the Archive Feature?
+### Overview
 
 The Archive feature is a powerful tool that allows you to save your current task lists for later use. This is particularly useful when you need to switch between different projects or features without losing your planning work.
 
-### When to Use Archives
+### Use Cases
 
-- **Multiple Projects**: When working on multiple features simultaneously
-- **Context Switching**: When you need to temporarily work on something else
-- **Task Preservation**: When you want to save a complex task list before starting fresh
-- **Template Creation**: When you have a set of tasks that could be reused
+#### When to Archive Your Task List Using the Archive Feature
 
-### How to Archive Tasks
+The Archive feature becomes invaluable when you're juggling multiple projects or need to pivot your focus without losing your carefully crafted task plans. Imagine you're in the middle of implementing a complex authentication system with 30+ interconnected tasks, dependencies mapped out, and agents assigned. Suddenly, a critical bug in production demands your immediate attention. Rather than losing all that planning work or trying to work around it, you can archive your current task list with a single click, preserving every detail including task descriptions, dependencies, completion status, and even the initial request that spawned the project.
 
-![Archive Dialog](/home/fire/claude/mcp-shrimp-task-manager/Screenshots/Screenshot 2025-09-02 215030.png)
+This feature particularly shines when you're working across multiple features or experiments. For example, you might be exploring two different architectural approaches for a new feature. You can fully plan out the first approach with all its tasks, archive it with a descriptive name like "Microservices Architecture Approach", then start fresh with the second approach. Later, you can compare both archived plans side by side, or import the one that proves most viable. The Archive feature also serves as an excellent template system – if you find yourself repeatedly implementing similar features across different projects, you can archive a well-structured task list and reuse it as a starting template for future work, saving hours of planning time.
+
+### Working with Archives
+
+#### Creating an Archive
+
+![Archive Dialog](/releases/archive-dialog.png)
+*The Archive Current Tasks dialog shows a summary of what will be archived, including the project name, task counts, and the complete initial request that created these tasks*
 
 To archive your current tasks:
 1. Click the **Archive** button in the main toolbar
@@ -55,29 +189,39 @@ To archive your current tasks:
 3. Click **Continue** to save the archive
 4. Your tasks will be stored locally and persist across sessions
 
-### Viewing Archives
+#### Viewing Archives
 
-![Archive Details View](/home/fire/claude/mcp-shrimp-task-manager/Screenshots/Screenshot 2025-09-02 215236.png)
+![Archive List](/releases/archive-list.png)
+*The Archive tab displays all archived task lists with creation dates, statistics, and action buttons. Click "View" to examine all tasks within an archived list, "Delete" to remove an archive, or "Import" to restore tasks to your current workflow*
 
 Navigate to the **Archive** tab to see all your saved task lists:
 - View the date each archive was created
 - See the project name and task statistics
 - Review the initial request that spawned the tasks
-- Access the full task list with all details
+- **Click "View"** to examine all tasks within the archived task list
+- **Click "Delete"** to permanently remove an archive
+- **Click "Import"** to restore the archived tasks to your current task list
 
-### Importing from an Archive
+![Archive Details View](/releases/archive-details.png)
 
-![Import Archive Dialog](/home/fire/claude/mcp-shrimp-task-manager/Screenshots/Screenshot 2025-09-02 215208.png)
+The Archive Details page provides a comprehensive view of the archived task list, including the complete initial request and full task breakdown with all dependencies and descriptions preserved.
+
+#### Importing Archives
+
+![Import Archive Dialog](/releases/archive-import.png)
+*The Import Archive dialog offers flexible options for restoring archived tasks - either append them to your current task list or completely replace your existing tasks with the archived ones*
 
 To restore tasks from an archive:
 1. Go to the **Archive** tab
-2. Click the import icon (📥) next to the archive you want to restore
+2. Click the **Import** button next to the archive you want to restore
 3. Choose your import mode:
    - **Append to current tasks**: Adds archived tasks to your existing task list
    - **Replace all current tasks**: Removes existing tasks and imports only the archived ones
 4. Click **Import** to restore the tasks
 
-### Archive Management
+### Archive Storage
+
+#### Data Preservation
 
 - Archives are stored locally in your browser's storage
 - Each archive preserves:
@@ -87,27 +231,46 @@ To restore tasks from an archive:
   - Task completion status
   - Agent assignments
 - You can maintain multiple archives simultaneously
-- Archives persist across browser sessions
-
----
-
-`;
+- Archives persist across browser sessions`;
       
       // First check if we have translated content
       const translatedContent = getReadmeContent(currentLanguage);
       if (translatedContent && translatedContent.content) {
-        content = archiveDocumentation + translatedContent.content;
+        // For translated content, prepend Quick Start
+        content = quickStartSection + translatedContent.content + archiveDocumentation;
         setReadmeContent(content);
       } else if (currentLanguage === 'en') {
         // Load from README.md for English
         const response = await fetch('/api/readme');
         
         if (response.ok) {
-          const readmeText = await response.text();
-          content = archiveDocumentation + readmeText;
+          let readmeText = await response.text();
+          
+          // Remove the original title and quick start section if present
+          // Keep everything after the first "## " that isn't Quick Start
+          const lines = readmeText.split('\n');
+          let startIndex = 0;
+          let foundFirstSection = false;
+          
+          for (let i = 0; i < lines.length; i++) {
+            // Skip title and initial content until we find the first feature section
+            if (lines[i].startsWith('## ') && !lines[i].includes('Quick Start')) {
+              // Found the first non-quick-start section
+              startIndex = i;
+              foundFirstSection = true;
+              break;
+            }
+          }
+          
+          if (foundFirstSection) {
+            readmeText = lines.slice(startIndex).join('\n');
+          }
+          
+          // Prepend our Quick Start section
+          content = quickStartSection + readmeText + archiveDocumentation;
           setReadmeContent(content);
         } else {
-          content = archiveDocumentation + `# Help\n\n${uiStrings.notFound}`;
+          content = quickStartSection + `\n\n## Help Content Not Found\n\n${uiStrings.notFound}` + archiveDocumentation;
           setReadmeContent(content);
         }
       } else {
@@ -115,11 +278,29 @@ To restore tasks from an archive:
         const response = await fetch('/api/readme');
         
         if (response.ok) {
-          const readmeText = await response.text();
-          content = archiveDocumentation + readmeText;
+          let readmeText = await response.text();
+          
+          // Remove the original title and quick start section if present
+          const lines = readmeText.split('\n');
+          let startIndex = 0;
+          let foundFirstSection = false;
+          
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i].startsWith('## ') && !lines[i].includes('Quick Start')) {
+              startIndex = i;
+              foundFirstSection = true;
+              break;
+            }
+          }
+          
+          if (foundFirstSection) {
+            readmeText = lines.slice(startIndex).join('\n');
+          }
+          
+          content = quickStartSection + readmeText + archiveDocumentation;
           setReadmeContent(content);
         } else {
-          content = archiveDocumentation + `# Help\n\n${uiStrings.notFound}`;
+          content = quickStartSection + `\n\n## Help Content Not Found\n\n${uiStrings.notFound}` + archiveDocumentation;
           setReadmeContent(content);
         }
       }
@@ -142,26 +323,153 @@ To restore tasks from an archive:
     
     const lines = content.split('\n');
     const tocItems = [];
+    let inCodeBlock = false;
+    const parentPath = []; // Track parent sections for unique ID generation
     
-    lines.forEach((line) => {
-      if (line.startsWith('# ') && !line.includes('Help')) {
-        const text = line.substring(2);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-        tocItems.push({ level: 1, text, id });
-      } else if (line.startsWith('## ')) {
-        const text = line.substring(3);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-        tocItems.push({ level: 2, text, id });
-      } else if (line.startsWith('### ')) {
-        const text = line.substring(4);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-        tocItems.push({ level: 3, text, id });
-      } else if (line.startsWith('#### ')) {
-        const text = line.substring(5);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-        tocItems.push({ level: 4, text, id });
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Track code block state - check for both regular and indented code blocks
+      if (line.match(/^\s*```/)) {
+        inCodeBlock = !inCodeBlock;
+        continue; // Skip this line
       }
-    });
+      
+      // Skip everything inside code blocks
+      if (inCodeBlock) {
+        continue;
+      }
+      
+      // Skip lines that look like shell comments (even outside code blocks)
+      // These patterns indicate command-line comments, not markdown headers
+      if (line.match(/^#\s+[A-Z][a-z]+ing\s/)) { // Starting, Running, Building, etc.
+        continue;
+      }
+      if (line.match(/^#\s+(For|Add|Set|Install|Configure|Create|Update|Delete|Enable|Disable)\s/i)) {
+        continue;
+      }
+      if (line.match(/^#\s+[a-z]/)) { // Comments starting with lowercase
+        continue;
+      }
+      
+      // Now process actual markdown headers
+      if (line.match(/^#\s+/) && !line.includes('Help')) {
+        const text = line.substring(2).trim();
+        // Final check: skip if this still looks like a comment
+        if (text.match(/^(Starting|Running|Building|Adding|Reloading|Installing|Configuring)/)) {
+          continue;
+        }
+        parentPath.length = 0; // Reset for new top-level section
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
+        tocItems.push({ level: 1, text, id, children: [] });
+      } else if (line.match(/^##\s+/)) {
+        const text = line.substring(3).trim();
+        parentPath.length = 1; // Keep only top-level parent
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
+        const parent = tocItems[tocItems.length - 1];
+        if (parent && parent.level === 1) {
+          parent.children.push({ level: 2, text, id, children: [] });
+        } else {
+          tocItems.push({ level: 2, text, id, children: [] });
+        }
+      } else if (line.match(/^###\s+/)) {
+        const text = line.substring(4).trim();
+        parentPath.length = Math.min(2, parentPath.length); // Keep up to level 2 parents
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
+        // Find the appropriate parent (should be the nearest level 2 item)
+        let added = false;
+        for (let j = tocItems.length - 1; j >= 0; j--) {
+          const item = tocItems[j];
+          // If we find a level 2 item, add as its child
+          if (item.level === 2) {
+            item.children.push({ level: 3, text, id, children: [] });
+            added = true;
+            break;
+          }
+          // If we find a level 1 item with level 2 children, add to the last level 2 child
+          if (item.level === 1 && item.children.length > 0) {
+            const lastChild = item.children[item.children.length - 1];
+            if (lastChild.level === 2) {
+              lastChild.children.push({ level: 3, text, id, children: [] });
+              added = true;
+              break;
+            }
+          }
+        }
+        // If no parent found, add as top-level item
+        if (!added) {
+          tocItems.push({ level: 3, text, id, children: [] });
+        }
+      } else if (line.match(/^####\s+/)) {
+        const text = line.substring(5).trim();
+        parentPath.length = Math.min(3, parentPath.length); // Keep up to level 3 parents
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
+        // Find the appropriate parent for level 4 headers (should be the nearest level 3 item)
+        let added = false;
+        for (let j = tocItems.length - 1; j >= 0; j--) {
+          const item = tocItems[j];
+          // If we find a level 3 item, add as its child
+          if (item.level === 3) {
+            item.children.push({ level: 4, text, id, children: [] });
+            added = true;
+            break;
+          }
+          // Check level 2 items for level 3 children
+          if (item.level === 2 && item.children.length > 0) {
+            const lastLevel3 = item.children[item.children.length - 1];
+            if (lastLevel3.level === 3) {
+              lastLevel3.children.push({ level: 4, text, id, children: [] });
+              added = true;
+              break;
+            }
+          }
+          // Check level 1 items for nested children
+          if (item.level === 1 && item.children.length > 0) {
+            const lastLevel2 = item.children[item.children.length - 1];
+            if (lastLevel2.level === 2 && lastLevel2.children.length > 0) {
+              const lastLevel3 = lastLevel2.children[lastLevel2.children.length - 1];
+              if (lastLevel3.level === 3) {
+                lastLevel3.children.push({ level: 4, text, id, children: [] });
+                added = true;
+                break;
+              }
+            }
+          }
+        }
+        // If no parent found, add as child of the last level 2 or as top-level
+        if (!added) {
+          for (let j = tocItems.length - 1; j >= 0; j--) {
+            const item = tocItems[j];
+            if (item.level === 2) {
+              item.children.push({ level: 4, text, id, children: [] });
+              break;
+            }
+          }
+        }
+      }
+    }
+    
+    // Initialize expanded state for all items with children
+    const expanded = {};
+    
+    const initializeExpanded = (items, parentKey = '') => {
+      items.forEach((item, index) => {
+        const itemKey = parentKey ? `${parentKey}-${index}` : `section-${index}`;
+        if (item.children && item.children.length > 0) {
+          // Start with all sections expanded
+          expanded[itemKey] = true;
+          // Recursively initialize children
+          initializeExpanded(item.children, itemKey);
+        }
+      });
+    };
+    
+    initializeExpanded(tocItems);
+    setExpandedSections(expanded);
     
     return tocItems;
   };
@@ -171,6 +479,152 @@ To restore tasks from an archive:
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  };
+
+  const toggleSection = (sectionKey) => {
+    setExpandedSections(prev => {
+      // If not in state or true, set to false; if false, set to true
+      const currentState = prev[sectionKey];
+      return {
+        ...prev,
+        [sectionKey]: currentState === false ? true : false
+      };
+    });
+  };
+
+  const expandAll = () => {
+    const expanded = {};
+    const setAllExpanded = (items, parentKey = '') => {
+      items.forEach((item, index) => {
+        const itemKey = parentKey ? `${parentKey}-${index}` : `section-${index}`;
+        if (item.children && item.children.length > 0) {
+          expanded[itemKey] = true;
+          setAllExpanded(item.children, itemKey);
+        }
+      });
+    };
+    setAllExpanded(tableOfContents);
+    setExpandedSections(expanded);
+  };
+
+  const collapseAll = () => {
+    const collapsed = {};
+    const setAllCollapsed = (items, parentKey = '') => {
+      items.forEach((item, index) => {
+        const itemKey = parentKey ? `${parentKey}-${index}` : `section-${index}`;
+        if (item.children && item.children.length > 0) {
+          // Collapse all sections
+          collapsed[itemKey] = false;
+          setAllCollapsed(item.children, itemKey);
+        }
+      });
+    };
+    setAllCollapsed(tableOfContents);
+    setExpandedSections(collapsed);
+  };
+
+  const getItemColor = (item) => {
+    // Special pink color for main page sections
+    const pageHeaders = ['📋 Tasks Tab', '📊 Task History Tab', '🤖 Sub-Agents Tab', '🎨 Templates Tab', '📦 Task Archives Tab', '⚙️ Global Settings Tab'];
+    if (pageHeaders.some(header => item.text.includes(header))) {
+      return '#FF69B4'; // Hot pink
+    }
+    
+    // Regular color scheme
+    if (item.level === 1) return '#FFA500'; // Orange
+    if (item.level === 2) return '#FFD700'; // Gold
+    if (item.level === 3) return '#87CEEB'; // Sky Blue
+    return '#B0C4DE'; // Light Steel Blue
+  };
+
+  const getItemHoverColor = (item) => {
+    // Special hover color for pink items
+    const pageHeaders = ['📋 Tasks Tab', '📊 Task History Tab', '🤖 Sub-Agents Tab', '🎨 Templates Tab', '📦 Task Archives Tab', '⚙️ Global Settings Tab'];
+    if (pageHeaders.some(header => item.text.includes(header))) {
+      return '#FF86C8'; // Lighter pink
+    }
+    
+    // Regular hover colors
+    if (item.level === 1) return '#FFB84D';
+    if (item.level === 2) return '#FFE55C';
+    if (item.level === 3) return '#ADD8E6';
+    return '#D3D3D3';
+  };
+
+  const renderTocItem = (item, index, parentKey = '') => {
+    const itemKey = parentKey ? `${parentKey}-${index}` : `section-${index}`;
+    const hasChildren = item.children && item.children.length > 0;
+    // Default to true if not explicitly set to false
+    const isExpanded = hasChildren ? (expandedSections[itemKey] !== false) : true;
+    const isPageHeader = ['Tasks Tab', 'Task History Tab', 'Sub-Agents Tab', 'Templates Tab', 'Task Archives Tab', 'Global Settings Tab']
+      .some(header => item.text.includes(header));
+    const isActive = item.id === activeSection;
+
+    return (
+      <div key={itemKey} style={{ marginBottom: '0.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {hasChildren && (
+            <button
+              onClick={() => toggleSection(itemKey)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: getItemColor(item),
+                cursor: 'pointer',
+                padding: '0 4px',
+                fontSize: '0.9rem',
+                marginRight: '2px'
+              }}
+            >
+              {isExpanded ? '▼' : '▶'}
+            </button>
+          )}
+          <a
+            href={`#${item.id}`}
+            style={{
+              display: 'block',
+              color: isActive ? '#FFFFFF' : getItemColor(item),
+              textDecoration: 'none',
+              fontSize: item.level === 4 ? '0.85rem' : item.level === 3 ? '0.9rem' : item.level === 2 ? '0.95rem' : '1rem',
+              marginLeft: hasChildren ? '0' : (item.level === 3 ? '1.5rem' : item.level === 2 ? '0.75rem' : item.level === 1 ? '0' : '1rem'),
+              padding: '0.3rem 0.5rem',
+              borderRadius: '4px',
+              transition: 'all 0.2s ease',
+              fontWeight: isActive ? 'bold' : (item.level === 1 || isPageHeader ? 'bold' : item.level === 2 ? '600' : 'normal'),
+              backgroundColor: isActive ? 'rgba(79, 189, 186, 0.6)' : 'transparent',
+              borderLeft: isActive ? '3px solid #4fbdba' : '3px solid transparent',
+              flex: 1
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              scrollToSection(item.id);
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) {
+                e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.1)';
+                e.target.style.color = getItemHoverColor(item);
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) {
+                e.target.style.backgroundColor = 'transparent';
+                e.target.style.color = getItemColor(item);
+              } else {
+                e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.6)';
+                e.target.style.color = '#FFFFFF';
+              }
+            }}
+          >
+            {item.text}
+          </a>
+        </div>
+        {hasChildren && isExpanded && (
+          <div style={{ marginLeft: '1rem' }}>
+            {item.children.map((child, childIndex) => renderTocItem(child, childIndex, itemKey))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   // Parse inline markdown (bold, italic, code, links)
@@ -271,6 +725,7 @@ To restore tasks from an archive:
     const lines = content.split('\n');
     const elements = [];
     const imageList = [];
+    const parentPath = []; // Track parent sections for unique ID generation
     let i = 0;
     
     while (i < lines.length) {
@@ -278,7 +733,14 @@ To restore tasks from an archive:
       
       if (line.startsWith('# ')) {
         const text = line.substring(2);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        let id;
+        if (!text.includes('Shrimp Task Manager')) {
+          parentPath.length = 0;
+          id = generateUniqueId(text, parentPath);
+          parentPath.push(text);
+        } else {
+          id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        }
         elements.push(
           <h1 key={i} id={id} className="release-h1">
             {parseInlineMarkdown(text)}
@@ -287,7 +749,9 @@ To restore tasks from an archive:
         i++;
       } else if (line.startsWith('## ')) {
         const text = line.substring(3);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        parentPath.length = Math.min(1, parentPath.length);
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
         elements.push(
           <h2 key={i} id={id} className="release-h2">
             {parseInlineMarkdown(text)}
@@ -296,7 +760,9 @@ To restore tasks from an archive:
         i++;
       } else if (line.startsWith('### ')) {
         const text = line.substring(4);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        parentPath.length = Math.min(2, parentPath.length);
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
         elements.push(
           <h3 key={i} id={id} className="release-h3">
             {parseInlineMarkdown(text)}
@@ -305,7 +771,9 @@ To restore tasks from an archive:
         i++;
       } else if (line.startsWith('#### ')) {
         const text = line.substring(5);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        parentPath.length = Math.min(3, parentPath.length);
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
         elements.push(
           <h4 key={i} id={id} className="release-h4">
             {parseInlineMarkdown(text)}
@@ -468,44 +936,64 @@ To restore tasks from an archive:
             borderRight: '1px solid rgba(79, 189, 186, 0.2)',
             paddingRight: '1rem'
           }}>
-            <h3 style={{ color: '#4fbdba', marginBottom: '1rem' }}>Table of Contents</h3>
-            <div className="toc-list" style={{ padding: 0 }}>
-              {tableOfContents.map((item, index) => (
-                <a
-                  key={index}
-                  href={`#${item.id}`}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '1rem' 
+            }}>
+              <h3 style={{ color: '#4fbdba', fontWeight: 'bold', margin: 0 }}>📚 Table of Contents</h3>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={expandAll}
                   style={{
-                    display: 'block',
-                    color: '#87CEEB',
-                    textDecoration: 'none',
-                    fontSize: item.level === 4 ? '0.85rem' : item.level === 3 ? '0.9rem' : item.level === 2 ? '0.95rem' : '1rem',
-                    marginLeft: item.level === 4 ? '2.5rem' : item.level === 3 ? '1.5rem' : item.level === 2 ? '0.5rem' : '0',
-                    marginBottom: '0.5rem',
-                    padding: '0.3rem 0.5rem',
+                    padding: '4px 8px',
+                    fontSize: '0.85rem',
+                    backgroundColor: 'transparent',
+                    color: '#4fbdba',
+                    border: '1px solid #4fbdba',
                     borderRadius: '4px',
-                    transition: 'all 0.2s ease',
-                    fontWeight: item.level === 1 ? 'bold' : 'normal'
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    scrollToSection(item.id);
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.1)';
-                    e.target.style.color = '#ADD8E6';
+                    e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.2)';
                   }}
                   onMouseLeave={(e) => {
                     e.target.style.backgroundColor = 'transparent';
-                    e.target.style.color = '#87CEEB';
                   }}
                 >
-                  {item.level === 4 ? '◦ ' : item.level === 3 ? '• ' : item.level === 2 ? '▸ ' : '▪ '}{item.text}
-                </a>
-              ))}
+                  Expand All
+                </button>
+                <button
+                  onClick={collapseAll}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.85rem',
+                    backgroundColor: 'transparent',
+                    color: '#4fbdba',
+                    border: '1px solid #4fbdba',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  Collapse All
+                </button>
+              </div>
+            </div>
+            <div className="toc-list" style={{ padding: 0 }}>
+              {tableOfContents.map((item, index) => renderTocItem(item, index))}
             </div>
           </div>
           
-          <div className="release-details" style={{
+          <div className="release-details" ref={contentRef} style={{
             flex: 1,
             overflowY: 'auto',
             overflowX: 'hidden',

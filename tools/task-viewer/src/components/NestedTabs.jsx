@@ -116,7 +116,7 @@ const NestedTabs = ({
                   className="add-tab-btn"
                   onClick={() => setShowAddProfile(true)}
                 >
-                  + {t('addProject')}
+                  + Add Project
                 </button>
               </Tab.List>
 

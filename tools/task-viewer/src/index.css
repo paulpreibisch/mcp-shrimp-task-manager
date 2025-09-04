@@ -5238,3 +5238,22 @@ a:visited {
 .agent-cell-wrapper .agent-dropdown-container {
   flex: 1;
 }
+
+/* Table of Contents styles for Help tab */
+.toc-list {
+  list-style: none !important;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-list div {
+  list-style: none !important;
+}
+
+/* Remove any default bullets from nested elements */
+.release-sidebar .toc-list,
+.release-sidebar .toc-list div,
+.release-sidebar .toc-list a {
+  list-style: none !important;
+  list-style-type: none !important;
+}

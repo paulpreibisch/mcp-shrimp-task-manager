@@ -226,7 +226,7 @@ const ViewArchiveModal = ({ isOpen, onClose, archive }) => {
                 overflowY: 'auto',
                 border: '1px solid #333'
               }}>
-                {safeArchive.initialRequest}
+                {safeArchive.initialRequest.replace(/\n要求:/g, '\nRequirements:').replace(/\n需求:/g, '\nRequirements:')}
               </div>
             </div>
           )}

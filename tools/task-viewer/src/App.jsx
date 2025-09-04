@@ -117,7 +117,10 @@ function AppContent() {
   const [currentTask, setCurrentTask] = useState(null);
   
   // Initial request collapse state
-  const [initialRequestCollapsed, setInitialRequestCollapsed] = useState(false);
+  const [initialRequestCollapsed, setInitialRequestCollapsed] = useState(() => {
+    const saved = localStorage.getItem('initialRequestCollapsed');
+    return saved !== null ? saved === 'true' : false;
+  });
 
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false);
@@ -544,6 +547,11 @@ function AppContent() {
   useEffect(() => {
     localStorage.setItem('autoRefresh', autoRefresh.toString());
   }, [autoRefresh]);
+
+  // Save initial request collapse state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('initialRequestCollapsed', initialRequestCollapsed.toString());
+  }, [initialRequestCollapsed]);
   
   useEffect(() => {
     localStorage.setItem('refreshInterval', refreshInterval.toString());
@@ -1310,7 +1318,7 @@ function AppContent() {
         <h1>{t('appTitle')}</h1>
         <div className="header-content">
           <div className="version-info">
-            <span>{t('version')} 4.0.0</span> • 
+            <span>{t('header.version')} 4.0.0</span> • 
             <a href="#" onClick={(e) => {
               e.preventDefault();
               handleOuterTabChange('release-notes');
@@ -1321,7 +1329,7 @@ function AppContent() {
               e.preventDefault();
               handleOuterTabChange('readme');
             }}>
-              {t('help')}
+              {t('header.help')}
             </a> • 
             <a href="#" onClick={(e) => {
               e.preventDefault();
@@ -1571,7 +1579,7 @@ function AppContent() {
                         padding: '16px',
                         transition: 'all 0.3s ease'
                       }}>
-                        {initialRequest}
+                        {initialRequest.replace(/\n要求:/g, '\nRequirements:').replace(/\n需求:/g, '\nRequirements:')}
                       </div>
                     )}
                   </div>

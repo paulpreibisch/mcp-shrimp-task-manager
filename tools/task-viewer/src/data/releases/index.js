@@ -2,8 +2,8 @@
 export const releaseMetadata = [
   {
     version: 'v4.0.0',
-    date: '2025-01-02',
-    title: 'Initial Request Display & Interactive Release Notes',
+    date: '2025-09-03',
+    title: 'Enhanced Release Notes & Archive System',
     summary: 'Context tracking with Initial Request Display, AI-powered summaries, enhanced Release Notes with TOC, and comprehensive Archive management'
   },
   {

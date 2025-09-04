@@ -64,13 +64,13 @@
   "profile": {
     "management": "🔧 Profile Management",
     "managementDesc": "Manage task file profiles. Create new profiles or edit existing ones.",
-    "taskFolderPath": "Task Folder Path",
+    "taskFolderPath": "Shrimp Data Folder Path",
     "taskFolderPathPlaceholder": "Enter folder path containing task files",
-    "profileName": "Profile Name",
-    "profileNamePlaceholder": "Enter profile name",
+    "profileName": "Project Name",
+    "profileNamePlaceholder": "Enter project name",
     "projectRootPath": "Project Root Path",
     "projectRootPathPlaceholder": "Enter project root path (optional)",
-    "addProfile": "Add Profile",
+    "addProfile": "Add Project",
     "editProfile": "Edit Profile",
     "deleteProfile": "Delete Profile"
   },

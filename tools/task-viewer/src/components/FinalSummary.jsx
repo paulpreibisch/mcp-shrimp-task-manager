@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 function FinalSummary({ 
   tasks = [], 
@@ -9,7 +9,15 @@ function FinalSummary({
   const [summary, setSummary] = useState(existingSummary);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(() => {
+    const saved = localStorage.getItem('finalSummaryExpanded');
+    return saved !== null ? saved === 'true' : false;
+  });
+
+  // Save expand state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('finalSummaryExpanded', isExpanded.toString());
+  }, [isExpanded]);
 
   const handleGenerateSummary = async () => {
     console.log('Generate button clicked');

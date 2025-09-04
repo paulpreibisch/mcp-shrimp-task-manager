@@ -13,11 +13,22 @@ function ReleaseNotes() {
   const [loading, setLoading] = useState(true);
   const [expandedVersions, setExpandedVersions] = useState({});
   const [tableOfContents, setTableOfContents] = useState({});
+  const [expandedTocSections, setExpandedTocSections] = useState({});
+  const [activeSection, setActiveSection] = useState('');
   const { t, i18n } = useTranslation();
   const currentLanguage = i18n.language;
   const uiStrings = getUIStrings('releaseNotes', currentLanguage);
   const lightbox = useLightbox();
   const imagesRef = useRef([]);
+  const contentRef = useRef(null);
+
+  // Centralized ID generation function to ensure consistency
+  const generateUniqueId = (text, parentPath) => {
+    const cleanPath = [...parentPath, text].map(part => 
+      part.toLowerCase().replace(/[^\\w\\s-]/g, '').replace(/\\s+/g, '-')
+    ).filter(part => part.length > 0);
+    return cleanPath.join('-');
+  };
 
   useEffect(() => {
     if (selectedVersion) {
@@ -39,6 +50,23 @@ function ReleaseNotes() {
               const content = await response.text();
               const toc = extractTableOfContents(content);
               setTableOfContents(prev => ({ ...prev, [release.version]: toc }));
+              
+              // Initialize expanded state for this version's TOC
+              if (toc && toc.length > 0) {
+                const initialExpanded = {};
+                const initExpanded = (items, parentKey = '') => {
+                  items.forEach((item, index) => {
+                    const itemKey = parentKey ? `${parentKey}-${index}` : `item-${index}`;
+                    const fullKey = `${release.version}-${itemKey}`;
+                    if (item.children && item.children.length > 0) {
+                      initialExpanded[fullKey] = true; // Start expanded
+                      initExpanded(item.children, itemKey);
+                    }
+                  });
+                };
+                initExpanded(toc);
+                setExpandedTocSections(prev => ({ ...prev, ...initialExpanded }));
+              }
             }
           } catch (error) {
             console.error(`Error loading TOC for ${release.version}:`, error);
@@ -48,6 +76,64 @@ function ReleaseNotes() {
     };
     loadAllTOCs();
   }, []);
+
+  // Scroll spy effect
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!contentRef.current || !tableOfContents[selectedVersion]) return;
+
+      const toc = tableOfContents[selectedVersion];
+      if (!toc || toc.length === 0) return;
+
+      // Get all section IDs from the table of contents
+      const sectionIds = [];
+      const extractIds = (items) => {
+        items.forEach(item => {
+          sectionIds.push(item.id);
+          if (item.children && item.children.length > 0) {
+            extractIds(item.children);
+          }
+        });
+      };
+      extractIds(toc);
+
+      // Find which section is currently visible
+      let currentSection = '';
+      // Offset of about 150px (roughly 4-5 lines of text) before the top
+      const scrollPosition = contentRef.current.scrollTop + 150;
+
+      for (const id of sectionIds) {
+        const element = document.getElementById(id);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          const containerRect = contentRef.current.getBoundingClientRect();
+          const elementTop = rect.top - containerRect.top + contentRef.current.scrollTop;
+          
+          if (elementTop <= scrollPosition) {
+            currentSection = id;
+          }
+        }
+      }
+
+      if (currentSection !== activeSection) {
+        setActiveSection(currentSection);
+      }
+    };
+
+    // Attach scroll listener to content container
+    const container = contentRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      // Initial check
+      handleScroll();
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [tableOfContents, selectedVersion, activeSection]);
 
   const loadReleaseContent = async (version) => {
     setLoading(true);
@@ -119,26 +205,198 @@ function ReleaseNotes() {
     
     const lines = content.split('\n');
     const tocItems = [];
+    let currentH2 = null;
+    let currentH3 = null;
+    const parentPath = []; // Track parent sections for unique ID generation
     
     lines.forEach((line) => {
       if (line.startsWith('## ') && !line.includes('Table of Contents')) {
         const text = line.substring(3);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-        tocItems.push({ level: 2, text, id });
+        parentPath.length = 0; // Reset for new h2 section
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
+        currentH2 = { level: 2, text, id, children: [] };
+        currentH3 = null;
+        tocItems.push(currentH2);
       } else if (line.startsWith('### ')) {
         const text = line.substring(4);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-        tocItems.push({ level: 3, text, id });
+        parentPath.length = 1; // Keep only h2 parent
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
+        currentH3 = { level: 3, text, id, children: [] };
+        if (currentH2) {
+          currentH2.children.push(currentH3);
+        } else {
+          tocItems.push(currentH3);
+        }
       } else if (line.startsWith('#### ')) {
         const text = line.substring(5);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-        tocItems.push({ level: 4, text, id });
+        parentPath.length = Math.min(2, parentPath.length); // Keep up to h3 parent
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
+        const h4Item = { level: 4, text, id, children: [] };
+        if (currentH3) {
+          currentH3.children.push(h4Item);
+        } else if (currentH2) {
+          currentH2.children.push(h4Item);
+        } else {
+          tocItems.push(h4Item);
+        }
       }
     });
     
     return tocItems;
   };
   
+  const toggleTocSection = (version, sectionKey) => {
+    const key = `${version}-${sectionKey}`;
+    setExpandedTocSections(prev => {
+      // If not in state or true, set to false; if false, set to true
+      const currentState = prev[key];
+      return {
+        ...prev,
+        [key]: currentState === false ? true : false
+      };
+    });
+  };
+
+  const expandAllToc = (version) => {
+    const versionToUse = version || selectedVersion;
+    if (!versionToUse || !tableOfContents[versionToUse]) return;
+    
+    const expanded = {};
+    const setAllExpanded = (items, parentKey = '') => {
+      items.forEach((item, index) => {
+        const itemKey = parentKey ? `${parentKey}-${index}` : `item-${index}`;
+        const fullKey = `${versionToUse}-${itemKey}`;
+        if (item.children && item.children.length > 0) {
+          expanded[fullKey] = true;
+          setAllExpanded(item.children, itemKey);
+        }
+      });
+    };
+    setAllExpanded(tableOfContents[versionToUse]);
+    setExpandedTocSections(prev => ({ ...prev, ...expanded }));
+  };
+
+  const collapseAllToc = (version) => {
+    const versionToUse = version || selectedVersion;
+    if (!versionToUse || !tableOfContents[versionToUse]) return;
+    
+    const collapsed = {};
+    const setAllCollapsed = (items, parentKey = '', level = 1) => {
+      items.forEach((item, index) => {
+        const itemKey = parentKey ? `${parentKey}-${index}` : `item-${index}`;
+        const fullKey = `${versionToUse}-${itemKey}`;
+        if (item.children && item.children.length > 0) {
+          // Keep level 1 items expanded, collapse everything else
+          collapsed[fullKey] = level === 1 ? true : false;
+          setAllCollapsed(item.children, itemKey, level + 1);
+        }
+      });
+    };
+    setAllCollapsed(tableOfContents[versionToUse]);
+    setExpandedTocSections(prev => ({ ...prev, ...collapsed }));
+  };
+
+  const renderTocItem = (item, index, version, parentKey = '') => {
+    const itemKey = parentKey ? `${parentKey}-${index}` : `item-${index}`;
+    const fullKey = `${version}-${itemKey}`;
+    const hasChildren = item.children && item.children.length > 0;
+    // Default to true if not explicitly set to false
+    const isExpanded = hasChildren ? (expandedTocSections[fullKey] !== false) : true;
+    const isActive = item.id === activeSection;
+    
+    // Determine color based on level
+    const getItemColor = () => {
+      if (item.level === 2) return '#FFA500'; // Orange for h2
+      if (item.level === 3) return '#FFD700'; // Gold for h3
+      if (item.level === 4) return '#87CEEB'; // Sky Blue for h4
+      return '#87CEEB';
+    };
+    
+    const getHoverColor = () => {
+      if (item.level === 2) return '#FFB84D'; // Lighter orange
+      if (item.level === 3) return '#FFE55C'; // Lighter gold
+      if (item.level === 4) return '#ADD8E6'; // Lighter sky blue
+      return '#ADD8E6';
+    };
+    
+    const itemColor = getItemColor();
+    const hoverColor = getHoverColor();
+    
+    return (
+      <div key={itemKey} style={{ marginBottom: '0.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {hasChildren && (
+            <button
+              onClick={() => toggleTocSection(version, itemKey)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: itemColor,
+                cursor: 'pointer',
+                padding: '0 4px',
+                fontSize: '0.9rem',
+                marginRight: '2px',
+                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.3s ease'
+              }}
+            >
+              ▶
+            </button>
+          )}
+          <a
+            href={`#${item.id}`}
+            style={{
+              display: 'block',
+              color: isActive ? '#FFFFFF' : itemColor,
+              textDecoration: 'none',
+              fontSize: item.level === 4 ? '0.8rem' : item.level === 3 ? '0.85rem' : '0.9rem',
+              fontWeight: isActive ? 'bold' : (item.level === 2 ? 'bold' : item.level === 3 ? '600' : 'normal'),
+              marginLeft: hasChildren ? '0' : (item.level === 4 ? '1.5rem' : item.level === 3 ? '1rem' : '0'),
+              padding: '0.3rem 0.5rem',
+              borderRadius: '4px',
+              backgroundColor: isActive ? 'rgba(79, 189, 186, 0.6)' : 'transparent',
+              borderLeft: isActive ? '3px solid #4fbdba' : '3px solid transparent',
+              transition: 'all 0.2s ease',
+              flex: 1
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              const element = document.getElementById(item.id);
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) {
+                e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.1)';
+                e.target.style.color = hoverColor;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) {
+                e.target.style.backgroundColor = 'transparent';
+                e.target.style.color = itemColor;
+              } else {
+                e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.6)';
+                e.target.style.color = '#FFFFFF';
+              }
+            }}
+          >
+            {item.text}
+          </a>
+        </div>
+        {hasChildren && isExpanded && (
+          <div style={{ marginLeft: '1rem' }}>
+            {item.children.map((child, childIndex) => renderTocItem(child, childIndex, version, itemKey))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const toggleVersionExpanded = async (version) => {
     setExpandedVersions(prev => ({
       ...prev,
@@ -270,6 +528,7 @@ function ReleaseNotes() {
     const lines = content.split('\n');
     const elements = [];
     const imageList = [];
+    const parentPath = []; // Track parent sections for unique ID generation
     let i = 0;
     
     while (i < lines.length) {
@@ -277,7 +536,9 @@ function ReleaseNotes() {
       
       if (line.startsWith('# ')) {
         const text = line.substring(2);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        parentPath.length = 0; // Reset for h1
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
         elements.push(
           <h1 key={i} id={id} className="release-h1" style={{
             color: '#ff69b4',
@@ -289,7 +550,9 @@ function ReleaseNotes() {
         i++;
       } else if (line.startsWith('## ')) {
         const text = line.substring(3);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        parentPath.length = Math.min(1, parentPath.length);
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
         // Check if it's "New Features" or "Bug Fixes" to apply different colors
         const isNewFeatures = text.includes('New Features');
         const isBugFixes = text.includes('Bug Fixes');
@@ -307,7 +570,9 @@ function ReleaseNotes() {
         i++;
       } else if (line.startsWith('### ')) {
         const text = line.substring(4);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        parentPath.length = Math.min(2, parentPath.length);
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
         elements.push(
           <h3 key={i} id={id} className="release-h3" style={{
             color: '#ff69b4',
@@ -319,7 +584,9 @@ function ReleaseNotes() {
         i++;
       } else if (line.startsWith('##### ')) {
         const text = line.substring(6);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        parentPath.length = Math.min(4, parentPath.length);
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
         elements.push(
           <h5 key={i} id={id} className="release-h5" style={{
             color: '#87CEEB',
@@ -334,7 +601,9 @@ function ReleaseNotes() {
         i++;
       } else if (line.startsWith('#### ')) {
         const text = line.substring(5);
-        const id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        parentPath.length = Math.min(3, parentPath.length);
+        const id = generateUniqueId(text, parentPath);
+        parentPath.push(text);
         // Apply light blue for Overview and Key Highlights
         const isOverviewOrHighlights = text.includes('Overview') || text.includes('Key Highlights') || text.includes('Key Features') || text.includes('Key Improvements');
         elements.push(
@@ -419,7 +688,15 @@ function ReleaseNotes() {
         const imgMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
         if (imgMatch) {
           const altText = imgMatch[1];
-          const imgUrl = imgMatch[2];
+          let imgUrl = imgMatch[2];
+          
+          // Resolve relative image paths to /releases/ directory
+          if (imgUrl.startsWith('./')) {
+            imgUrl = `/releases/${imgUrl.substring(2)}`;
+          } else if (!imgUrl.startsWith('http') && !imgUrl.startsWith('/')) {
+            imgUrl = `/releases/${imgUrl}`;
+          }
+          
           const imageIndex = imageList.length;
           
           imageList.push({
@@ -555,39 +832,61 @@ function ReleaseNotes() {
                         paddingLeft: '0.5rem',
                         borderLeft: '2px solid rgba(79, 189, 186, 0.2)'
                       }}>
-                        {tableOfContents[release.version].map((item, index) => (
-                          <a
-                            key={index}
-                            href={`#${item.id}`}
-                            style={{
-                              display: 'block',
-                              color: '#87CEEB',
-                              textDecoration: 'none',
-                              fontSize: item.level === 4 ? '0.8rem' : item.level === 3 ? '0.85rem' : '0.9rem',
-                              marginLeft: item.level === 4 ? '2rem' : item.level === 3 ? '1rem' : '0',
-                              marginBottom: '0.3rem',
-                              padding: '0.2rem 0',
-                              transition: 'color 0.2s ease'
-                            }}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              const element = document.getElementById(item.id);
-                              if (element) {
-                                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                              }
-                            }}
-                            onMouseEnter={(e) => {
-                              e.target.style.color = '#ADD8E6';
-                              e.target.style.textDecoration = 'underline';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.target.style.color = '#87CEEB';
-                              e.target.style.textDecoration = 'none';
-                            }}
-                          >
-                            {item.level === 4 ? '◦ ' : item.level === 3 ? '• ' : '▸ '}{item.text}
-                          </a>
-                        ))}
+                        {selectedVersion === release.version && (
+                          <div style={{ 
+                            display: 'flex', 
+                            gap: '0.5rem', 
+                            marginBottom: '0.5rem',
+                            paddingBottom: '0.5rem',
+                            borderBottom: '1px solid rgba(79, 189, 186, 0.2)'
+                          }}>
+                            <button
+                              onClick={() => expandAllToc(release.version)}
+                              style={{
+                                padding: '2px 6px',
+                                fontSize: '0.75rem',
+                                backgroundColor: 'transparent',
+                                color: '#4fbdba',
+                                border: '1px solid #4fbdba',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.2)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              Expand All
+                            </button>
+                            <button
+                              onClick={() => collapseAllToc(release.version)}
+                              style={{
+                                padding: '2px 6px',
+                                fontSize: '0.75rem',
+                                backgroundColor: 'transparent',
+                                color: '#4fbdba',
+                                border: '1px solid #4fbdba',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.2)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              Collapse All
+                            </button>
+                          </div>
+                        )}
+                        {tableOfContents[release.version].map((item, index) => 
+                          renderTocItem(item, index, release.version)
+                        )}
                       </div>
                     )}
                   </div>
@@ -596,7 +895,7 @@ function ReleaseNotes() {
             </ul>
           </div>
           
-          <div className="release-details" style={{
+          <div className="release-details" ref={contentRef} style={{
             flex: 1,
             overflowY: 'scroll',
             overflowX: 'hidden',
