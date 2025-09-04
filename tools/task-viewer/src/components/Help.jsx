@@ -22,7 +22,7 @@ function Help() {
   // Centralized ID generation function to ensure consistency
   const generateUniqueId = (text, parentPath) => {
     const cleanPath = [...parentPath, text].map(part => 
-      part.toLowerCase().replace(/[^\\w\\s-]/g, '').replace(/\\s+/g, '-')
+      part.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-')
     ).filter(part => part.length > 0);
     return cleanPath.join('-');
   };
@@ -360,14 +360,14 @@ To restore tasks from an archive:
           continue;
         }
         parentPath.length = 0; // Reset for new top-level section
-        const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
+        const id = generateUniqueId(text, parentPath.slice(0, -1));
         tocItems.push({ level: 1, text, id, children: [] });
       } else if (line.match(/^##\s+/)) {
         const text = line.substring(3).trim();
         parentPath.length = 1; // Keep only top-level parent
-        const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
+        const id = generateUniqueId(text, parentPath.slice(0, -1));
         const parent = tocItems[tocItems.length - 1];
         if (parent && parent.level === 1) {
           parent.children.push({ level: 2, text, id, children: [] });
@@ -377,8 +377,8 @@ To restore tasks from an archive:
       } else if (line.match(/^###\s+/)) {
         const text = line.substring(4).trim();
         parentPath.length = Math.min(2, parentPath.length); // Keep up to level 2 parents
-        const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
+        const id = generateUniqueId(text, parentPath.slice(0, -1));
         // Find the appropriate parent (should be the nearest level 2 item)
         let added = false;
         for (let j = tocItems.length - 1; j >= 0; j--) {
@@ -406,8 +406,8 @@ To restore tasks from an archive:
       } else if (line.match(/^####\s+/)) {
         const text = line.substring(5).trim();
         parentPath.length = Math.min(3, parentPath.length); // Keep up to level 3 parents
-        const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
+        const id = generateUniqueId(text, parentPath.slice(0, -1));
         // Find the appropriate parent for level 4 headers (should be the nearest level 3 item)
         let added = false;
         for (let j = tocItems.length - 1; j >= 0; j--) {
@@ -476,8 +476,17 @@ To restore tasks from an archive:
 
   const scrollToSection = (id) => {
     const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const container = contentRef.current;
+    if (element && container) {
+      // Get the element's position relative to the container
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const scrollTop = container.scrollTop + elementRect.top - containerRect.top - 20;
+      
+      container.scrollTo({
+        top: scrollTop,
+        behavior: 'smooth'
+      });
     }
   };
 
@@ -509,13 +518,13 @@ To restore tasks from an archive:
 
   const collapseAll = () => {
     const collapsed = {};
-    const setAllCollapsed = (items, parentKey = '') => {
+    const setAllCollapsed = (items, parentKey = '', level = 1) => {
       items.forEach((item, index) => {
         const itemKey = parentKey ? `${parentKey}-${index}` : `section-${index}`;
         if (item.children && item.children.length > 0) {
-          // Collapse all sections
-          collapsed[itemKey] = false;
-          setAllCollapsed(item.children, itemKey);
+          // Keep level 1 expanded, collapse level 2+ items
+          collapsed[itemKey] = level === 1;
+          setAllCollapsed(item.children, itemKey, level + 1);
         }
       });
     };
@@ -736,8 +745,8 @@ To restore tasks from an archive:
         let id;
         if (!text.includes('Shrimp Task Manager')) {
           parentPath.length = 0;
-          id = generateUniqueId(text, parentPath);
           parentPath.push(text);
+          id = generateUniqueId(text, parentPath.slice(0, -1));
         } else {
           id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
         }
@@ -750,8 +759,8 @@ To restore tasks from an archive:
       } else if (line.startsWith('## ')) {
         const text = line.substring(3);
         parentPath.length = Math.min(1, parentPath.length);
-        const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
+        const id = generateUniqueId(text, parentPath.slice(0, -1));
         elements.push(
           <h2 key={i} id={id} className="release-h2">
             {parseInlineMarkdown(text)}
@@ -761,8 +770,8 @@ To restore tasks from an archive:
       } else if (line.startsWith('### ')) {
         const text = line.substring(4);
         parentPath.length = Math.min(2, parentPath.length);
-        const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
+        const id = generateUniqueId(text, parentPath.slice(0, -1));
         elements.push(
           <h3 key={i} id={id} className="release-h3">
             {parseInlineMarkdown(text)}
@@ -772,8 +781,8 @@ To restore tasks from an archive:
       } else if (line.startsWith('#### ')) {
         const text = line.substring(5);
         parentPath.length = Math.min(3, parentPath.length);
-        const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
+        const id = generateUniqueId(text, parentPath.slice(0, -1));
         elements.push(
           <h4 key={i} id={id} className="release-h4">
             {parseInlineMarkdown(text)}

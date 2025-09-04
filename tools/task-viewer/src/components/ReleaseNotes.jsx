@@ -289,14 +289,25 @@ function ReleaseNotes() {
         const itemKey = parentKey ? `${parentKey}-${index}` : `item-${index}`;
         const fullKey = `${versionToUse}-${itemKey}`;
         if (item.children && item.children.length > 0) {
-          // Keep level 1 items expanded, collapse everything else
-          collapsed[fullKey] = level === 1 ? true : false;
+          // Keep level 1 expanded, collapse level 2+ items
+          collapsed[fullKey] = level === 1;
           setAllCollapsed(item.children, itemKey, level + 1);
         }
       });
     };
     setAllCollapsed(tableOfContents[versionToUse]);
-    setExpandedTocSections(prev => ({ ...prev, ...collapsed }));
+    setExpandedTocSections(prev => {
+      // Keep states for other versions, update only this version
+      const newState = { ...prev };
+      // Remove all keys for this version first
+      Object.keys(newState).forEach(key => {
+        if (key.startsWith(`${versionToUse}-`)) {
+          delete newState[key];
+        }
+      });
+      // Add the new collapsed state
+      return { ...newState, ...collapsed };
+    });
   };
 
   const renderTocItem = (item, index, version, parentKey = '') => {
@@ -304,7 +315,7 @@ function ReleaseNotes() {
     const fullKey = `${version}-${itemKey}`;
     const hasChildren = item.children && item.children.length > 0;
     // Default to true if not explicitly set to false
-    const isExpanded = hasChildren ? (expandedTocSections[fullKey] !== false) : true;
+    const isExpanded = hasChildren ? (expandedTocSections[fullKey] === true) : true;
     const isActive = item.id === activeSection;
     
     // Determine color based on level
@@ -365,8 +376,17 @@ function ReleaseNotes() {
             onClick={(e) => {
               e.preventDefault();
               const element = document.getElementById(item.id);
-              if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              const container = contentRef.current;
+              if (element && container) {
+                // Get the element's position relative to the container
+                const containerRect = container.getBoundingClientRect();
+                const elementRect = element.getBoundingClientRect();
+                const scrollTop = container.scrollTop + elementRect.top - containerRect.top - 20;
+                
+                container.scrollTo({
+                  top: scrollTop,
+                  behavior: 'smooth'
+                });
               }
             }}
             onMouseEnter={(e) => {
@@ -448,8 +468,17 @@ function ReleaseNotes() {
               e.preventDefault();
               const targetId = href.substring(1);
               const element = document.getElementById(targetId);
-              if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              const container = contentRef.current;
+              if (element && container) {
+                // Get the element's position relative to the container
+                const containerRect = container.getBoundingClientRect();
+                const elementRect = element.getBoundingClientRect();
+                const scrollTop = container.scrollTop + elementRect.top - containerRect.top - 20;
+                
+                container.scrollTo({
+                  top: scrollTop,
+                  behavior: 'smooth'
+                });
               }
             } : undefined}
           >
