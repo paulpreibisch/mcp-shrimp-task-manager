@@ -742,14 +742,10 @@ To restore tasks from an archive:
       
       if (line.startsWith('# ')) {
         const text = line.substring(2);
-        let id;
-        if (!text.includes('Shrimp Task Manager')) {
-          parentPath.length = 0;
-          parentPath.push(text);
-          id = generateUniqueId(text, parentPath.slice(0, -1));
-        } else {
-          id = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-        }
+        // Use consistent ID generation logic like in TOC
+        parentPath.length = 0; // Reset for new top-level section
+        parentPath.push(text);
+        const id = generateUniqueId(text, parentPath.slice(0, -1));
         elements.push(
           <h1 key={i} id={id} className="release-h1">
             {parseInlineMarkdown(text)}
@@ -758,7 +754,7 @@ To restore tasks from an archive:
         i++;
       } else if (line.startsWith('## ')) {
         const text = line.substring(3);
-        parentPath.length = Math.min(1, parentPath.length);
+        parentPath.length = 1; // Keep only top-level parent (same as TOC)
         parentPath.push(text);
         const id = generateUniqueId(text, parentPath.slice(0, -1));
         elements.push(
