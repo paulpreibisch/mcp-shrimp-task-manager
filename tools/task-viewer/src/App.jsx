@@ -1601,6 +1601,10 @@ function AppContent() {
                   globalFilter={globalFilter}
                   onGlobalFilterChange={setGlobalFilter}
                   projectRoot={projectRoot}
+                  emojiTemplates={{
+                    robot: getSafeProfiles().find(p => p.id === selectedProfile)?.robotEmojiTemplate,
+                    arm: getSafeProfiles().find(p => p.id === selectedProfile)?.armEmojiTemplate
+                  }}
                   onDetailViewChange={(inDetailView, inEditMode, taskId) => {
                     setIsInDetailView(inDetailView);
                     setIsInEditMode(inEditMode || false);
@@ -1767,6 +1771,8 @@ function AppContent() {
                       const name = formData.get('name');
                       const taskPath = formData.get('taskPath');
                       const projectRoot = formData.get('projectRoot');
+                      const robotEmojiTemplate = formData.get('robotEmojiTemplate');
+                      const armEmojiTemplate = formData.get('armEmojiTemplate');
                       
                       // Validate task path format
                       if (taskPath && !taskPath.trim().endsWith('.json')) {
@@ -1777,7 +1783,9 @@ function AppContent() {
                       handleUpdateProfile(selectedProfile, { 
                         name: name.trim(),
                         taskPath: taskPath?.trim() || null,
-                        projectRoot: projectRoot || null 
+                        projectRoot: projectRoot || null,
+                        robotEmojiTemplate: robotEmojiTemplate?.trim() || null,
+                        armEmojiTemplate: armEmojiTemplate?.trim() || null
                       });
                       showToast(t('settingsSaved'), 'success');
                     }}>
@@ -1822,6 +1830,53 @@ function AppContent() {
                           {t('projectRootEditHint')}
                         </span>
                       </div>
+                      
+                      {/* Emoji Template Configuration */}
+                      <div className="form-group" name="robot-emoji-template-group">
+                        <label htmlFor="robotEmojiTemplate">
+                          🤖 {t('robotEmojiTemplate') || 'Robot Emoji Template'}:
+                        </label>
+                        <textarea 
+                          id="robotEmojiTemplate"
+                          name="robotEmojiTemplate"
+                          rows="3"
+                          defaultValue={(() => {
+                            const profile = getSafeProfiles().find(p => p.id === selectedProfile);
+                            return profile?.robotEmojiTemplate || 
+                              'use the built in subagent located in [AGENT] to complete this shrimp task: [UUID] please when u start working mark the shrimp task as in progress';
+                          })()}
+                          placeholder="use the built in subagent located in [AGENT] to complete this shrimp task: [UUID] please when u start working mark the shrimp task as in progress"
+                          title="Template for robot emoji button. Use [AGENT] for agent path and [UUID] for task ID"
+                          style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                        />
+                        <span className="form-hint">
+                          Use [AGENT] for agent path and [UUID] for task ID. Example: "use the built in subagent located in [AGENT] to complete this shrimp task: [UUID]"
+                        </span>
+                      </div>
+                      
+                      <div className="form-group" name="arm-emoji-template-group">
+                        <label htmlFor="armEmojiTemplate">
+                          🦾 {t('armEmojiTemplate') || 'Mechanical Arm Emoji Template'}:
+                        </label>
+                        <textarea 
+                          id="armEmojiTemplate"
+                          name="armEmojiTemplate"
+                          rows="3"
+                          defaultValue={(() => {
+                            const profile = getSafeProfiles().find(p => p.id === selectedProfile);
+                            const agentName = '[AGENT_NAME]';
+                            return profile?.armEmojiTemplate || 
+                              `Use task planner to execute this task: [UUID] using the role of ${agentName} agent. Apply the ${agentName} agent's specialized knowledge and approach, but execute the task yourself without launching a sub-agent. Please mark the task as in progress when you start working.`;
+                          })()}
+                          placeholder="Use task planner to execute this task: [UUID] using the role of [AGENT_NAME] agent"
+                          title="Template for mechanical arm emoji button. Use [AGENT_NAME] for agent name and [UUID] for task ID"
+                          style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                        />
+                        <span className="form-hint">
+                          Use [AGENT_NAME] for agent name and [UUID] for task ID. Special case: When agent is 'task manager', a simpler template is used.
+                        </span>
+                      </div>
+                      
                       <div className="form-actions" name="settings-form-buttons">
                         <button 
                           type="submit" 

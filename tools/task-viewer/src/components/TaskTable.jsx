@@ -13,7 +13,7 @@ import AgentInfoModal from './AgentInfoModal';
 import { useTranslation } from 'react-i18next';
 import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
 
-function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask, showToast }) {
+function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emojiTemplates, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask, showToast }) {
   const { t } = useTranslation();
   const [selectedTask, setSelectedTask] = useState(null);
   const [availableAgents, setAvailableAgents] = useState([]);
@@ -521,9 +521,20 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
               const agentPath = projectRoot && projectRoot.trim() 
                 ? `${projectRoot}/.claude/agents/${agentName}`
                 : `./.claude/agents/${agentName}`;
-              const instruction = agentName === 'task manager' 
-                ? `Use task manager to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`
-                : `use the built in subagent located in ${agentPath} to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`;
+              
+              let instruction;
+              if (emojiTemplates?.robot) {
+                // Use custom template
+                instruction = emojiTemplates.robot
+                  .replace(/\[AGENT\]/g, agentPath)
+                  .replace(/\[UUID\]/g, row.original.id);
+              } else {
+                // Use default template
+                instruction = agentName === 'task manager' 
+                  ? `Use task manager to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`
+                  : `use the built in subagent located in ${agentPath} to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`;
+              }
+              
               navigator.clipboard.writeText(instruction);
               const button = e.target;
               button.textContent = '✓';
@@ -536,9 +547,18 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
               const agentPath = projectRoot && projectRoot.trim() 
                 ? `${projectRoot}/.claude/agents/${agentName}`
                 : `./.claude/agents/${agentName}`;
-              return agentName === 'task manager'
-                ? `Use task manager to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`
-                : `use the built in subagent located in ${agentPath} to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`;
+              
+              if (emojiTemplates?.robot) {
+                // Use custom template
+                return emojiTemplates.robot
+                  .replace(/\[AGENT\]/g, agentPath)
+                  .replace(/\[UUID\]/g, row.original.id);
+              } else {
+                // Use default template
+                return agentName === 'task manager'
+                  ? `Use task manager to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`
+                  : `use the built in subagent located in ${agentPath} to complete this shrimp task: ${row.original.id} please when u start working mark the shrimp task as in progress`;
+              }
             })()}
           >
             🤖
@@ -550,12 +570,20 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             onClick={(e) => {
               e.stopPropagation();
               const agentName = row.original.agent || 'task manager';
-              const agentPath = projectRoot && projectRoot.trim() 
-                ? `${projectRoot}/.claude/agents/${agentName}`
-                : `./.claude/agents/${agentName}`;
-              const instruction = agentName === 'task manager' 
-                ? `Use task planner to execute this task: ${row.original.id}. Please mark the task as in progress when you start working.`
-                : `Use task planner to execute this task: ${row.original.id} using the role of ${agentName} agent. Apply the ${agentName} agent's specialized knowledge and approach, but execute the task yourself without launching a sub-agent. Please mark the task as in progress when you start working.`;
+              
+              let instruction;
+              if (emojiTemplates?.arm) {
+                // Use custom template
+                instruction = emojiTemplates.arm
+                  .replace(/\[AGENT_NAME\]/g, agentName)
+                  .replace(/\[UUID\]/g, row.original.id);
+              } else {
+                // Use default template
+                instruction = agentName === 'task manager' 
+                  ? `Use task planner to execute this task: ${row.original.id}. Please mark the task as in progress when you start working.`
+                  : `Use task planner to execute this task: ${row.original.id} using the role of ${agentName} agent. Apply the ${agentName} agent's specialized knowledge and approach, but execute the task yourself without launching a sub-agent. Please mark the task as in progress when you start working.`;
+              }
+              
               navigator.clipboard.writeText(instruction);
               const button = e.target;
               button.textContent = '✓';
@@ -565,9 +593,18 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, onDe
             }}
             title={(() => {
               const agentName = row.original.agent || 'task manager';
-              return agentName === 'task manager'
-                ? `Use task planner to execute this task: ${row.original.id}`
-                : `Use task planner to execute task ${row.original.id} using the role of ${agentName} agent`;
+              
+              if (emojiTemplates?.arm) {
+                // Use custom template
+                return emojiTemplates.arm
+                  .replace(/\[AGENT_NAME\]/g, agentName)
+                  .replace(/\[UUID\]/g, row.original.id);
+              } else {
+                // Use default template
+                return agentName === 'task manager'
+                  ? `Use task planner to execute this task: ${row.original.id}`
+                  : `Use task planner to execute task ${row.original.id} using the role of ${agentName} agent`;
+              }
             })()}
           >
             🦾
