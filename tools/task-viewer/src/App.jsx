@@ -1765,7 +1765,7 @@ function AppContent() {
                 <div className="settings-panel">
                   <h2>{t('projectSettings')}</h2>
                   {getSafeProfiles().find(p => p.id === selectedProfile) && (
-                    <form name="settings-form" onSubmit={(e) => {
+                    <form name="settings-form" onSubmit={async (e) => {
                       e.preventDefault();
                       const formData = new FormData(e.target);
                       const name = formData.get('name');
