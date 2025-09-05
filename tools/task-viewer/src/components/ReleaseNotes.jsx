@@ -41,7 +41,7 @@ function ReleaseNotes() {
   // Centralized ID generation function to ensure consistency
   const generateUniqueId = (text, parentPath) => {
     const cleanPath = [...parentPath, text].map(part => 
-      part.toLowerCase().replace(/[^\\w\\s-]/g, '').replace(/\\s+/g, '-')
+      part.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-')
     ).filter(part => part.length > 0);
     return cleanPath.join('-');
   };
@@ -212,9 +212,14 @@ function ReleaseNotes() {
     const parentPath = []; // Track parent sections for unique ID generation
     
     lines.forEach((line) => {
-      if (line.startsWith('## ') && !line.includes('Table of Contents')) {
+      // Track H1 for parent path (but don't include in TOC)
+      if (line.startsWith('# ')) {
+        const text = line.substring(2);
+        parentPath.length = 0;
+        parentPath.push(text); // Set H1 as root parent
+      } else if (line.startsWith('## ') && !line.includes('Table of Contents')) {
         const text = line.substring(3);
-        parentPath.length = 0; // Reset for new h2 section
+        parentPath.length = Math.min(1, parentPath.length); // Keep H1 parent if present
         const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
         currentH2 = { level: 2, text, id, children: [] };
@@ -222,7 +227,7 @@ function ReleaseNotes() {
         tocItems.push(currentH2);
       } else if (line.startsWith('### ')) {
         const text = line.substring(4);
-        parentPath.length = 1; // Keep only h2 parent
+        parentPath.length = Math.min(2, parentPath.length); // Keep H1 and H2 parents
         const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
         currentH3 = { level: 3, text, id, children: [] };
@@ -233,7 +238,7 @@ function ReleaseNotes() {
         }
       } else if (line.startsWith('#### ')) {
         const text = line.substring(5);
-        parentPath.length = Math.min(2, parentPath.length); // Keep up to h3 parent
+        parentPath.length = Math.min(3, parentPath.length); // Keep H1, H2 and H3 parents
         const id = generateUniqueId(text, parentPath);
         parentPath.push(text);
         const h4Item = { level: 4, text, id, children: [] };
