@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { getUIStrings, getReadmeContent } from '../i18n/documentation/index.js';
 import ImageLightbox, { useLightbox } from './ImageLightbox';
 import { Link as ScrollLink, Element as ScrollElement, Events, scrollSpy, scroller } from 'react-scroll';
-import { useScrollSpy, TocItem } from '../hooks/useScrollSpy';
+import { useScrollSpy, TocItem } from '../hooks/useScrollSpy.jsx';
 
 function Help() {
   const [readmeContent, setReadmeContent] = useState('');

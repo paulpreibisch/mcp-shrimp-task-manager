@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { getUIStrings, getReleaseContent } from '../i18n/documentation/index.js';
 import ImageLightbox, { useLightbox } from './ImageLightbox';
 import { Link as ScrollLink, Element as ScrollElement, Events, scrollSpy, scroller } from 'react-scroll';
-import { useScrollSpy } from '../hooks/useScrollSpy';
+import { useScrollSpy } from '../hooks/useScrollSpy.jsx';
 
 function ReleaseNotes() {
   const [selectedVersion, setSelectedVersion] = useState(releaseMetadata[0]?.version || '');
