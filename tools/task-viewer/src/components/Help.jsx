@@ -19,6 +19,7 @@ function Help() {
   const lightbox = useLightbox();
   const imagesRef = useRef([]);
   const contentRef = useRef(null);
+  const sidebarRef = useRef(null);
 
   // Centralized ID generation function to ensure consistency
   const generateUniqueId = (text, parentPath) => {
@@ -114,31 +115,47 @@ function Help() {
 
   // Auto-scroll sidebar to keep active item visible
   useEffect(() => {
-    if (!activeSection) return;
+    if (!activeSection || !sidebarRef.current) return;
     
     const activeItem = document.querySelector(`.help-toc-item[data-id="${activeSection}"]`);
-    const tocContainer = document.querySelector('.help-toc-container');
     
-    if (activeItem && tocContainer) {
-      const tocRect = tocContainer.getBoundingClientRect();
+    if (activeItem) {
+      const sidebar = sidebarRef.current;
+      const sidebarRect = sidebar.getBoundingClientRect();
       const itemRect = activeItem.getBoundingClientRect();
       
       // Check if item is outside the visible area
-      const isAbove = itemRect.top < tocRect.top;
-      const isBelow = itemRect.bottom > tocRect.bottom;
+      const isAbove = itemRect.top < sidebarRect.top + 60; // Account for TOC header
+      const isBelow = itemRect.bottom > sidebarRect.bottom - 20; // Small buffer at bottom
       
       if (isAbove || isBelow) {
-        // Calculate the ideal scroll position to center the active item
-        const itemRelativeTop = activeItem.offsetTop;
+        // Calculate the item's position relative to its offsetParent
+        let offsetTop = 0;
+        let element = activeItem;
+        
+        // Walk up the DOM to calculate the total offset from the sidebar container
+        while (element && element !== sidebar) {
+          offsetTop += element.offsetTop;
+          element = element.offsetParent;
+        }
+        
+        const containerHeight = sidebar.clientHeight;
         const itemHeight = activeItem.offsetHeight;
-        const containerHeight = tocContainer.clientHeight;
         
-        // Try to center the item, but keep it at least 100px from top
-        const idealScrollTop = itemRelativeTop - (containerHeight / 2) + (itemHeight / 2);
-        const finalScrollTop = Math.max(0, Math.min(idealScrollTop, itemRelativeTop - 100));
+        // Calculate scroll position to bring item into view
+        let targetScrollTop;
+        if (isAbove) {
+          // Item is above viewport - scroll up to show it with some padding from top
+          targetScrollTop = Math.max(0, offsetTop - 80);
+        } else {
+          // Item is below viewport - try to center it if possible
+          const idealCenter = offsetTop - (containerHeight / 2) + (itemHeight / 2);
+          // But ensure we don't scroll past the item
+          targetScrollTop = Math.max(offsetTop - containerHeight + itemHeight + 40, idealCenter);
+        }
         
-        tocContainer.scrollTo({
-          top: finalScrollTop,
+        sidebar.scrollTo({
+          top: targetScrollTop,
           behavior: 'smooth'
         });
       }
@@ -995,7 +1012,7 @@ To restore tasks from an archive:
           overflow: 'hidden',
           height: '100%'
         }}>
-          <div className="release-sidebar" style={{
+          <div className="release-sidebar" ref={sidebarRef} style={{
             width: '300px',
             minWidth: '300px',
             overflowY: 'auto',
