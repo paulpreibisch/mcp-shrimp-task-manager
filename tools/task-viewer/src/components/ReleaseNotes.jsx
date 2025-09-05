@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { getUIStrings, getReleaseContent } from '../i18n/documentation/index.js';
 import ImageLightbox, { useLightbox } from './ImageLightbox';
 import { Link as ScrollLink, Element as ScrollElement, Events, scrollSpy, scroller } from 'react-scroll';
+import { useScrollSpy } from '../hooks/useScrollSpy';
 
 function ReleaseNotes() {
   const [selectedVersion, setSelectedVersion] = useState(releaseMetadata[0]?.version || '');
@@ -15,13 +16,27 @@ function ReleaseNotes() {
   const [expandedVersions, setExpandedVersions] = useState({});
   const [tableOfContents, setTableOfContents] = useState({});
   const [expandedTocSections, setExpandedTocSections] = useState({});
-  const [activeSection, setActiveSection] = useState('');
   const { t, i18n } = useTranslation();
   const currentLanguage = i18n.language;
   const uiStrings = getUIStrings('releaseNotes', currentLanguage);
   const lightbox = useLightbox();
   const imagesRef = useRef([]);
   const contentRef = useRef(null);
+
+  // Use the ScrollSpy hook for sidebar auto-scroll and active section tracking
+  const {
+    activeSection,
+    setActiveSection,
+    scrollToSection,
+    sidebarRef
+  } = useScrollSpy({
+    contentContainerId: 'release-content-container',
+    sidebarClass: 'release-sidebar',
+    tocItemClass: 'release-toc-item',
+    scrollElementAttribute: 'data-scroll-element',
+    scrollOffset: 50,
+    enabled: true
+  });
 
   // Centralized ID generation function to ensure consistency
   const generateUniqueId = (text, parentPath) => {
@@ -325,7 +340,10 @@ function ReleaseNotes() {
     
     return (
       <div key={itemKey} style={{ marginBottom: '0.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div 
+          className={`release-toc-item ${isActive ? 'active' : ''}`}
+          data-id={item.id}
+          style={{ display: 'flex', alignItems: 'center' }}>
           {hasChildren && (
             <button
               onClick={() => toggleTocSection(version, itemKey)}
@@ -345,6 +363,7 @@ function ReleaseNotes() {
             </button>
           )}
           <div
+            className="release-toc-text"
             onClick={() => {
               scroller.scrollTo(item.id, {
                 duration: 500,
@@ -787,7 +806,7 @@ function ReleaseNotes() {
           overflow: 'hidden',
           height: '100%'
         }}>
-          <div className="release-sidebar" style={{
+          <div className="release-sidebar" ref={sidebarRef} style={{
             width: '300px',
             minWidth: '300px',
             overflowY: 'scroll',
