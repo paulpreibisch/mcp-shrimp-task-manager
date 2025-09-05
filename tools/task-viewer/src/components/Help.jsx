@@ -53,23 +53,45 @@ function Help() {
     const container = contentRef.current;
     
     const handleScroll = () => {
-      // Find which section is currently in view
-      const scrollTop = container.scrollTop;
-      const containerTop = container.getBoundingClientRect().top;
-      
       // Get all ScrollElement targets
       const elements = container.querySelectorAll('[data-scroll-element]');
-      let activeElement = null;
+      if (!elements.length) return;
       
-      // Find the element that's most visible in the viewport
-      for (let i = elements.length - 1; i >= 0; i--) {
-        const element = elements[i];
+      const containerRect = container.getBoundingClientRect();
+      const containerHeight = containerRect.height;
+      const containerTop = containerRect.top;
+      
+      let activeElement = null;
+      let minDistance = Infinity;
+      
+      // Find the element closest to the top of the viewport (with a bias toward visible elements)
+      elements.forEach(element => {
         const rect = element.getBoundingClientRect();
         const relativeTop = rect.top - containerTop;
         
-        if (relativeTop <= 100) { // 100px threshold
-          activeElement = element;
-          break;
+        // Element is in the viewport or just above it
+        if (relativeTop >= -50 && relativeTop <= containerHeight / 3) {
+          // Calculate distance from the ideal position (slightly below top)
+          const distance = Math.abs(relativeTop - 50);
+          
+          if (distance < minDistance) {
+            minDistance = distance;
+            activeElement = element;
+          }
+        }
+      });
+      
+      // If no element is in the ideal range, find the last element that's above the viewport
+      if (!activeElement) {
+        for (let i = elements.length - 1; i >= 0; i--) {
+          const element = elements[i];
+          const rect = element.getBoundingClientRect();
+          const relativeTop = rect.top - containerTop;
+          
+          if (relativeTop <= 50) {
+            activeElement = element;
+            break;
+          }
         }
       }
       
@@ -89,6 +111,39 @@ function Help() {
       container.removeEventListener('scroll', handleScroll);
     };
   }, [activeSection, readmeContent]);
+
+  // Auto-scroll sidebar to keep active item visible
+  useEffect(() => {
+    if (!activeSection) return;
+    
+    const activeItem = document.querySelector(`.help-toc-item[data-id="${activeSection}"]`);
+    const tocContainer = document.querySelector('.help-toc-container');
+    
+    if (activeItem && tocContainer) {
+      const tocRect = tocContainer.getBoundingClientRect();
+      const itemRect = activeItem.getBoundingClientRect();
+      
+      // Check if item is outside the visible area
+      const isAbove = itemRect.top < tocRect.top;
+      const isBelow = itemRect.bottom > tocRect.bottom;
+      
+      if (isAbove || isBelow) {
+        // Calculate the ideal scroll position to center the active item
+        const itemRelativeTop = activeItem.offsetTop;
+        const itemHeight = activeItem.offsetHeight;
+        const containerHeight = tocContainer.clientHeight;
+        
+        // Try to center the item, but keep it at least 100px from top
+        const idealScrollTop = itemRelativeTop - (containerHeight / 2) + (itemHeight / 2);
+        const finalScrollTop = Math.max(0, Math.min(idealScrollTop, itemRelativeTop - 100));
+        
+        tocContainer.scrollTo({
+          top: finalScrollTop,
+          behavior: 'smooth'
+        });
+      }
+    }
+  }, [activeSection]);
 
   const loadReadmeContent = async () => {
     setLoading(true);
