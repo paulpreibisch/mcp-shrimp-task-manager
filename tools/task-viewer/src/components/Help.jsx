@@ -113,52 +113,42 @@ function Help() {
     };
   }, [activeSection, readmeContent]);
 
-  // Auto-scroll sidebar to keep active item visible
+  // Auto-scroll sidebar to keep active item centered in viewport
   useEffect(() => {
     if (!activeSection || !sidebarRef.current) return;
     
     const activeItem = document.querySelector(`.help-toc-item[data-id="${activeSection}"]`);
     
-    if (activeItem) {
+    if (activeItem && sidebarRef.current) {
       const sidebar = sidebarRef.current;
-      const sidebarRect = sidebar.getBoundingClientRect();
-      const itemRect = activeItem.getBoundingClientRect();
       
-      // Check if item is outside the visible area
-      const isAbove = itemRect.top < sidebarRect.top + 60; // Account for TOC header
-      const isBelow = itemRect.bottom > sidebarRect.bottom - 20; // Small buffer at bottom
+      // Get the item's position relative to its closest positioned parent
+      // This requires walking up to find the actual offset within the sidebar
+      let totalOffset = 0;
+      let element = activeItem;
       
-      if (isAbove || isBelow) {
-        // Calculate the item's position relative to its offsetParent
-        let offsetTop = 0;
-        let element = activeItem;
-        
-        // Walk up the DOM to calculate the total offset from the sidebar container
-        while (element && element !== sidebar) {
-          offsetTop += element.offsetTop;
-          element = element.offsetParent;
-        }
-        
-        const containerHeight = sidebar.clientHeight;
-        const itemHeight = activeItem.offsetHeight;
-        
-        // Calculate scroll position to bring item into view
-        let targetScrollTop;
-        if (isAbove) {
-          // Item is above viewport - scroll up to show it with some padding from top
-          targetScrollTop = Math.max(0, offsetTop - 80);
-        } else {
-          // Item is below viewport - try to center it if possible
-          const idealCenter = offsetTop - (containerHeight / 2) + (itemHeight / 2);
-          // But ensure we don't scroll past the item
-          targetScrollTop = Math.max(offsetTop - containerHeight + itemHeight + 40, idealCenter);
-        }
-        
-        sidebar.scrollTo({
-          top: targetScrollTop,
-          behavior: 'smooth'
-        });
+      // Walk up the DOM tree until we reach the sidebar container
+      while (element && element !== sidebar) {
+        totalOffset += element.offsetTop;
+        element = element.offsetParent;
       }
+      
+      const itemHeight = activeItem.offsetHeight;
+      const sidebarHeight = sidebar.clientHeight;
+      
+      // Calculate the scroll position to center the active item in the sidebar viewport
+      // Center position = item's top position - (viewport height / 2) + (item height / 2)
+      const targetScrollTop = totalOffset - (sidebarHeight / 2) + (itemHeight / 2);
+      
+      // Ensure we don't scroll beyond the bounds
+      const maxScroll = sidebar.scrollHeight - sidebarHeight;
+      const finalScrollTop = Math.max(0, Math.min(targetScrollTop, maxScroll));
+      
+      // Smoothly scroll to the calculated position
+      sidebar.scrollTo({
+        top: finalScrollTop,
+        behavior: 'smooth'
+      });
     }
   }, [activeSection]);
 

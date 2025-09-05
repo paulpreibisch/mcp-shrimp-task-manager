@@ -23,6 +23,15 @@
 | `reflect_task` | Review and improve task approach | `"reflect on task 2"` |
 | `query_task` | Search tasks by criteria | `"query tasks with status pending"` |
 
+### 📝 Rich Task Completion (New)
+
+| Tool | Description | Example Usage |
+|------|-------------|---------------|
+| `completeTaskWithRichDetails` | Complete task with comprehensive documentation | See [Rich Completion Guide](rich-completion-guide.md) |
+| `batchCompleteTasksWithRichDetails` | Complete multiple tasks with rich details | See [Agent Integration](agent-integration.md) |
+| `validateTaskEligibility` | Check if task can be completed | `validateTaskEligibility(taskId)` |
+| `createPartialCompletionDetails` | Create completion with partial info | For incomplete information scenarios |
+
 ### Task Memory & History
 
 | Tool | Description | Example Usage |
@@ -59,6 +68,8 @@
 - `verify_task` - Validate results
 - `reflect_task` - Quality review
 - `query_task` - Status checking
+- `completeTaskWithRichDetails` - Complete with comprehensive documentation (NEW)
+- `validateTaskEligibility` - Check completion eligibility (NEW)
 
 ### 🧠 Memory Tools
 - `get_task_detail` - Retrieve history
@@ -79,6 +90,12 @@
 1. Execute tasks in dependency order
 2. Use `continuous mode` for batch processing
 3. Verify completion with `verify_task`
+
+### Task Completion with Rich Documentation
+1. Use `completeTaskWithRichDetails` for comprehensive task documentation
+2. Collect accomplishments, features, approach, and decisions during execution
+3. Leverage task-specific templates (UI, Backend, DevOps) for consistency
+4. See [Rich Completion Guide](rich-completion-guide.md) for detailed usage
 
 ### Memory Management
 1. Tasks persist across sessions automatically
