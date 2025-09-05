@@ -99,6 +99,10 @@ function AppContent() {
   const [agentsTabRefresh, setAgentsTabRefresh] = useState(0); // Trigger for refreshing agents view
   const [tasksTabRefresh, setTasksTabRefresh] = useState(0); // Trigger for refreshing tasks view
   
+  // Emoji template states
+  const [robotEmojiTemplate, setRobotEmojiTemplate] = useState('');
+  const [armEmojiTemplate, setArmEmojiTemplate] = useState('');
+  
   // History management states
   const [historyView, setHistoryView] = useState(initialUrlState.history || ''); // 'list' or 'details' or '' for normal view
   const [historyData, setHistoryData] = useState([]);
@@ -457,6 +461,17 @@ function AppContent() {
   useEffect(() => {
     loadProfiles();
   }, []);
+  
+  // Update emoji template states when selected profile changes
+  useEffect(() => {
+    const currentProfile = getSafeProfiles().find(p => p.id === selectedProfile);
+    if (currentProfile) {
+      setRobotEmojiTemplate(currentProfile.robotEmojiTemplate || 
+        'use the built in subagent located in [AGENT] to complete this shrimp task: [UUID] please when u start working mark the shrimp task as in progress');
+      setArmEmojiTemplate(currentProfile.armEmojiTemplate || 
+        'Use task planner to execute this task: [UUID] using the role of [AGENT_NAME] agent. Apply the [AGENT_NAME] agent\'s specialized knowledge and approach, but execute the task yourself without launching a sub-agent. Please mark the task as in progress when you start working.');
+    }
+  }, [selectedProfile, profiles]);
   
   // Note: Environment variable checking is now handled in GlobalSettingsView component
 
@@ -1771,9 +1786,6 @@ function AppContent() {
                       const name = formData.get('name');
                       const taskPath = formData.get('taskPath');
                       const projectRoot = formData.get('projectRoot');
-                      const robotEmojiTemplate = formData.get('robotEmojiTemplate');
-                      const armEmojiTemplate = formData.get('armEmojiTemplate');
-                      
                       // Validate task path format
                       if (taskPath && !taskPath.trim().endsWith('.json')) {
                         setError('Task path must point to a .json file');
@@ -1788,20 +1800,6 @@ function AppContent() {
                         armEmojiTemplate: armEmojiTemplate?.trim() || null
                       });
                       showToast(t('settingsSaved'), 'success');
-                      
-                      // Force re-render by updating the form values
-                      const form = e.target;
-                      form.reset();
-                      // Repopulate with updated values
-                      setTimeout(() => {
-                        const currentProfile = getSafeProfiles().find(p => p.id === selectedProfile);
-                        if (currentProfile) {
-                          form.elements.robotEmojiTemplate.value = currentProfile.robotEmojiTemplate || 
-                            'use the built in subagent located in [AGENT] to complete this shrimp task: [UUID] please when u start working mark the shrimp task as in progress';
-                          form.elements.armEmojiTemplate.value = currentProfile.armEmojiTemplate || 
-                            'Use task planner to execute this task: [UUID] using the role of [AGENT_NAME] agent. Apply the [AGENT_NAME] agent\'s specialized knowledge and approach, but execute the task yourself without launching a sub-agent. Please mark the task as in progress when you start working.';
-                        }
-                      }, 100);
                     }}>
                       <div className="form-group" name="profile-name-group">
                         <label htmlFor="settingsProfileName">{t('profileName')}:</label>
@@ -1855,11 +1853,8 @@ function AppContent() {
                           name="robotEmojiTemplate"
                           rows="5"
                           cols="80"
-                          defaultValue={(() => {
-                            const profile = getSafeProfiles().find(p => p.id === selectedProfile);
-                            return profile?.robotEmojiTemplate || 
-                              'use the built in subagent located in [AGENT] to complete this shrimp task: [UUID] please when u start working mark the shrimp task as in progress';
-                          })()}
+                          value={robotEmojiTemplate}
+                          onChange={(e) => setRobotEmojiTemplate(e.target.value)}
                           placeholder="use the built in subagent located in [AGENT] to complete this shrimp task: [UUID] please when u start working mark the shrimp task as in progress"
                           title="Template for robot emoji button. Use [AGENT] for agent path and [UUID] for task ID"
                           style={{ 
@@ -1885,12 +1880,8 @@ function AppContent() {
                           name="armEmojiTemplate"
                           rows="5"
                           cols="80"
-                          defaultValue={(() => {
-                            const profile = getSafeProfiles().find(p => p.id === selectedProfile);
-                            const agentName = '[AGENT_NAME]';
-                            return profile?.armEmojiTemplate || 
-                              `Use task planner to execute this task: [UUID] using the role of ${agentName} agent. Apply the ${agentName} agent's specialized knowledge and approach, but execute the task yourself without launching a sub-agent. Please mark the task as in progress when you start working.`;
-                          })()}
+                          value={armEmojiTemplate}
+                          onChange={(e) => setArmEmojiTemplate(e.target.value)}
                           placeholder="Use task planner to execute this task: [UUID] using the role of [AGENT_NAME] agent"
                           title="Template for mechanical arm emoji button. Use [AGENT_NAME] for agent name and [UUID] for task ID"
                           style={{ 
