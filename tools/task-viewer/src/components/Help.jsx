@@ -122,23 +122,20 @@ function Help() {
     if (activeItem && sidebarRef.current) {
       const sidebar = sidebarRef.current;
       
-      // Get the item's position relative to its closest positioned parent
-      // This requires walking up to find the actual offset within the sidebar
-      let totalOffset = 0;
-      let element = activeItem;
+      // Get bounding rectangles for accurate positioning
+      const sidebarRect = sidebar.getBoundingClientRect();
+      const itemRect = activeItem.getBoundingClientRect();
       
-      // Walk up the DOM tree until we reach the sidebar container
-      while (element && element !== sidebar) {
-        totalOffset += element.offsetTop;
-        element = element.offsetParent;
-      }
+      // Calculate the item's position relative to the sidebar's scrollable area
+      // This accounts for the current scroll position
+      const itemPositionInSidebar = itemRect.top - sidebarRect.top + sidebar.scrollTop;
       
       const itemHeight = activeItem.offsetHeight;
       const sidebarHeight = sidebar.clientHeight;
       
       // Calculate the scroll position to center the active item in the sidebar viewport
-      // Center position = item's top position - (viewport height / 2) + (item height / 2)
-      const targetScrollTop = totalOffset - (sidebarHeight / 2) + (itemHeight / 2);
+      // We want the item's center to align with the sidebar's center
+      const targetScrollTop = itemPositionInSidebar - (sidebarHeight / 2) + (itemHeight / 2);
       
       // Ensure we don't scroll beyond the bounds
       const maxScroll = sidebar.scrollHeight - sidebarHeight;
@@ -626,7 +623,11 @@ To restore tasks from an archive:
 
     return (
       <div key={itemKey} style={{ marginBottom: '0.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div 
+          className={`help-toc-item ${isActive ? 'active' : ''}`}
+          data-id={item.id}
+          style={{ display: 'flex', alignItems: 'center' }}
+        >
           {hasChildren && (
             <button
               onClick={() => toggleSection(itemKey)}
@@ -644,6 +645,7 @@ To restore tasks from an archive:
             </button>
           )}
           <div
+            className="help-toc-text"
             onClick={() => {
               scroller.scrollTo(item.id, {
                 duration: 500,
