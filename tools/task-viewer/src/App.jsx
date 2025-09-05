@@ -1780,7 +1780,7 @@ function AppContent() {
                         return;
                       }
                       
-                      handleUpdateProfile(selectedProfile, { 
+                      await handleUpdateProfile(selectedProfile, { 
                         name: name.trim(),
                         taskPath: taskPath?.trim() || null,
                         projectRoot: projectRoot || null,
@@ -1788,6 +1788,20 @@ function AppContent() {
                         armEmojiTemplate: armEmojiTemplate?.trim() || null
                       });
                       showToast(t('settingsSaved'), 'success');
+                      
+                      // Force re-render by updating the form values
+                      const form = e.target;
+                      form.reset();
+                      // Repopulate with updated values
+                      setTimeout(() => {
+                        const currentProfile = getSafeProfiles().find(p => p.id === selectedProfile);
+                        if (currentProfile) {
+                          form.elements.robotEmojiTemplate.value = currentProfile.robotEmojiTemplate || 
+                            'use the built in subagent located in [AGENT] to complete this shrimp task: [UUID] please when u start working mark the shrimp task as in progress';
+                          form.elements.armEmojiTemplate.value = currentProfile.armEmojiTemplate || 
+                            'Use task planner to execute this task: [UUID] using the role of [AGENT_NAME] agent. Apply the [AGENT_NAME] agent\'s specialized knowledge and approach, but execute the task yourself without launching a sub-agent. Please mark the task as in progress when you start working.';
+                        }
+                      }, 100);
                     }}>
                       <div className="form-group" name="profile-name-group">
                         <label htmlFor="settingsProfileName">{t('profileName')}:</label>
@@ -1839,7 +1853,8 @@ function AppContent() {
                         <textarea 
                           id="robotEmojiTemplate"
                           name="robotEmojiTemplate"
-                          rows="3"
+                          rows="5"
+                          cols="80"
                           defaultValue={(() => {
                             const profile = getSafeProfiles().find(p => p.id === selectedProfile);
                             return profile?.robotEmojiTemplate || 
@@ -1847,7 +1862,14 @@ function AppContent() {
                           })()}
                           placeholder="use the built in subagent located in [AGENT] to complete this shrimp task: [UUID] please when u start working mark the shrimp task as in progress"
                           title="Template for robot emoji button. Use [AGENT] for agent path and [UUID] for task ID"
-                          style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                          style={{ 
+                            fontFamily: 'monospace', 
+                            fontSize: '12px',
+                            width: '100%',
+                            minWidth: '600px',
+                            minHeight: '120px',
+                            resize: 'vertical'
+                          }}
                         />
                         <span className="form-hint">
                           Use [AGENT] for agent path and [UUID] for task ID. Example: "use the built in subagent located in [AGENT] to complete this shrimp task: [UUID]"
@@ -1861,7 +1883,8 @@ function AppContent() {
                         <textarea 
                           id="armEmojiTemplate"
                           name="armEmojiTemplate"
-                          rows="3"
+                          rows="5"
+                          cols="80"
                           defaultValue={(() => {
                             const profile = getSafeProfiles().find(p => p.id === selectedProfile);
                             const agentName = '[AGENT_NAME]';
@@ -1870,7 +1893,14 @@ function AppContent() {
                           })()}
                           placeholder="Use task planner to execute this task: [UUID] using the role of [AGENT_NAME] agent"
                           title="Template for mechanical arm emoji button. Use [AGENT_NAME] for agent name and [UUID] for task ID"
-                          style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                          style={{ 
+                            fontFamily: 'monospace', 
+                            fontSize: '12px',
+                            width: '100%',
+                            minWidth: '600px',
+                            minHeight: '120px',
+                            resize: 'vertical'
+                          }}
                         />
                         <span className="form-hint">
                           Use [AGENT_NAME] for agent name and [UUID] for task ID. Special case: When agent is 'task manager', a simpler template is used.

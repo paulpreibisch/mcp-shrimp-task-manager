@@ -227,6 +227,12 @@ async function updateProject(projectId, updates) {
         project.taskPath = updates.taskPath;
         project.filePath = updates.taskPath;
     }
+    if (updates.robotEmojiTemplate !== undefined) {
+        project.robotEmojiTemplate = updates.robotEmojiTemplate;
+    }
+    if (updates.armEmojiTemplate !== undefined) {
+        project.armEmojiTemplate = updates.armEmojiTemplate;
+    }
     
     await saveSettings(projects);
     return project;
