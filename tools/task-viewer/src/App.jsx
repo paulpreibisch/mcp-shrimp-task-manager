@@ -1345,7 +1345,7 @@ function AppContent() {
         <h1>{t('appTitle')}</h1>
         <div className="header-content">
           <div className="version-info">
-            <span>{t('header.version')} 4.0.0</span> • 
+            <span>{t('header.version')} 4.1.0</span> • 
             <a href="#" onClick={(e) => {
               e.preventDefault();
               handleOuterTabChange('release-notes');
