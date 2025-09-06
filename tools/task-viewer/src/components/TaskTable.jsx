@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, memo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -8,10 +8,72 @@ import {
   flexRender,
 } from '@tanstack/react-table';
 import TaskDetailView from './TaskDetailView';
+import TaskSummary from './TaskSummary';
 import Tooltip from './Tooltip';
 import AgentInfoModal from './AgentInfoModal';
 import { useTranslation } from 'react-i18next';
 import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
+
+// Memoized component for summary cell with expand/collapse functionality
+const SummaryCell = memo(({ summary }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  if (!summary || summary.trim() === '') {
+    return <span style={{ color: '#666' }}>—</span>;
+  }
+  
+  const needsExpansion = summary.length > 100;
+  const displayText = !isExpanded && needsExpansion 
+    ? summary.slice(0, 100) + '...'
+    : summary;
+  
+  return (
+    <div className="task-summary-preview" style={{ maxWidth: '300px' }}>
+      {needsExpansion ? (
+        <>
+          <div style={{ marginBottom: '4px' }}>
+            <TaskSummary 
+              summary={displayText} 
+              expandable={false}
+              initiallyExpanded={true}
+            />
+          </div>
+          <button
+            className="summary-expand-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+            style={{
+              background: 'transparent',
+              border: '1px solid #4fbdba',
+              color: '#4fbdba',
+              cursor: 'pointer',
+              fontSize: '12px',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = 'rgba(79, 189, 186, 0.1)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = 'transparent';
+            }}
+          >
+            {isExpanded ? '▲ Less' : '▼ More'}
+          </button>
+        </>
+      ) : (
+        <TaskSummary 
+          summary={summary} 
+          expandable={false}
+          initiallyExpanded={true}
+        />
+      )}
+    </div>
+  );
+});
 
 function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emojiTemplates, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask, showToast }) {
   const { t } = useTranslation();
@@ -283,6 +345,12 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
       size: 120,
     },
     {
+      accessorKey: 'summary',
+      header: 'Summary',
+      cell: ({ row }) => <SummaryCell summary={row.original.summary} />,
+      size: 320,
+    },
+    {
       accessorKey: 'agent',
       header: 'Agent',
       cell: ({ row }) => {
@@ -292,21 +360,31 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
         const isSaving = savingAgents[taskId] || false;
         
         return (
-          <div className="agent-cell-wrapper">
+          <div className="agent-cell-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <select
               className="agent-table-select"
               value={currentAgent}
               style={(() => {
                 // Find the selected agent's color
                 const selectedAgent = availableAgents.find(a => a.name === currentAgent);
+                const baseStyles = {
+                  width: '100%',
+                  minHeight: '40px',
+                  whiteSpace: 'normal',
+                  wordWrap: 'break-word',
+                  padding: '4px 8px',
+                  fontSize: '13px',
+                  lineHeight: '1.4'
+                };
                 if (selectedAgent?.color) {
                   return {
+                    ...baseStyles,
                     backgroundColor: selectedAgent.color,
                     color: '#ffffff', // White text for better contrast
                     borderColor: selectedAgent.color
                   };
                 }
-                return {};
+                return baseStyles;
               })()}
               onChange={async (e) => {
                 e.stopPropagation();
@@ -394,26 +472,37 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
                 </option>
               ))}
             </select>
-            <button
-              className="agent-info-button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (currentAgent && currentAgent !== '') {
-                  // Pass the full agent object if available, otherwise just the name
-                  const agentData = availableAgents.find(a => a.name === currentAgent) || currentAgent;
-                  setAgentModalInfo({ isOpen: true, agent: agentData, taskId: taskId });
-                }
-              }}
-              disabled={!currentAgent || currentAgent === ''}
-              title={currentAgent ? `View info for ${currentAgent}` : 'Select an agent first'}
-            >
-              👁️
-            </button>
-            {isSaving && <span className="saving-indicator">💾</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                className="agent-info-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (currentAgent && currentAgent !== '') {
+                    // Pass the full agent object if available, otherwise just the name
+                    const agentData = availableAgents.find(a => a.name === currentAgent) || currentAgent;
+                    setAgentModalInfo({ isOpen: true, agent: agentData, taskId: taskId });
+                  }
+                }}
+                disabled={!currentAgent || currentAgent === ''}
+                title={currentAgent ? `View info for ${currentAgent}` : 'Select an agent first'}
+                style={{
+                  padding: '2px 8px',
+                  fontSize: '14px',
+                  background: 'transparent',
+                  border: '1px solid #4fbdba',
+                  borderRadius: '4px',
+                  cursor: currentAgent ? 'pointer' : 'not-allowed',
+                  opacity: currentAgent ? 1 : 0.5
+                }}
+              >
+                👁️ View Info
+              </button>
+              {isSaving && <span className="saving-indicator">💾</span>}
+            </div>
           </div>
         );
       },
-      size: 200, // Increased from 150 to give more room for agents
+      size: 240, // Increased to accommodate vertical layout
     },
     {
       accessorKey: 'createdAt',
@@ -504,7 +593,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
           </div>
         );
       },
-      size: 120, // Reduced from 200 to make more room for agents
+      size: 100, // Reduced to make more room for agents
     },
     {
       accessorKey: 'actions',
@@ -523,7 +612,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
                 : `./.claude/agents/${agentName}`;
               
               let instruction;
-              if (emojiTemplates?.robot) {
+              if (emojiTemplates?.robot && emojiTemplates.robot.trim()) {
                 // Use custom template
                 instruction = emojiTemplates.robot
                   .replace(/\[AGENT\]/g, agentPath)
@@ -548,7 +637,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
                 ? `${projectRoot}/.claude/agents/${agentName}`
                 : `./.claude/agents/${agentName}`;
               
-              if (emojiTemplates?.robot) {
+              if (emojiTemplates?.robot && emojiTemplates.robot.trim()) {
                 // Use custom template
                 return emojiTemplates.robot
                   .replace(/\[AGENT\]/g, agentPath)
@@ -572,7 +661,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
               const agentName = row.original.agent || 'task manager';
               
               let instruction;
-              if (emojiTemplates?.arm) {
+              if (emojiTemplates?.arm && emojiTemplates.arm.trim()) {
                 // Use custom template
                 instruction = emojiTemplates.arm
                   .replace(/\[AGENT_NAME\]/g, agentName)
@@ -594,7 +683,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
             title={(() => {
               const agentName = row.original.agent || 'task manager';
               
-              if (emojiTemplates?.arm) {
+              if (emojiTemplates?.arm && emojiTemplates.arm.trim()) {
                 // Use custom template
                 return emojiTemplates.arm
                   .replace(/\[AGENT_NAME\]/g, agentName)
@@ -636,7 +725,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
           </button>
         </div>
       ),
-      size: 130,
+      size: 110, // Reduced to make more room for agents
     },
   ], [mergedData, setSelectedTask, t, taskNumberMap, onDeleteTask, availableAgents, savingAgents, profileId, showToast, selectedRows, localTaskUpdates]);
 

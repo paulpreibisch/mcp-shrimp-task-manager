@@ -1,6 +1,12 @@
 // Release metadata only - actual content is loaded from /releases/*.md files
 export const releaseMetadata = [
   {
+    version: 'v4.1.0',
+    date: '2025-09-06',
+    title: 'Task Completion Summary Storage System',
+    summary: 'Permanent storage and parsing of detailed task completion summaries with structured data extraction and migration utilities'
+  },
+  {
     version: 'v4.0.0',
     date: '2025-09-03',
     title: 'Enhanced Release Notes & Archive System',

@@ -462,16 +462,28 @@ function AppContent() {
     loadProfiles();
   }, []);
   
+  // Track the previous selected profile to detect actual profile switches
+  const prevSelectedProfileRef = useRef(selectedProfile);
+  
   // Update emoji template states when selected profile changes
   useEffect(() => {
     const currentProfile = getSafeProfiles().find(p => p.id === selectedProfile);
-    if (currentProfile) {
+    
+    // Only update templates if we're switching to a different profile
+    // or if this is the first load (templates are empty)
+    if (currentProfile && (
+      prevSelectedProfileRef.current !== selectedProfile || 
+      !robotEmojiTemplate || 
+      !armEmojiTemplate
+    )) {
       setRobotEmojiTemplate(currentProfile.robotEmojiTemplate || 
         'use the built in subagent located in [AGENT] to complete this shrimp task: [UUID] please when u start working mark the shrimp task as in progress');
       setArmEmojiTemplate(currentProfile.armEmojiTemplate || 
         'Use task planner to execute this task: [UUID] using the role of [AGENT_NAME] agent. Apply the [AGENT_NAME] agent\'s specialized knowledge and approach, but execute the task yourself without launching a sub-agent. Please mark the task as in progress when you start working.');
     }
-  }, [selectedProfile, profiles]);
+    
+    prevSelectedProfileRef.current = selectedProfile;
+  }, [selectedProfile, profiles, robotEmojiTemplate, armEmojiTemplate]); // Include all dependencies
   
   // Note: Environment variable checking is now handled in GlobalSettingsView component
 
@@ -1617,8 +1629,8 @@ function AppContent() {
                   onGlobalFilterChange={setGlobalFilter}
                   projectRoot={projectRoot}
                   emojiTemplates={{
-                    robot: getSafeProfiles().find(p => p.id === selectedProfile)?.robotEmojiTemplate,
-                    arm: getSafeProfiles().find(p => p.id === selectedProfile)?.armEmojiTemplate
+                    robot: robotEmojiTemplate || getSafeProfiles().find(p => p.id === selectedProfile)?.robotEmojiTemplate,
+                    arm: armEmojiTemplate || getSafeProfiles().find(p => p.id === selectedProfile)?.armEmojiTemplate
                   }}
                   onDetailViewChange={(inDetailView, inEditMode, taskId) => {
                     setIsInDetailView(inDetailView);

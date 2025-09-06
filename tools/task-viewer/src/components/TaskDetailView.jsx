@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import TaskSummary from './TaskSummary';
+import CompletionDetailsView from './CompletionDetailsView';
 
 const TaskDetailView = memo(function TaskDetailView({ task, onBack, projectRoot, onNavigateToTask, taskIndex, allTasks, isHistorical = false, onEdit }) {
   const { t } = useTranslation();
@@ -220,7 +221,17 @@ const TaskDetailView = memo(function TaskDetailView({ task, onBack, projectRoot,
         {task.summary && (
           <div className="task-detail-section">
             <h3>Summary</h3>
-            <TaskSummary summary={task.summary} />
+            <TaskSummary 
+              summary={task.summary} 
+              expandable={task.summary.length > 1000} 
+              initiallyExpanded={task.summary.length <= 1000}
+            />
+          </div>
+        )}
+
+        {task.completionDetails && (
+          <div className="task-detail-section">
+            <CompletionDetailsView completionDetails={task.completionDetails} />
           </div>
         )}
 
@@ -323,6 +334,7 @@ const TaskDetailView = memo(function TaskDetailView({ task, onBack, projectRoot,
   return (
     prevProps.task?.id === nextProps.task?.id &&
     prevProps.task?.summary === nextProps.task?.summary &&
+    prevProps.task?.completionDetails === nextProps.task?.completionDetails &&
     prevProps.taskIndex === nextProps.taskIndex &&
     prevProps.isHistorical === nextProps.isHistorical &&
     prevProps.projectRoot === nextProps.projectRoot

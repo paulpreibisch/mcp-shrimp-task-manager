@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { filterTasksByStatus } from '../utils/exportUtils';
+import { exportCompletionReports } from '../utils/exportCompletions';
 
 const ExportModal = ({ isOpen, onClose, onExport, tasks = [] }) => {
   const [selectedFormat, setSelectedFormat] = useState('csv');
@@ -21,6 +22,27 @@ const ExportModal = ({ isOpen, onClose, onExport, tasks = [] }) => {
   };
 
   const handleExport = async () => {
+    // Handle completion report exports
+    if (selectedFormat === 'completion-markdown' || selectedFormat === 'completion-json') {
+      const format = selectedFormat === 'completion-markdown' ? 'markdown' : 'json';
+      const options = {
+        includeIncomplete: selectedStatuses.includes('pending') || selectedStatuses.includes('in_progress'),
+        groupByAgent: false,
+        groupByDate: true,
+        includeDetails: true
+      };
+      
+      try {
+        exportCompletionReports(filteredTasks, format, options);
+        onClose();
+        return;
+      } catch (error) {
+        console.error('Export failed:', error);
+        return;
+      }
+    }
+    
+    // Handle existing export formats
     const success = await onExport({
       format: selectedFormat,
       selectedStatuses,
@@ -103,7 +125,7 @@ const ExportModal = ({ isOpen, onClose, onExport, tasks = [] }) => {
         {/* File Format Selection */}
         <div style={{ marginBottom: '24px' }}>
           <h3 style={{ marginBottom: '12px', fontSize: '16px' }}>File Format</h3>
-          <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
                 type="radio"
@@ -131,6 +153,36 @@ const ExportModal = ({ isOpen, onClose, onExport, tasks = [] }) => {
                 <div>Markdown</div>
                 <div style={{ fontSize: '12px', color: '#888', fontWeight: 'normal' }}>
                   Complete details including notes, files, dependencies
+                </div>
+              </div>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="format"
+                value="completion-markdown"
+                checked={selectedFormat === 'completion-markdown'}
+                onChange={(e) => setSelectedFormat(e.target.value)}
+              />
+              <div>
+                <div>Completion Report (Markdown)</div>
+                <div style={{ fontSize: '12px', color: '#888', fontWeight: 'normal' }}>
+                  Detailed completion summaries for documentation
+                </div>
+              </div>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="radio"
+                name="format"
+                value="completion-json"
+                checked={selectedFormat === 'completion-json'}
+                onChange={(e) => setSelectedFormat(e.target.value)}
+              />
+              <div>
+                <div>Completion Report (JSON)</div>
+                <div style={{ fontSize: '12px', color: '#888', fontWeight: 'normal' }}>
+                  Structured completion data for analysis/reimport
                 </div>
               </div>
             </label>

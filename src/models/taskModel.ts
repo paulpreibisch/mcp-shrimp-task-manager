@@ -322,9 +322,20 @@ export async function updateTaskStatus(
 // Update task摘要
 export async function updateTaskSummary(
   taskId: string,
-  summary: string
+  summary: string,
+  completionDetails?: any
 ): Promise<Task | null> {
-  return await updateTask(taskId, { summary });
+  const updates: any = { summary };
+  
+  // If completionDetails is provided, store it (could be extended to a separate field if needed)
+  // For now, we'll append it to the summary in a structured way
+  if (completionDetails) {
+    // Store completion details in the task's notes or a dedicated field
+    // This maintains backward compatibility while enhancing data storage
+    updates.completionDetails = completionDetails;
+  }
+  
+  return await updateTask(taskId, updates);
 }
 
 // 更新任務

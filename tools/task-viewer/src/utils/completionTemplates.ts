@@ -1,3 +1,11 @@
+export interface TaskCompletionDetails {
+  keyAccomplishments: string[];
+  implementationDetails: string[];
+  technicalChallenges: string[];
+  completedAt: Date;
+  verificationScore: number;
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -9,6 +17,7 @@ export interface Task {
   completedAt?: Date;
   dependencies?: string[];
   notes?: string;
+  completionDetails?: TaskCompletionDetails;
 }
 
 export interface CompletionTemplate {
