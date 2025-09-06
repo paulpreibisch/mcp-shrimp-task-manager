@@ -61,18 +61,24 @@
     "of": "của",
     "total": "tổng cộng"
   },
-  "profile": {
-    "management": "🔧 Quản Lý Hồ Sơ",
-    "managementDesc": "Quản lý hồ sơ tệp tác vụ. Tạo hồ sơ mới hoặc chỉnh sửa hồ sơ hiện có.",
+  "project": {
+    "management": "🔧 Quản Lý Dự Án",
+    "managementDesc": "Quản lý dự án tệp tác vụ. Tạo dự án mới hoặc chỉnh sửa dự án hiện có.",
     "taskFolderPath": "Đường Dẫn Thư Mục Tác Vụ",
     "taskFolderPathPlaceholder": "Nhập đường dẫn thư mục chứa các tệp tác vụ",
-    "profileName": "Tên Hồ Sơ",
-    "profileNamePlaceholder": "Nhập tên hồ sơ",
+    "projectName": "Tên Dự Án",
+    "projectNamePlaceholder": "Nhập tên dự án",
     "projectRootPath": "Đường Dẫn Gốc Dự Án",
     "projectRootPathPlaceholder": "Nhập đường dẫn gốc dự án (tùy chọn)",
-    "addProfile": "Thêm Hồ Sơ",
-    "editProfile": "Chỉnh Sửa Hồ Sơ",
-    "deleteProfile": "Xóa Hồ Sơ"
+    "addProject": "Thêm Dự Án",
+    "editProject": "Chỉnh Sửa Dự Án",
+    "deleteProject": "Xóa Dự Án",
+    "history": "📊 Lịch Sử Dự Án",
+    "historyDesc": "Xem lịch sử tác vụ dự án và thống kê.",
+    "historyEntries": "Mục Lịch Sử",
+    "commitHistory": "Lịch Sử Commit",
+    "settings": "Cài Đặt Dự Án",
+    "editSettings": "Chỉnh Sửa Cài Đặt Dự Án"
   },
   "task": {
     "number": "Số Tác Vụ",
@@ -115,14 +121,6 @@
     "assignAgent": "Gán Agent Hàng Loạt",
     "delete": "Xóa Hàng Loạt"
   },
-  "project": {
-    "history": "📊 Lịch Sử Dự Án",
-    "historyDesc": "Xem lịch sử tác vụ dự án và thống kê.",
-    "historyEntries": "Mục Lịch Sử",
-    "commitHistory": "Lịch Sử Commit",
-    "settings": "Cài Đặt Dự Án",
-    "editSettings": "Chỉnh Sửa Cài Đặt Dự Án"
-  },
   "global": {
     "settings": "⚙️ Cài Đặt Toàn Cục",
     "settingsDesc": "Cấu hình cài đặt toàn cục của ứng dụng.",
@@ -130,16 +128,16 @@
     "openaiApiKeyPlaceholder": "Nhập Khóa API OpenAI"
   },
   "notifications": {
-    "profileCreatedSuccess": "Tạo hồ sơ thành công",
-    "profileUpdatedSuccess": "Cập nhật hồ sơ thành công",
-    "profileDeletedSuccess": "Xóa hồ sơ thành công",
+    "projectCreatedSuccess": "Tạo dự án thành công",
+    "projectUpdatedSuccess": "Cập nhật dự án thành công",
+    "projectDeletedSuccess": "Xóa dự án thành công",
     "taskUpdatedSuccess": "Cập nhật tác vụ thành công",
     "settingsSaved": "Lưu cài đặt thành công",
     "copiedToClipboard": "Đã sao chép vào clipboard"
   },
   "empty": {
     "noTasksFound": "Không tìm thấy tác vụ",
-    "noProfilesFound": "Không tìm thấy hồ sơ",
+    "noProjectsFound": "Không tìm thấy dự án",
     "noTemplatesFound": "Không tìm thấy mẫu",
     "noHistoryFound": "Không tìm thấy lịch sử"
   },

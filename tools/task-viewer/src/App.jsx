@@ -910,7 +910,7 @@ function AppContent() {
       const profileName = profile ? profile.name : profileId;
       
       // Show success toast
-      showToast(t('profileRemovedSuccess', { name: profileName }), 'success');
+      showToast(t('projectRemovedSuccess', { name: profileName }), 'success');
       
       // If we're removing the currently selected profile, clear selection
       if (selectedProfile === profileId) {
@@ -1838,7 +1838,7 @@ function AppContent() {
                       showToast(t('settingsSaved'), 'success');
                     }}>
                       <div className="form-group" name="profile-name-group">
-                        <label htmlFor="settingsProfileName">{t('profileName')}:</label>
+                        <label htmlFor="settingsProfileName">{t('project.projectName')}:</label>
                         <input 
                           type="text" 
                           id="settingsProfileName"
@@ -2139,7 +2139,7 @@ function AppContent() {
       {showAddProfile && (
         <div className="modal-overlay" name="add-profile-modal-overlay" onClick={() => setShowAddProfile(false)} title="Click outside to close">
           <div className="modal-content" name="add-profile-modal" onClick={(e) => e.stopPropagation()} title="Add new profile form">
-            <h3>{t('addNewProfile')}</h3>
+            <h3>{t('project.addNewProject')}</h3>
             <form name="add-profile-form" onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.target);
@@ -2156,7 +2156,7 @@ function AppContent() {
               }
             }}>
               <div className="form-group" name="profile-name-group">
-                <label htmlFor="profileName">{t('profileName')}:</label>
+                <label htmlFor="profileName">{t('project.projectName')}:</label>
                 <input 
                   type="text" 
                   id="profileName"
@@ -2167,7 +2167,7 @@ function AppContent() {
                 />
               </div>
               <div className="form-group" name="task-folder-group">
-                <label htmlFor="folderPath">{t('taskFolderPath')}:</label>
+                <label htmlFor="folderPath">{t('project.taskFolderPath')}:</label>
                 <input 
                   type="text" 
                   id="folderPath"
@@ -2182,7 +2182,7 @@ function AppContent() {
                 </span>
               </div>
               <div className="form-group" name="project-root-group">
-                <label htmlFor="projectRoot">{t('projectRootPath')} ({t('optional')}):</label>
+                <label htmlFor="projectRoot">{t('project.projectRootPath')} ({t('optional')}):</label>
                 <input 
                   type="text" 
                   id="projectRoot"
@@ -2199,7 +2199,7 @@ function AppContent() {
                   className="primary-btn"
                   title="Create the new profile with the provided information"
                 >
-                  Add Profile
+                  {t('project.addProject')}
                 </button>
                 <button 
                   type="button" 

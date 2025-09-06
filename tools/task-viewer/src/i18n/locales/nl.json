@@ -67,18 +67,25 @@
     "of": "van",
     "total": "totaal"
   },
-  "profile": {
-    "management": "🔧 Profielbeheer",
-    "managementDesc": "Beheer taakbestandsprofielen. Maak nieuwe profielen aan of bewerk bestaande.",
-    "taskFolderPath": "Taakmap Pad",
+  "project": {
+    "management": "🔧 Projectbeheer",
+    "managementDesc": "Beheer taakbestandsprojecten. Maak nieuwe projecten aan of bewerk bestaande.",
+    "taskFolderPath": "Shrimp Datamap Pad",
     "taskFolderPathPlaceholder": "Voer mappad in met taakbestanden",
-    "profileName": "Profielnaam",
-    "profileNamePlaceholder": "Voer profielnaam in",
+    "projectName": "Projectnaam",
+    "projectNamePlaceholder": "Voer projectnaam in",
     "projectRootPath": "Project Root Pad",
     "projectRootPathPlaceholder": "Voer project root pad in (optioneel)",
-    "addProfile": "Profiel Toevoegen",
-    "editProfile": "Profiel Bewerken",
-    "deleteProfile": "Profiel Verwijderen"
+    "addProject": "Project Toevoegen",
+    "addNewProject": "Nieuw Project Toevoegen",
+    "editProject": "Project Bewerken",
+    "deleteProject": "Project Verwijderen",
+    "history": "📊 Projectgeschiedenis",
+    "historyDesc": "Bekijk projecttaakgeschiedenis en statistieken.",
+    "historyEntries": "Geschiedenisitems",
+    "commitHistory": "Commit Geschiedenis",
+    "settings": "Projectinstellingen",
+    "editSettings": "Projectinstellingen Bewerken"
   },
   "task": {
     "number": "Taaknummer",
@@ -120,14 +127,6 @@
     "deselectAll": "Alles Deselecteren",
     "assignAgent": "Bulk Agent Toewijzen",
     "delete": "Bulk Verwijderen"
-  },
-  "project": {
-    "history": "📊 Projectgeschiedenis",
-    "historyDesc": "Bekijk projecttaakgeschiedenis en statistieken.",
-    "historyEntries": "Geschiedenisitems",
-    "commitHistory": "Commit Geschiedenis",
-    "settings": "Projectinstellingen",
-    "editSettings": "Projectinstellingen Bewerken"
   },
   "global": {
     "settings": "⚙️ Globale Instellingen",
@@ -173,16 +172,16 @@
     }
   },
   "notifications": {
-    "profileCreatedSuccess": "Profiel succesvol aangemaakt",
-    "profileUpdatedSuccess": "Profiel succesvol bijgewerkt",
-    "profileDeletedSuccess": "Profiel succesvol verwijderd",
+    "projectCreatedSuccess": "Project succesvol aangemaakt",
+    "projectUpdatedSuccess": "Project succesvol bijgewerkt",
+    "projectDeletedSuccess": "Project succesvol verwijderd",
     "taskUpdatedSuccess": "Taak succesvol bijgewerkt",
     "settingsSaved": "Instellingen succesvol opgeslagen",
     "copiedToClipboard": "Gekopieerd naar klembord"
   },
   "empty": {
     "noTasksFound": "Geen taken gevonden",
-    "noProfilesFound": "Geen profielen gevonden",
+    "noProjectsFound": "Geen projecten gevonden",
     "noTemplatesFound": "Geen sjablonen gevonden",
     "noHistoryFound": "Geen geschiedenis gevonden"
   },

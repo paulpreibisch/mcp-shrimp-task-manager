@@ -61,18 +61,25 @@
     "of": "von",
     "total": "gesamt"
   },
-  "profile": {
-    "management": "🔧 Profilverwaltung",
-    "managementDesc": "Verwalten Sie Aufgabendatei-Profile. Erstellen Sie neue Profile oder bearbeiten Sie bestehende Profile.",
-    "taskFolderPath": "Aufgabenordner-Pfad",
+  "project": {
+    "management": "🔧 Projektverwaltung",
+    "managementDesc": "Verwalten Sie Aufgabendatei-Projekte. Erstellen Sie neue Projekte oder bearbeiten Sie bestehende Projekte.",
+    "taskFolderPath": "Shrimp Datenordner-Pfad",
     "taskFolderPathPlaceholder": "Geben Sie den Ordnerpfad mit Aufgabendateien ein",
-    "profileName": "Profilname",
-    "profileNamePlaceholder": "Geben Sie den Profilnamen ein",
+    "projectName": "Projektname",
+    "projectNamePlaceholder": "Geben Sie den Projektnamen ein",
     "projectRootPath": "Projekt-Stammverzeichnis-Pfad",
     "projectRootPathPlaceholder": "Geben Sie den Projekt-Stammverzeichnis-Pfad ein (optional)",
-    "addProfile": "Profil Hinzufügen",
-    "editProfile": "Profil Bearbeiten",
-    "deleteProfile": "Profil Löschen"
+    "addProject": "Projekt Hinzufügen",
+    "addNewProject": "Neues Projekt Hinzufügen",
+    "editProject": "Projekt Bearbeiten",
+    "deleteProject": "Projekt Löschen",
+    "history": "📊 Projektverlauf",
+    "historyDesc": "Projektverlauf und Statistiken anzeigen.",
+    "historyEntries": "Verlaufseinträge",
+    "commitHistory": "Commit-Verlauf",
+    "settings": "Projekteinstellungen",
+    "editSettings": "Projekteinstellungen Bearbeiten"
   },
   "task": {
     "number": "Aufgabennummer",
@@ -115,14 +122,6 @@
     "assignAgent": "Agent Massenzuweisung",
     "delete": "Massenlöschung"
   },
-  "project": {
-    "history": "📊 Projektverlauf",
-    "historyDesc": "Projektverlauf und Statistiken anzeigen.",
-    "historyEntries": "Verlaufseinträge",
-    "commitHistory": "Commit-Verlauf",
-    "settings": "Projekteinstellungen",
-    "editSettings": "Projekteinstellungen Bearbeiten"
-  },
   "global": {
     "settings": "⚙️ Globale Einstellungen",
     "settingsDesc": "Konfigurieren Sie die globalen Anwendungseinstellungen.",
@@ -130,16 +129,16 @@
     "openaiApiKeyPlaceholder": "OpenAI API-Schlüssel eingeben"
   },
   "notifications": {
-    "profileCreatedSuccess": "Profil erfolgreich erstellt",
-    "profileUpdatedSuccess": "Profil erfolgreich aktualisiert",
-    "profileDeletedSuccess": "Profil erfolgreich gelöscht",
+    "projectCreatedSuccess": "Projekt erfolgreich erstellt",
+    "projectUpdatedSuccess": "Projekt erfolgreich aktualisiert",
+    "projectDeletedSuccess": "Projekt erfolgreich gelöscht",
     "taskUpdatedSuccess": "Aufgabe erfolgreich aktualisiert",
     "settingsSaved": "Einstellungen erfolgreich gespeichert",
     "copiedToClipboard": "In die Zwischenablage kopiert"
   },
   "empty": {
     "noTasksFound": "Keine Aufgaben gefunden",
-    "noProfilesFound": "Keine Profile gefunden",
+    "noProjectsFound": "Keine Projekte gefunden",
     "noTemplatesFound": "Keine Vorlagen gefunden",
     "noHistoryFound": "Kein Verlauf gefunden"
   },

@@ -302,7 +302,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
           </span>
         );
       },
-      size: 120,
+      size: 140,
     },
     {
       accessorKey: 'name',
@@ -605,7 +605,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
           </div>
         );
       },
-      size: 100, // Reduced to make more room for agents
+      size: 70, // Reduced by 30% to make more room for task number
     },
     {
       accessorKey: 'actions',

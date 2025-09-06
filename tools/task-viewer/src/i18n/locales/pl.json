@@ -67,18 +67,19 @@
     "of": "z",
     "total": "łącznie"
   },
-  "profile": {
-    "management": "🔧 Zarządzanie profilami",
-    "managementDesc": "Zarządzaj profilami plików zadań. Twórz nowe profile lub edytuj istniejące.",
-    "taskFolderPath": "Ścieżka folderu zadań",
+  "project": {
+    "management": "🔧 Zarządzanie projektami",
+    "managementDesc": "Zarządzaj projektami plików zadań. Twórz nowe projekty lub edytuj istniejące.",
+    "taskFolderPath": "Ścieżka folderu danych Shrimp",
     "taskFolderPathPlaceholder": "Wprowadź ścieżkę folderu zawierającego pliki zadań",
-    "profileName": "Nazwa profilu",
-    "profileNamePlaceholder": "Wprowadź nazwę profilu",
+    "projectName": "Nazwa projektu",
+    "projectNamePlaceholder": "Wprowadź nazwę projektu",
     "projectRootPath": "Ścieżka główna projektu",
     "projectRootPathPlaceholder": "Wprowadź główną ścieżkę projektu (opcjonalne)",
-    "addProfile": "Dodaj profil",
-    "editProfile": "Edytuj profil",
-    "deleteProfile": "Usuń profil"
+    "addProject": "Dodaj projekt",
+    "addNewProject": "Dodaj nowy projekt",
+    "editProject": "Edytuj projekt",
+    "deleteProject": "Usuń projekt"
   },
   "task": {
     "number": "Numer zadania",
@@ -173,16 +174,16 @@
     }
   },
   "notifications": {
-    "profileCreatedSuccess": "Profil został pomyślnie utworzony",
-    "profileUpdatedSuccess": "Profil został pomyślnie zaktualizowany",
-    "profileDeletedSuccess": "Profil został pomyślnie usunięty",
+    "projectCreatedSuccess": "Projekt został pomyślnie utworzony",
+    "projectUpdatedSuccess": "Projekt został pomyślnie zaktualizowany",
+    "projectDeletedSuccess": "Projekt został pomyślnie usunięty",
     "taskUpdatedSuccess": "Zadanie zostało pomyślnie zaktualizowane",
     "settingsSaved": "Ustawienia zostały pomyślnie zapisane",
     "copiedToClipboard": "Skopiowano do schowka"
   },
   "empty": {
     "noTasksFound": "Nie znaleziono zadań",
-    "noProfilesFound": "Nie znaleziono profili",
+    "noProjectsFound": "Nie znaleziono projektów",
     "noTemplatesFound": "Nie znaleziono szablonów",
     "noHistoryFound": "Nie znaleziono historii"
   },

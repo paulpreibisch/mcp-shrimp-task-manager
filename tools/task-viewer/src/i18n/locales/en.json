@@ -67,18 +67,25 @@
     "of": "of",
     "total": "total"
   },
-  "profile": {
-    "management": "🔧 Profile Management",
-    "managementDesc": "Manage task file profiles. Create new profiles or edit existing ones.",
+  "project": {
+    "management": "🔧 Project Management",
+    "managementDesc": "Manage task file projects. Create new projects or edit existing ones.",
     "taskFolderPath": "Shrimp Data Folder Path",
     "taskFolderPathPlaceholder": "Enter folder path containing task files",
-    "profileName": "Project Name",
-    "profileNamePlaceholder": "Enter project name",
+    "projectName": "Project Name",
+    "projectNamePlaceholder": "Enter project name",
     "projectRootPath": "Project Root Path",
     "projectRootPathPlaceholder": "Enter project root path (optional)",
-    "addProfile": "Add Project",
-    "editProfile": "Edit Profile",
-    "deleteProfile": "Delete Profile"
+    "addProject": "Add Project",
+    "editProject": "Edit Project",
+    "deleteProject": "Delete Project",
+    "addNewProject": "Add New Project",
+    "history": "📊 Project History",
+    "historyDesc": "View project task history and statistics.",
+    "historyEntries": "History Entries",
+    "commitHistory": "Commit History",
+    "settings": "Project Settings",
+    "editSettings": "Edit Project Settings"
   },
   "task": {
     "number": "Task Number",
@@ -120,14 +127,6 @@
     "deselectAll": "Deselect All",
     "assignAgent": "Bulk Assign Agent",
     "delete": "Bulk Delete"
-  },
-  "project": {
-    "history": "📊 Project History",
-    "historyDesc": "View project task history and statistics.",
-    "historyEntries": "History Entries",
-    "commitHistory": "Commit History",
-    "settings": "Project Settings",
-    "editSettings": "Edit Project Settings"
   },
   "global": {
     "settings": "⚙️ Global Settings",
@@ -173,16 +172,16 @@
     }
   },
   "notifications": {
-    "profileCreatedSuccess": "Profile created successfully",
-    "profileUpdatedSuccess": "Profile updated successfully",
-    "profileDeletedSuccess": "Profile deleted successfully",
+    "projectCreatedSuccess": "Project created successfully",
+    "projectUpdatedSuccess": "Project updated successfully",
+    "projectDeletedSuccess": "Project deleted successfully",
     "taskUpdatedSuccess": "Task updated successfully",
     "settingsSaved": "Settings saved successfully",
     "copiedToClipboard": "Copied to clipboard"
   },
   "empty": {
     "noTasksFound": "No tasks found",
-    "noProfilesFound": "No profiles found",
+    "noProjectsFound": "No projects found",
     "noTemplatesFound": "No templates found",
     "noHistoryFound": "No history found"
   },
