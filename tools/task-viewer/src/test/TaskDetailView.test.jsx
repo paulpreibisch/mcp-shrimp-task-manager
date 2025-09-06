@@ -2,6 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import TaskDetailView from '../components/TaskDetailView';
 
+// Mock TaskSummary component for testing
+vi.mock('../components/TaskSummary', () => ({
+  default: vi.fn(({ summary }) => (
+    <div data-testid="task-summary" data-summary={summary}>
+      Mocked TaskSummary: {summary}
+    </div>
+  ))
+}));
+
 describe('TaskDetailView Component', () => {
   const mockTask = {
     id: 'task-123-456',
@@ -221,7 +230,7 @@ describe('TaskDetailView Component', () => {
       expect(screen.getByText(/All endpoints secured/)).toBeInTheDocument();
     });
 
-    it('displays summary when present', () => {
+    it('displays summary using TaskSummary component when present', () => {
       render(
         <TaskDetailView 
           task={mockTask} 
@@ -233,38 +242,65 @@ describe('TaskDetailView Component', () => {
       );
 
       expect(screen.getByText('Summary')).toBeInTheDocument();
-      expect(screen.getByText('Authentication system using OAuth2 and JWT')).toBeInTheDocument();
+      expect(screen.getByTestId('task-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('task-summary')).toHaveAttribute('data-summary', 'Authentication system using OAuth2 and JWT');
+    });
+
+    it('hides summary section when summary is null', () => {
+      const taskWithoutSummary = { ...mockTask, summary: null };
+      render(
+        <TaskDetailView 
+          task={taskWithoutSummary} 
+          onBack={mockOnBack} 
+          taskIndex={0} 
+          allTasks={[taskWithoutSummary]} 
+          onNavigateToTask={mockOnNavigateToTask} 
+        />
+      );
+
+      expect(screen.queryByText('Summary')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('task-summary')).not.toBeInTheDocument();
     });
   });
 
   describe('Dependencies', () => {
     it('displays dependencies section with all dependencies', () => {
+      const allTasksWithDeps = [
+        mockTask,
+        { id: 'dep-1', name: 'Setup Redis' },
+        { id: 'dep-2', name: 'Configure OAuth provider' }
+      ];
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} taskIndex={0} allTasks={[mockTask]} />
+        <TaskDetailView task={mockTask} onBack={mockOnBack} taskIndex={0} allTasks={allTasksWithDeps} />
       );
 
       expect(screen.getByText('Dependencies')).toBeInTheDocument();
-      // Dependencies show task IDs, not names in the current implementation
-      expect(screen.getByText('dep-1')).toBeInTheDocument();
-      expect(screen.getByText('dep-2')).toBeInTheDocument();
+      // Dependencies now show task numbers instead of raw IDs
+      expect(screen.getByText('TASK 2')).toBeInTheDocument(); // dep-1 is at index 1
+      expect(screen.getByText('TASK 3')).toBeInTheDocument(); // dep-2 is at index 2
     });
 
-    it('shows each dependency with ID', () => {
+    it('shows each dependency with task number', () => {
+      const allTasksWithDeps = [
+        mockTask,
+        { id: 'dep-1', name: 'Setup Redis' },
+        { id: 'dep-2', name: 'Configure OAuth provider' }
+      ];
       render(
-        <TaskDetailView task={mockTask} onBack={mockOnBack} taskIndex={0} allTasks={[mockTask]} />
+        <TaskDetailView task={mockTask} onBack={mockOnBack} taskIndex={0} allTasks={allTasksWithDeps} />
       );
 
-      expect(screen.getByText('dep-1')).toBeInTheDocument();
-      expect(screen.getByText('dep-2')).toBeInTheDocument();
+      expect(screen.getByText('TASK 2')).toBeInTheDocument();
+      expect(screen.getByText('TASK 3')).toBeInTheDocument();
     });
 
-    it('shows no dependencies message when empty', () => {
+    it('hides dependencies section when empty', () => {
       const taskWithoutDeps = { ...mockTask, dependencies: [] };
       render(
         <TaskDetailView task={taskWithoutDeps} onBack={mockOnBack} taskIndex={0} allTasks={[taskWithoutDeps]} />
       );
 
-      expect(screen.getByText('—')).toBeInTheDocument();
+      expect(screen.queryByText('Dependencies')).not.toBeInTheDocument();
     });
 
     it('hides dependencies section when null', () => {
@@ -327,13 +363,13 @@ describe('TaskDetailView Component', () => {
       expect(screen.getByText(/\/test.txt/)).toBeInTheDocument();
     });
 
-    it('shows no related files message when empty', () => {
+    it('hides related files section when empty', () => {
       const taskWithoutFiles = { ...mockTask, relatedFiles: [] };
       render(
         <TaskDetailView task={taskWithoutFiles} onBack={mockOnBack} taskIndex={0} allTasks={[taskWithoutFiles]} />
       );
 
-      expect(screen.getByText('—')).toBeInTheDocument();
+      expect(screen.queryByText('Related Files')).not.toBeInTheDocument();
     });
 
     it('hides related files section when null', () => {
@@ -435,7 +471,7 @@ describe('TaskDetailView Component', () => {
 
       expect(screen.getByText('Minimal Task')).toBeInTheDocument();
       expect(screen.getByText('pending')).toBeInTheDocument();
-      expect(screen.getByText('—')).toBeInTheDocument();
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
 
     it('handles very long content gracefully', () => {
@@ -489,7 +525,7 @@ describe('TaskDetailView Component', () => {
       );
 
       expect(container.querySelector('.task-detail-view')).toBeInTheDocument();
-      expect(screen.getByText('—')).toBeInTheDocument();
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0);
     });
   });
 
