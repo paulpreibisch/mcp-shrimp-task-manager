@@ -64,6 +64,7 @@ function AppContent() {
     return saved !== null ? Number(saved) : 30;
   });
   const [globalFilter, setGlobalFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'completed', 'in_progress', 'pending'
   const [showAddProfile, setShowAddProfile] = useState(false);
   const [draggedTabIndex, setDraggedTabIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -138,6 +139,7 @@ function AppContent() {
   // History import modal state
   const [showImportHistoryModal, setShowImportHistoryModal] = useState(false);
   const [archives, setArchives] = useState([]);
+
 
   // Helper function to ensure profiles is always an array
   const getSafeProfiles = () => {
@@ -1376,6 +1378,7 @@ function AppContent() {
           handleRemoveProfile={handleRemoveProfile}
           setShowAddProfile={setShowAddProfile}
           projectInnerTab={projectInnerTab}
+          tasks={tasks}
           setProjectInnerTab={(tab) => {
             setProjectInnerTab(tab);
             if (tab === 'history' && !historyData.length && selectedProfile) {
@@ -1451,19 +1454,39 @@ function AppContent() {
                   </div>
 
                   <div className="stats-grid" name="task-statistics-display">
-                    <div className="stat-card" name="total-tasks-counter" title="Total number of tasks in this profile">
+                    <div 
+                      className={`stat-card clickable-stat ${statusFilter === 'all' ? 'active' : ''}`}
+                      name="total-tasks-counter" 
+                      title="Click to show all tasks"
+                      onClick={() => setStatusFilter('all')}
+                    >
                       <h3>{t('totalTasks')}</h3>
                       <div className="value">{stats.total}</div>
                     </div>
-                    <div className="stat-card" name="completed-tasks-counter" title="Number of completed tasks">
+                    <div 
+                      className={`stat-card clickable-stat ${statusFilter === 'completed' ? 'active' : ''}`}
+                      name="completed-tasks-counter" 
+                      title="Click to filter by completed tasks"
+                      onClick={() => setStatusFilter('completed')}
+                    >
                       <h3>{t('completed')}</h3>
                       <div className="value">{stats.completed}</div>
                     </div>
-                    <div className="stat-card" name="in-progress-tasks-counter" title="Number of tasks currently in progress">
+                    <div 
+                      className={`stat-card clickable-stat ${statusFilter === 'in_progress' ? 'active' : ''}`}
+                      name="in-progress-tasks-counter" 
+                      title="Click to filter by tasks in progress"
+                      onClick={() => setStatusFilter('in_progress')}
+                    >
                       <h3>{t('inProgress')}</h3>
                       <div className="value">{stats.inProgress}</div>
                     </div>
-                    <div className="stat-card" name="pending-tasks-counter" title="Number of pending tasks">
+                    <div 
+                      className={`stat-card clickable-stat ${statusFilter === 'pending' ? 'active' : ''}`}
+                      name="pending-tasks-counter" 
+                      title="Click to filter by pending tasks"
+                      onClick={() => setStatusFilter('pending')}
+                    >
                       <h3>{t('pending')}</h3>
                       <div className="value">{stats.pending}</div>
                     </div>
@@ -1627,6 +1650,7 @@ function AppContent() {
                   data={tasks} 
                   globalFilter={globalFilter}
                   onGlobalFilterChange={setGlobalFilter}
+                  statusFilter={statusFilter}
                   projectRoot={projectRoot}
                   emojiTemplates={{
                     robot: robotEmojiTemplate || getSafeProfiles().find(p => p.id === selectedProfile)?.robotEmojiTemplate,
@@ -2109,6 +2133,7 @@ function AppContent() {
         } : null}
         currentTaskCount={tasks.length}
       />
+
 
 
       {showAddProfile && (

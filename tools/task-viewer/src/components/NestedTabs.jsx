@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tab } from '@headlessui/react';
 import { useTranslation } from 'react-i18next';
 
@@ -19,7 +19,8 @@ const NestedTabs = ({
   handleDragOver,
   handleDragEnd,
   handleDrop,
-  claudeFolderPath
+  claudeFolderPath,
+  tasks = []
 }) => {
   const { t } = useTranslation();
   

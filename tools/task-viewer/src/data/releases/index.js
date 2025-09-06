@@ -4,7 +4,7 @@ export const releaseMetadata = [
     version: 'v4.1.0',
     date: '2025-09-06',
     title: 'Task Completion Summary Storage System',
-    summary: 'Permanent storage and parsing of detailed task completion summaries with structured data extraction and migration utilities'
+    summary: 'Enhanced task completion details with structured data model and intelligent summary parsing capabilities'
   },
   {
     version: 'v4.0.0',

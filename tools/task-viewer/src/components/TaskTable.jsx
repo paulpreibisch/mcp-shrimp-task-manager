@@ -75,7 +75,7 @@ const SummaryCell = memo(({ summary }) => {
   );
 });
 
-function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emojiTemplates, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask, showToast }) {
+function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, projectRoot, emojiTemplates, onDetailViewChange, resetDetailView, profileId, onTaskSaved, onDeleteTask, showToast }) {
   const { t } = useTranslation();
   const [selectedTask, setSelectedTask] = useState(null);
   const [availableAgents, setAvailableAgents] = useState([]);
@@ -94,6 +94,14 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
       return localUpdate ? { ...task, ...localUpdate } : task;
     });
   }, [data, localTaskUpdates]);
+
+  // Filter data based on status filter
+  const filteredData = useMemo(() => {
+    if (!statusFilter || statusFilter === 'all') {
+      return mergedData;
+    }
+    return mergedData.filter(task => task.status === statusFilter);
+  }, [mergedData, statusFilter]);
 
   // Generate task number mapping
   const taskNumberMap = useMemo(() => generateTaskNumbers(mergedData), [mergedData]);
@@ -220,7 +228,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
     {
       id: 'select',
       header: ({ table }) => {
-        const isIndeterminate = selectedRows.size > 0 && selectedRows.size < mergedData.length;
+        const isIndeterminate = selectedRows.size > 0 && selectedRows.size < filteredData.length;
         const checkboxRef = React.useRef(null);
         
         React.useEffect(() => {
@@ -233,10 +241,10 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
           <input
             ref={checkboxRef}
             type="checkbox"
-            checked={selectedRows.size === mergedData.length && mergedData.length > 0}
+            checked={selectedRows.size === filteredData.length && filteredData.length > 0}
             onChange={(e) => {
               if (e.target.checked) {
-                setSelectedRows(new Set(mergedData.map(task => task.id)));
+                setSelectedRows(new Set(filteredData.map(task => task.id)));
               } else {
                 setSelectedRows(new Set());
               }
@@ -489,20 +497,20 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
                   padding: '2px 8px',
                   fontSize: '14px',
                   background: 'transparent',
-                  border: '1px solid #4fbdba',
-                  borderRadius: '4px',
+                  border: 'none',
+                  color: '#4fbdba',
                   cursor: currentAgent ? 'pointer' : 'not-allowed',
                   opacity: currentAgent ? 1 : 0.5
                 }}
               >
-                👁️ View Info
+                👁️ View Agent
               </button>
               {isSaving && <span className="saving-indicator">💾</span>}
             </div>
           </div>
         );
       },
-      size: 240, // Increased to accommodate vertical layout
+      size: 280, // Expanded for better agent visibility
     },
     {
       accessorKey: 'createdAt',
@@ -725,12 +733,12 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
           </button>
         </div>
       ),
-      size: 110, // Reduced to make more room for agents
+      size: 90, // Further reduced to give more space to agents column
     },
   ], [mergedData, setSelectedTask, t, taskNumberMap, onDeleteTask, availableAgents, savingAgents, profileId, showToast, selectedRows, localTaskUpdates]);
 
   const table = useReactTable({
-    data: mergedData,
+    data: filteredData,
     columns,
     state: {
       globalFilter,
@@ -748,7 +756,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
     },
   });
 
-  if (mergedData.length === 0) {
+  if (filteredData.length === 0) {
     return (
       <div className="empty-state">
         <div className="empty-state-icon">📋</div>
@@ -773,7 +781,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
             projectRoot={projectRoot}
             profileId={profileId}
             onNavigateToTask={(taskId) => {
-              const targetTask = mergedData.find(t => t.id === taskId);
+              const targetTask = filteredData.find(t => t.id === taskId);
               if (targetTask) {
                 setSelectedTask(targetTask);
               }
@@ -802,13 +810,13 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, projectRoot, emoj
           onBack={() => setSelectedTask(null)}
           projectRoot={projectRoot}
           onNavigateToTask={(taskId) => {
-            const targetTask = mergedData.find(t => t.id === taskId);
+            const targetTask = filteredData.find(t => t.id === taskId);
             if (targetTask) {
               setSelectedTask(targetTask);
             }
           }}
-          taskIndex={mergedData.findIndex(t => t.id === selectedTask.id)}
-          allTasks={mergedData}
+          taskIndex={filteredData.findIndex(t => t.id === selectedTask.id)}
+          allTasks={filteredData}
           onEdit={() => {
             setSelectedTask({ ...selectedTask, editMode: true });
           }}

@@ -2,6 +2,7 @@
 @import './styles/nested-tabs.css';
 @import './styles/chat-agent.css';
 
+
 /* Force reload test */
 * {
   box-sizing: border-box;
@@ -1148,6 +1149,46 @@ a:visited {
   font-weight: bold;
   color: #ffffff;
   margin: 0;
+}
+
+/* Clickable stat cards */
+.clickable-stat {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.clickable-stat:hover {
+  background: #1e2a4a;
+  border-color: #4fbdba;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.clickable-stat.active {
+  background: rgba(79, 189, 186, 0.2);
+  border-color: #4fbdba;
+  box-shadow: 0 2px 4px rgba(79, 189, 186, 0.3);
+}
+
+.clickable-stat.active::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border: 2px solid #4fbdba;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
+.clickable-stat.active h3 {
+  color: #7ec8ca;
+}
+
+.clickable-stat.active .value {
+  color: #4fbdba;
 }
 
 @media (max-width: 768px) {
@@ -5082,8 +5123,7 @@ a:visited {
 /* Agent info button in table */
 .agent-info-button {
   background: transparent;
-  border: 1px solid #4fbdba;
-  border-radius: 4px;
+  border: none;
   cursor: pointer;
   font-size: 0.85rem;
   padding: 4px 10px;
