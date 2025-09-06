@@ -58,7 +58,6 @@ data/*
 .cursor/tmp/
 
 # Claude and MCP files
-.claude/
 .mcp.json
 
 # Audio files
