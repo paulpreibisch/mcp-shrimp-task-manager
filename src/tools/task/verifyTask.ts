@@ -4,20 +4,9 @@ import {
   getTaskById,
   updateTaskStatus,
   updateTaskSummary,
-  updateTaskContent,
 } from "../../models/taskModel.js";
 import { TaskStatus } from "../../types/index.js";
 import { getVerifyTaskPrompt } from "../../prompts/index.js";
-import {
-  autoApplyRichCompletion,
-  shouldApplyRichCompletion,
-  TaskVerificationContext
-} from "../../utils/autoRichCompletion.js";
-import {
-  getExecutionContext,
-  cleanupExecutionContext,
-  inferExecutionContext
-} from "../../utils/agentExecutionContext.js";
 
 // 檢驗任務工具
 // Task verification tool
@@ -84,52 +73,10 @@ export async function verifyTask({
   }
 
   if (score >= 80) {
-    // 自動應用豐富完成文檔（如果適用）
-    // Automatically apply rich completion documentation (if applicable)
-    if (shouldApplyRichCompletion(summary, score)) {
-      try {
-        // 獲取執行上下文（由代理報告或推斷）
-        // Get execution context (reported by agents or inferred)
-        let executionContext = getExecutionContext(taskId);
-        
-        // 如果沒有明確的執行上下文，嘗試從任務中推斷
-        // If no explicit execution context, try to infer from task
-        if (!executionContext) {
-          executionContext = inferExecutionContext(task);
-        }
-        
-        const context: TaskVerificationContext = {
-          task,
-          summary,
-          score,
-          executionContext
-        };
-        
-        const enhancedNotes = await autoApplyRichCompletion(context);
-        
-        // 更新任務的筆記與摘要
-        // Update task notes and summary
-        await updateTaskContent(taskId, { notes: enhancedNotes });
-        await updateTaskSummary(taskId, summary);
-        await updateTaskStatus(taskId, TaskStatus.COMPLETED);
-        
-        // 清理執行上下文
-        // Clean up execution context
-        cleanupExecutionContext(taskId);
-      } catch (error) {
-        console.error('Error applying automatic rich completion:', error);
-        // 如果豐富完成失敗，繼續正常完成流程
-        // If rich completion fails, continue with normal completion flow
-        await updateTaskSummary(taskId, summary);
-        await updateTaskStatus(taskId, TaskStatus.COMPLETED);
-        cleanupExecutionContext(taskId);
-      }
-    } else {
-      // 不應用豐富完成，使用標準完成流程
-      // Don't apply rich completion, use standard completion flow
-      await updateTaskSummary(taskId, summary);
-      await updateTaskStatus(taskId, TaskStatus.COMPLETED);
-    }
+    // 完成任務並保存摘要
+    // Complete task and save summary
+    await updateTaskSummary(taskId, summary);
+    await updateTaskStatus(taskId, TaskStatus.COMPLETED);
   }
 
   // 使用prompt生成器獲取最終prompt

@@ -1,184 +1,107 @@
-# Task Completion Summary Storage Implementation Plan
+# Task Completion Summary Enhancement Implementation Plan
 
 ## Executive Summary
 
-This plan outlines the implementation of a comprehensive task completion details storage system that permanently saves detailed completion reports for tasks. The current system has a `summary` field for OpenAI-generated summaries, but lacks a dedicated field for storing the rich, detailed completion information that comes from task verification (like the comprehensive integration testing report you showed). This implementation will add a new `completionDetails` field to permanently store these detailed reports and make them accessible through the Task Viewer UI, archives, history, and MCP tools.
+This plan outlines the implementation of enhanced task summary display functionality that renders the existing `summary` field content with proper Markdown formatting in the Task Viewer UI. The current system already has a `summary` field that stores detailed completion information (as shown in the screenshot), but it displays as raw text without formatting. This implementation will enhance the UI components to render summary content as formatted Markdown while ensuring the MCP tools also provide properly formatted summary responses.
 
 ## Current System Analysis
 
 ### Existing Infrastructure ✅
-- **Task Interface**: Has `summary?: string` field for OpenAI-generated summaries (line 72-73 in src/types/index.ts)
+- **Task Interface**: Has `summary?: string` field that stores detailed completion information (line 72-73 in src/types/index.ts)
 - **MCP Tools**: 7 comprehensive tools for archive/history management
 - **Template System**: Handlebars-based template processing for MCP responses
-- **Archive System**: Full task archival with metadata preservation
+- **Archive System**: Full task archival with metadata preservation including summaries
 - **History Tracking**: Git-based audit trail of all task changes
 - **UI Components**: Task viewer with expandable task details
-- **OpenAI Integration**: Generate Summary functionality using OpenAI API
+- **Summary Storage**: Summary field is already being populated with detailed completion information
 
 ### Current Gaps ❌
-- **No Completion Details Storage**: Detailed task completion information (like the integration testing report you showed) is not being permanently stored
-- **Missing Task Field**: No dedicated field for storing detailed completion reports from verification process
-- **UI Display**: No way to view detailed completion information in Task Viewer
-- **MCP Integration**: Detailed completion data not accessible through MCP tools
-- **Archive/History**: Detailed completion reports not preserved in archives or history
-- **Verification Integration**: verify_task tool doesn't save the detailed completion information permanently
+- **Raw Text Display**: Summary content displays as raw text without Markdown formatting in the Task Viewer UI
+- **Poor Readability**: Rich completion reports (like your integration testing example) lose their structure and formatting
+- **UI Enhancement Needed**: Task detail views need Markdown rendering capability
+- **Template Formatting**: MCP tool responses should provide formatted summary output
+- **Inconsistent Display**: Summary formatting differs between UI and MCP tool responses
 
 ## Implementation Plan
 
-### Phase 1: Core Task Model Enhancement
+### Phase 1: UI Enhancement for Markdown Rendering
 
-#### 1.1 Add New Task Interface Field
-**File**: `src/types/index.ts`
+#### 1.1 Add Markdown Rendering to Task Viewer
+**Files**: Frontend task detail components
 **Changes**:
-- Add new `completionDetails?: string` field to Task interface
-- This field will store the detailed completion reports from verification
-- Keep existing `summary?: string` field for OpenAI-generated summaries
+- Install or verify markdown rendering library (react-markdown, marked, etc.)
+- Update task detail components to render `summary` field content as Markdown
+- Add proper CSS styling for formatted content
+- Ensure code blocks, headers, lists, and other Markdown elements render correctly
 
-```typescript
-export interface Task {
-  // ... existing fields ...
-  summary?: string; // OpenAI-generated summary when user presses Generate Summary
-  completionDetails?: string; // Detailed completion report from task verification
-  // ... rest of interface ...
-}
-```
-
-#### 1.2 Update Task Completion Process
-**File**: `src/models/taskModel.ts`
+#### 1.2 Enhance Task List Views
+**Files**: Task list components
 **Changes**:
-- Add `updateTaskCompletionDetails()` function for storing verification reports
-- Ensure completion details are preserved in git commits and history tracking
-- Add validation for completion details content
+- Add summary preview in task list views with basic Markdown rendering
+- Truncate long summaries with "expand" functionality
+- Show formatted preview (first 2-3 lines) instead of raw text
 
-```typescript
-// New dedicated function for completion details
-export async function updateTaskCompletionDetails(
-  taskId: string, 
-  completionDetails: string
-): Promise<Task>
-```
-
-#### 1.2 Enhance Archive and History Functions
-**Files**: 
-- `src/models/taskModel.ts` (archive/history functions)
-- All archive-related functions should preserve summary data
-- History tracking should record summary changes as separate commits
+#### 1.3 Archive and History UI Enhancement
+**Files**: Archive and History view components
+**Changes**:
+- Ensure summary content in archive views renders with Markdown formatting
+- Update history views to show formatted summary content
+- Maintain consistent Markdown rendering across all UI components
 
 ### Phase 2: MCP Tools Enhancement
 
-#### 2.1 Update Verify Task Tool
+#### 2.1 Verify Summary Field Population
 **File**: `src/tools/task/verifyTask.ts`
-**Changes**:
-- Modify verification logic to save completion details when score >= 80
-- Use the provided summary from verification as the permanent completion details
-- Update task model to store completion details in database
-- Generate success response indicating completion details were saved
+**Current Status**: Verify that the verify_task tool is properly saving summary content to the Task model
+**Changes (if needed)**:
+- Ensure verification logic saves summary when score >= 80
+- Confirm summary parameter is being stored in the `summary` field correctly
+- Update success response templates to indicate summary was saved
 
-**New Schema**:
+**Current Schema** (verify it's working):
 ```typescript
 export const verifyTaskSchema = z.object({
   taskId: z.string().uuid(),
-  summary: z.string().min(30), // This becomes the completion details
+  summary: z.string().min(30), // This should be saving to Task.summary
   score: z.number().min(0).max(100),
-  saveCompletionDetails: z.boolean().optional().default(true), // New field
 });
 ```
-
-**Implementation Notes**:
-- The `summary` parameter in verify_task will be stored as `completionDetails` in the Task model
-- This preserves the rich verification information (like your integration testing example)
-- Keep the existing `summary` field separate for OpenAI-generated summaries
 
 #### 2.2 Update List Tasks Tool
 **File**: `src/tools/task/listTasks.ts`
 **Changes**:
-- Include completion details in task listings (truncated to first 200 characters)
-- Add full completion details in detailed view
-- Update templates to display both OpenAI summaries AND completion details
-- Clearly distinguish between the two types of content
+- Include summary content in task listings (truncated to first 300 characters)
+- Ensure summary content is properly formatted in template responses
+- Update templates to render summary content with proper Markdown structure
+- Add indicators when tasks have rich summary content available
 
-#### 2.3 Update Get Task Detail Tool
-**File**: `src/tools/task/getTaskDetail.ts` (if exists) or create new tool
+#### 2.3 Update Template Rendering
+**Files**: All MCP tool templates
 **Changes**:
-- Include full summary in task detail responses
-- Format summary with proper markdown rendering
+- Ensure summary content in templates preserves Markdown formatting
+- Update template processing to handle multi-line formatted content
+- Test template rendering with rich summary content
 
-#### 2.4 Update Archive Tools
-**Files**: 
-- `src/tools/task/createArchive.ts`
-- `src/tools/task/listArchives.ts`
-- `src/tools/task/restoreFromArchive.ts`
+### Phase 3: Testing and Validation
 
-**Changes**:
-- Ensure summaries are included in archive metadata
-- Display summary statistics in archive listings
-- Preserve summaries when restoring from archives
+#### 3.1 UI Testing
+**Test Cases**:
+- Verify summary content renders as formatted Markdown in task detail views
+- Check that long summaries are properly truncated and expandable
+- Ensure code blocks, headers, lists, and formatting display correctly
+- Test responsiveness of formatted content on different screen sizes
 
-#### 2.5 Update History Tools  
-**Files**:
-- `src/tools/task/getTaskHistory.ts`
-- Templates and generators
+#### 3.2 MCP Tools Testing  
+**Test Cases**:
+- Verify MCP tool responses include properly formatted summary content
+- Test template rendering with various summary formats
+- Ensure archive/restore operations preserve summary formatting
 
-**Changes**:
-- Include summary changes in history tracking
-- Show summary modifications as part of task evolution
-
-### Phase 3: Template System Enhancement
-
-#### 3.1 Create New Templates
-**New Files Required**:
-```
-src/prompts/templates_en/verifyTask/summarySuccessfully.md
-src/prompts/templates_en/listTasks/withSummary.md  
-src/prompts/templates_en/getTaskDetail/index.md
-src/prompts/templates_en/getTaskDetail/error.md
-src/prompts/templates_zh/[corresponding Chinese templates]
-```
-
-#### 3.2 Update Existing Templates
-**Files to Modify**:
-- `src/prompts/templates_en/listTasks/index.md` - Add summary display
-- `src/prompts/templates_en/createArchive/success.md` - Include summary stats
-- `src/prompts/templates_en/getTaskHistory/index.md` - Show summary changes
-
-#### 3.3 Template Content Structure
-**Dual Content Display Format**:
-```handlebars
-{{#if summary}}
-## 🤖 AI-Generated Summary
-{{{summary}}}
-{{/if}}
-
-{{#if completionDetails}}
-## 📋 Task Completion Details
-{{{completionDetails}}}
-{{/if}}
-```
-
-### Phase 4: UI Enhancement (Task Viewer)
-
-#### 4.1 Task Detail Component Enhancement
-**File**: Frontend task detail components
-**Changes**:
-- Add two separate sections: "AI-Generated Summary" and "Completion Details"
-- Display both types of content with proper markdown rendering
-- Add expand/collapse functionality for long completion details
-- Show completion details preview in task list views
-- Clear visual distinction between OpenAI summaries and completion details
-
-#### 4.2 Archive UI Enhancement  
-**Files**: Archive-related frontend components
-**Changes**:
-- Display task completion summaries in archive views
-- Add summary search/filter capabilities
-- Show summary statistics in archive metadata
-
-#### 4.3 History UI Enhancement
-**Files**: History-related frontend components  
-**Changes**:
-- Include summary in historical task views
-- Track and display summary modification history
-- Visual indicators for tasks with/without summaries
+#### 3.3 Cross-Platform Consistency
+**Test Cases**:
+- Verify consistent Markdown rendering across all UI components
+- Test summary display in different browsers
+- Ensure accessibility compliance for formatted content
 
 ### Phase 5: MCP Expert Agent Integration
 
