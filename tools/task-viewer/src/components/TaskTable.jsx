@@ -281,7 +281,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
     },
     {
       accessorKey: 'taskNumber',
-      header: 'Task',
+      header: t('task'),
       cell: ({ row }) => {
         const taskNumber = taskNumberMap[row.original.id] || row.index + 1;
         return (
@@ -298,7 +298,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
             }}
             title={`${t('clickToCopyUuid')}: ${row.original.id}`}
           >
-            Task {taskNumber}
+            {t('task')} {taskNumber}
           </span>
         );
       },
@@ -345,11 +345,15 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
     {
       accessorKey: 'status',
       header: t('task.status'),
-      cell: ({ getValue }) => (
-        <span className={`status-badge status-${getValue()}`}>
-          {getValue()?.replace('_', ' ')}
-        </span>
-      ),
+      cell: ({ getValue }) => {
+        const status = getValue();
+        const statusKey = status === 'in_progress' ? 'inProgress' : status;
+        return (
+          <span className={`status-badge status-${status}`}>
+            {t(`status.${statusKey}`)}
+          </span>
+        );
+      },
       size: 120,
     },
     {
@@ -360,7 +364,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
     },
     {
       accessorKey: 'agent',
-      header: 'Agent',
+      header: t('agent'),
       cell: ({ row }) => {
         const rawAgent = row.original.agent || '';
         const currentAgent = mapAgentToDisplayName(rawAgent, availableAgents);
@@ -578,7 +582,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
               // Get task number for display
               const taskNumber = getTaskNumber(depId, taskNumberMap);
               const depTask = mergedData.find(t => t.id === depId);
-              const depTaskName = depTask ? depTask.name : 'Unknown Task';
+              const depTaskName = depTask ? depTask.name : t('unknownTask');
               
               return (
                 <Tooltip key={depId} content={`UUID: ${depId}`}>
@@ -593,7 +597,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
                       }
                     }}
                   >
-                    Task {taskNumberMap[depId] || 'Unknown'}
+                    {t('task')} {taskNumberMap[depId] || t('unknown')}
                   </span>
                 </Tooltip>
               );
