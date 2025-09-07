@@ -159,7 +159,12 @@ function ReleaseNotes() {
           
           if (response.ok) {
             content = await response.text();
-            setReleaseContent(content);
+            // Verify we got markdown content, not HTML
+            if (content.trim().startsWith('#') || content.includes('##')) {
+              setReleaseContent(content);
+            } else {
+              throw new Error('Invalid content type - expected markdown');
+            }
           } else {
             // Fallback to English version
             releaseFile = getReleaseFile(version);
@@ -167,20 +172,34 @@ function ReleaseNotes() {
             
             if (resp.ok) {
               content = await resp.text();
-              setReleaseContent(content);
+              // Verify we got markdown content, not HTML
+              if (content.trim().startsWith('#') || content.includes('##')) {
+                setReleaseContent(content);
+              } else {
+                console.warn('English fallback returned invalid content, using error message');
+                content = `# ${version}\n\n${uiStrings.notFound}`;
+                setReleaseContent(content);
+              }
             } else {
               content = `# ${version}\n\n${uiStrings.notFound}`;
               setReleaseContent(content);
             }
           }
         } else {
-          // Fallback to English version
+          // Load English version
           releaseFile = getReleaseFile(version);
           const response = await fetch(releaseFile);
           
           if (response.ok) {
             content = await response.text();
-            setReleaseContent(content);
+            // Verify we got markdown content, not HTML
+            if (content.trim().startsWith('#') || content.includes('##')) {
+              setReleaseContent(content);
+            } else {
+              console.warn('English version returned invalid content, using error message');
+              content = `# ${version}\n\n${uiStrings.notFound}`;
+              setReleaseContent(content);
+            }
           } else {
             content = `# ${version}\n\n${uiStrings.notFound}`;
             setReleaseContent(content);
@@ -198,7 +217,9 @@ function ReleaseNotes() {
       
     } catch (error) {
       console.error('Error loading release content:', error);
-      const errorContent = `# ${version}\n\n${uiStrings.error}`;
+      console.error('Attempted to load:', releaseFile || 'unknown file');
+      console.error('Current language:', currentLanguage);
+      const errorContent = `# ${version}\n\nError loading release notes. Please check the console for details.\n\nTried to load: ${releaseFile || 'unknown file'}`;
       setReleaseContent(errorContent);
       setTableOfContents(prev => ({ ...prev, [version]: [] }));
     } finally {
