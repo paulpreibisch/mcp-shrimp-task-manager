@@ -37,7 +37,19 @@
 | Tool | Description | Example Usage |
 |------|-------------|---------------|
 | `get_task_detail` | Retrieve detailed task information | `"get details for task 1"` |
+| `get_task_history` | Get historical audit trail for tasks | `"get task history"` |
 | `clear_all_tasks` | Remove all tasks (with backup) | `"clear all tasks"` |
+
+### Task Archival & Recovery
+
+| Tool | Description | Example Usage |
+|------|-------------|---------------|
+| `create_archive` | Create backup archive of current tasks | `"create archive [name]"` |
+| `list_archives` | List all available task archives | `"list archives"` |
+| `restore_from_archive` | Restore tasks from archive | `"restore from archive [id]"` |
+| `sync_task_state` | Synchronize task state across systems | `"sync task state"` |
+| `get_deleted_tasks` | Retrieve information about deleted tasks | `"get deleted tasks"` |
+| `recover_task` | Recover a previously deleted task | `"recover task [id]"` |
 
 ## Project Management Tools
 
@@ -73,7 +85,16 @@
 
 ### 🧠 Memory Tools
 - `get_task_detail` - Retrieve history
+- `get_task_history` - Complete audit trail
 - `clear_all_tasks` - Clean slate with backup
+
+### 💾 Archival Tools
+- `create_archive` - Create task backups
+- `list_archives` - Browse available archives
+- `restore_from_archive` - Restore from backup
+- `sync_task_state` - Synchronize task state
+- `get_deleted_tasks` - View deleted task history
+- `recover_task` - Restore deleted tasks
 
 ### 🔬 Research Tools
 - `research_mode` - Technology exploration
