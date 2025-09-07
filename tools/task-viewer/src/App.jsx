@@ -619,11 +619,43 @@ function AppContent() {
       if (!response.ok) throw new Error('Failed to load profiles');
       const data = await response.json();
       
+      // Restore tab order from localStorage if it exists
+      let orderedProfiles = Array.isArray(data) ? data : [];
+      try {
+        const savedOrder = localStorage.getItem('profileTabOrder');
+        if (savedOrder) {
+          const profileOrder = JSON.parse(savedOrder);
+          const orderedData = [];
+          const remainingProfiles = [...orderedProfiles];
+          
+          // Add profiles in saved order
+          profileOrder.forEach(profileId => {
+            const profileIndex = remainingProfiles.findIndex(p => p.id === profileId);
+            if (profileIndex !== -1) {
+              orderedData.push(remainingProfiles[profileIndex]);
+              remainingProfiles.splice(profileIndex, 1);
+            }
+          });
+          
+          // Add any new profiles that weren't in the saved order
+          orderedData.push(...remainingProfiles);
+          
+          orderedProfiles = orderedData;
+          debugLog('AppContent', 'Tab order restored from localStorage', { 
+            savedOrder: profileOrder, 
+            restoredProfiles: orderedProfiles.map(p => p.id)
+          });
+        }
+      } catch (error) {
+        debugLog('AppContent', 'Failed to restore tab order from localStorage', { error: error.message });
+        // Continue with original order if restoration fails
+      }
+      
       // Ensure profiles is always an array to prevent TypeError
-      setSafeProfiles(data);
+      setSafeProfiles(orderedProfiles);
       
       // On initial load, restore state from URL
-      const safeProfiles = Array.isArray(data) ? data : [];
+      const safeProfiles = orderedProfiles;
       if (!urlStateInitialized && safeProfiles.length > 0) {
         setUrlStateInitialized(true);
         
@@ -1267,7 +1299,14 @@ function AppContent() {
 
   const handleDragOver = (e, index) => {
     e.preventDefault(); // Required to allow drop
-    setDragOverIndex(index); // Visual feedback for drop target
+    e.dataTransfer.dropEffect = 'move';
+    
+    // Clear drag-over state if index is -1 (leaving element)
+    if (index === -1) {
+      setDragOverIndex(null);
+    } else {
+      setDragOverIndex(index); // Visual feedback for drop target
+    }
   };
 
   const handleDragEnd = () => {
@@ -1293,10 +1332,22 @@ function AppContent() {
     // Insert at new position
     newProfiles.splice(dropIndex, 0, draggedProfile);
     
+    // Save the new tab order to localStorage
+    try {
+      const profileOrder = newProfiles.map(profile => profile.id);
+      localStorage.setItem('profileTabOrder', JSON.stringify(profileOrder));
+      debugLog('AppContent', 'Tab order saved to localStorage', { profileOrder });
+    } catch (error) {
+      debugLog('AppContent', 'Failed to save tab order to localStorage', { error: error.message });
+    }
+    
     // Update state and clear drag indicators
     setSafeProfiles(newProfiles);
     setDraggedTabIndex(null);
     setDragOverIndex(null);
+    
+    // Show success feedback
+    showToast('Project tab order updated', 'success');
   };
 
   // Memoized task statistics to avoid recalculation on every render

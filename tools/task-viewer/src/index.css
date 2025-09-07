@@ -317,10 +317,25 @@ a:visited {
 .tab.dragging {
   opacity: 0.5;
   transform: scale(0.95);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  transition: all 0.2s ease;
 }
 
 .tab.drag-over {
   border-left: 3px solid #4fbdba;
+  background-color: rgba(79, 189, 186, 0.1);
+  transform: translateX(2px);
+  transition: all 0.2s ease;
+}
+
+.tab {
+  transition: all 0.2s ease;
+  cursor: grab;
+}
+
+.tab:active {
+  cursor: grabbing;
 }
 
 .tab-name {

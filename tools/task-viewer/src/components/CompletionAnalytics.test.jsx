@@ -83,7 +83,9 @@ describe('CompletionAnalytics Component', () => {
 
   test('displays correct total completed tasks', () => {
     render(<CompletionAnalytics tasks={mockTasks} />);
-    expect(screen.getByText('2')).toBeInTheDocument(); // 2 completed tasks
+    // Use more specific selector to find the total completed count
+    const totalCompletedSection = screen.getByText('Total Completed').closest('div');
+    expect(totalCompletedSection).toHaveTextContent('2');
   });
 
   test('shows filters for date range and agent', () => {
@@ -105,8 +107,9 @@ describe('CompletionAnalytics Component', () => {
     const dateFilter = screen.getByDisplayValue('All Time');
     fireEvent.change(dateFilter, { target: { value: 'today' } });
     
-    // Should still show 1 task (today's task)
-    expect(screen.getByText('1')).toBeInTheDocument();
+    // Should still show 1 task (today's task) in the total completed section
+    const totalCompletedSection = screen.getByText('Total Completed').closest('div');
+    expect(totalCompletedSection).toHaveTextContent('1');
   });
 
   test('displays no data message when no tasks match filters', () => {
@@ -121,7 +124,9 @@ describe('CompletionAnalytics Component', () => {
     ];
     
     render(<CompletionAnalytics tasks={tasksWithoutSummary} />);
-    expect(screen.getByText('0')).toBeInTheDocument(); // No valid completed tasks
+    // Should show 0 in the total completed section since tasks without summary are filtered out
+    const totalCompletedSection = screen.getByText('Total Completed').closest('div');
+    expect(totalCompletedSection).toHaveTextContent('0');
   });
 
   test('calculates average completion per day', () => {

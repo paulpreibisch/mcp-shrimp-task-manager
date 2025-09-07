@@ -1042,6 +1042,12 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
     setLoading(true);
     
     try {
+      console.log('Sending bulk complete request:', {
+        projectId: profileId,
+        taskIds: eligibleTasks,
+        newStatus: 'completed'
+      });
+
       const response = await fetch('/api/tasks/bulk-status-update', {
         method: 'PUT',
         headers: {
@@ -1054,22 +1060,31 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
         }),
       });
 
-      const result = await response.json();
+      console.log('Response status:', response.status, response.statusText);
       
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to update task statuses');
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        throw new Error(errorText || 'Failed to update task statuses');
       }
 
+      const result = await response.json();
+      console.log('API Success Response:', result);
+      
       // Clear selection and hide bulk actions
       setSelectedRows(new Set());
       setShowBulkActions(false);
       setShowCompleteConfirm(false);
       
-      showToast(`Successfully marked ${result.updatedCount || eligibleTasks.length} task(s) as completed`, 'success');
+      if (showToast) {
+        showToast(`Successfully marked ${result.updatedCount || eligibleTasks.length} task(s) as completed`, 'success');
+      }
       
     } catch (error) {
       console.error('Error marking tasks as completed:', error);
-      showToast('Failed to mark tasks as completed', 'error');
+      if (showToast) {
+        showToast('Failed to mark tasks as completed', 'error');
+      }
     } finally {
       setLoading(false);
     }

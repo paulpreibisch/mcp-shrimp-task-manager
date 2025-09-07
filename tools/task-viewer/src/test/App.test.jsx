@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import AppContent from '../App';
+import App from '../App';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '../i18n/i18n';
 
 describe('App Component', () => {
   beforeEach(() => {
@@ -9,9 +11,17 @@ describe('App Component', () => {
     vi.clearAllMocks();
   });
 
+  const renderApp = () => {
+    return render(
+      <I18nextProvider i18n={i18n}>
+        <App />
+      </I18nextProvider>
+    );
+  };
+
   describe('Initial Load', () => {
     it('should load profiles on mount', async () => {
-      render(<App />);
+      renderApp();
 
       // Wait for agents endpoint to be called (App loads profiles via /api/agents)
       await waitFor(() => {
@@ -24,7 +34,7 @@ describe('App Component', () => {
       global.fetch.mockReset();
       global.fetch.mockRejectedValue(new Error('Network error'));
 
-      render(<App />);
+      renderApp();
 
       // Wait for the error to appear (use same pattern as integration test)
       await waitFor(() => {
@@ -64,7 +74,7 @@ describe('App Component', () => {
         });
       });
 
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('No profiles configured')).toBeInTheDocument();
@@ -74,7 +84,7 @@ describe('App Component', () => {
 
   describe('Profile Management', () => {
     it('should display profile tabs', async () => {
-      render(<App />);
+      renderApp();
 
       // Wait for profiles to load from the default mock
       await waitFor(() => {
@@ -84,7 +94,7 @@ describe('App Component', () => {
     });
 
     it('should load tasks when profile is selected', async () => {
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('Test Profile')).toBeInTheDocument();
@@ -100,7 +110,7 @@ describe('App Component', () => {
 
     it('should clear search when switching profiles', async () => {
       const user = userEvent.setup();
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('Test Profile')).toBeInTheDocument();
@@ -150,7 +160,7 @@ describe('App Component', () => {
         return Promise.resolve({ ok: true, json: async () => ({}) });
       });
 
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('Test Profile')).toBeInTheDocument();
@@ -169,7 +179,7 @@ describe('App Component', () => {
 
   describe('Add Profile', () => {
     it('should show add profile form when button clicked', async () => {
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         const addButton = screen.getByText((content, element) => {
@@ -207,7 +217,7 @@ describe('App Component', () => {
         return Promise.resolve({ ok: true, json: async () => ({}) });
       });
 
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         const addButton = screen.queryByText((content) => content && content.includes('add') || content && content.includes('+'));
@@ -264,7 +274,7 @@ describe('App Component', () => {
         return Promise.resolve({ ok: true, json: async () => ({}) });
       });
 
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         const addButton = screen.queryByText((content) => content && content.includes('add') || content && content.includes('+'));
@@ -301,7 +311,7 @@ describe('App Component', () => {
     });
 
     it('should cancel add profile form', async () => {
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         const addButton = screen.queryByText((content) => content && content.includes('add') || content && content.includes('+'));
@@ -326,7 +336,7 @@ describe('App Component', () => {
     it('should confirm before removing profile', async () => {
       const confirmSpy = vi.spyOn(global, 'confirm').mockReturnValue(false);
 
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('Test Profile')).toBeInTheDocument();
@@ -359,7 +369,7 @@ describe('App Component', () => {
         return Promise.resolve({ ok: true, json: async () => ({}) });
       });
 
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('Test Profile')).toBeInTheDocument();
@@ -407,7 +417,7 @@ describe('App Component', () => {
         return Promise.resolve({ ok: true, json: async () => ({}) });
       });
 
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('Test Profile')).toBeInTheDocument();
@@ -443,7 +453,7 @@ describe('App Component', () => {
     });
 
     it('should enable auto-refresh', async () => {
-      render(<App />);
+      renderApp();
 
       // Wait for profiles to load
       await waitFor(() => {
@@ -477,7 +487,7 @@ describe('App Component', () => {
 
     it('should update refresh interval', async () => {
       const user = userEvent.setup({ delay: null });
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('Test Profile')).toBeInTheDocument();
@@ -492,7 +502,7 @@ describe('App Component', () => {
     });
 
     it('should stop auto-refresh when disabled', async () => {
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('Test Profile')).toBeInTheDocument();
@@ -523,7 +533,7 @@ describe('App Component', () => {
 
   describe('Manual Refresh', () => {
     it('should refresh tasks when refresh button clicked', async () => {
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('Test Profile')).toBeInTheDocument();
@@ -549,7 +559,7 @@ describe('App Component', () => {
       // Mock fetch to never resolve
       global.fetch.mockImplementation(() => new Promise(() => {}));
 
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         expect(screen.getByText('Test Profile')).toBeInTheDocument();
@@ -571,7 +581,7 @@ describe('App Component', () => {
     it('should display network error gracefully', async () => {
       global.fetch.mockRejectedValueOnce(new Error('Network failure'));
 
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         const errorElement = screen.queryByText((content) => {
@@ -589,7 +599,7 @@ describe('App Component', () => {
         json: async () => { throw new Error('Invalid JSON'); }
       });
 
-      render(<App />);
+      renderApp();
 
       await waitFor(() => {
         const errorElement = screen.queryByText((content) => {

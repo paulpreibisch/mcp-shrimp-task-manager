@@ -85,9 +85,21 @@ const NestedTabs = ({
                     className={({ selected }) => 
                       `tab ${selected ? 'active' : ''} ${draggedTabIndex === index ? 'dragging' : ''} ${dragOverIndex === index ? 'drag-over' : ''}`
                     }
-                    draggable
+                    draggable="true"
                     onDragStart={(e) => handleDragStart && handleDragStart(e, index)}
                     onDragOver={(e) => handleDragOver && handleDragOver(e, index)}
+                    onDragEnter={(e) => handleDragOver && handleDragOver(e, index)}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      // Only clear drag-over if we're leaving the element completely
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = e.clientX;
+                      const y = e.clientY;
+                      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                        // Clear drag over state when actually leaving the element
+                        if (handleDragOver) handleDragOver(e, -1);
+                      }
+                    }}
                     onDragEnd={handleDragEnd}
                     onDrop={(e) => handleDrop && handleDrop(e, index)}
                   >

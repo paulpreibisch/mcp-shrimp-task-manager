@@ -23,8 +23,26 @@ describe('TaskTable - Bulk Agent Assignment', () => {
   ];
 
   const mockAgents = [
-    { name: 'fullstack.md', description: 'Full-stack development agent' },
-    { name: 'frontend.md', description: 'Frontend specialist' }
+    { 
+      name: 'fullstack.md', 
+      type: 'project',
+      metadata: { 
+        name: 'Fullstack', 
+        description: 'Full-stack development agent',
+        color: '#3B82F6',
+        tools: []
+      }
+    },
+    { 
+      name: 'frontend.md', 
+      type: 'project',
+      metadata: { 
+        name: 'Frontend', 
+        description: 'Frontend specialist',
+        color: '#10B981',
+        tools: []
+      }
+    }
   ];
 
   const mockOnFilterChange = vi.fn();
@@ -120,11 +138,14 @@ describe('TaskTable - Bulk Agent Assignment', () => {
 
     if (taskDropdown) {
       await act(async () => {
-        fireEvent.change(taskDropdown, { target: { value: 'fullstack' } });
+        // Use the processed display name 'Fullstack' instead of 'fullstack'
+        fireEvent.change(taskDropdown, { target: { value: 'Fullstack' } });
       });
 
-      // Verify optimistic update
-      expect(taskDropdown.value).toBe('fullstack');
+      // Wait for the component state to update and re-render
+      await waitFor(() => {
+        expect(taskDropdown.value).toBe('Fullstack');
+      });
 
       // Verify API call
       await waitFor(() => {
