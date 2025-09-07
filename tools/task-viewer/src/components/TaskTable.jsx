@@ -87,6 +87,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
   const [localTaskUpdates, setLocalTaskUpdates] = useState({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   
   // Merge server data with local updates
   const mergedData = useMemo(() => {
@@ -1028,6 +1029,52 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
     }
   };
 
+  // Bulk mark as completed function
+  const handleBulkMarkCompleted = async () => {
+    const selectedTaskIds = Array.from(selectedRows);
+    const eligibleTasks = selectedTaskIds.filter(id => {
+      const task = filteredData.find(t => t.id === id);
+      return task && (task.status === 'pending' || task.status === 'in_progress');
+    });
+    
+    if (eligibleTasks.length === 0) return;
+
+    setLoading(true);
+    
+    try {
+      const response = await fetch('/api/tasks/bulk-status-update', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectId: profileId,
+          taskIds: eligibleTasks,
+          newStatus: 'completed'
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to update task statuses');
+      }
+
+      // Clear selection and hide bulk actions
+      setSelectedRows(new Set());
+      setShowBulkActions(false);
+      setShowCompleteConfirm(false);
+      
+      showToast(`Successfully marked ${result.updatedCount || eligibleTasks.length} task(s) as completed`, 'success');
+      
+    } catch (error) {
+      console.error('Error marking tasks as completed:', error);
+      showToast('Failed to mark tasks as completed', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Bulk delete function
   const handleBulkDelete = async () => {
     const selectedTaskIds = Array.from(selectedRows);
@@ -1116,6 +1163,29 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
                   }}
                 >
                   ↻ Reset {eligibleCount} to Pending
+                </button>
+              );
+            })()}
+            {(() => {
+              const eligibleCount = Array.from(selectedRows).filter(id => {
+                const task = filteredData.find(t => t.id === id);
+                return task && (task.status === 'pending' || task.status === 'in_progress');
+              }).length;
+              const hasIncompleteeTasks = eligibleCount > 0;
+              
+              return hasIncompleteeTasks && (
+                <button 
+                  className="bulk-action-button complete"
+                  data-testid="bulk-complete-button"
+                  onClick={() => setShowCompleteConfirm(true)}
+                  disabled={loading || !hasIncompleteeTasks}
+                  style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    marginLeft: '10px'
+                  }}
+                >
+                  ✅ Mark {eligibleCount} as Completed
                 </button>
               );
             })()}
@@ -1446,6 +1516,97 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
                     filteredData.find(t => t.id === id)?.status === 'completed'
                   ).length;
                   return `↻ Reset ${eligibleCount} Task${eligibleCount > 1 ? 's' : ''}`;
+                })()}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Mark as Completed Confirmation Modal */}
+      {showCompleteConfirm && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setShowCompleteConfirm(false)}
+        >
+          <div 
+            className="modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '500px',
+              padding: '24px',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              color: '#333'
+            }}
+          >
+            <h3 style={{ 
+              margin: '0 0 16px 0', 
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1a202c'
+            }}>
+              Mark Tasks as Completed
+            </h3>
+            
+            <p style={{ 
+              margin: '0 0 24px 0', 
+              fontSize: '14px',
+              lineHeight: '1.5',
+              color: '#4a5568'
+            }}>
+              {(() => {
+                const eligibleCount = Array.from(selectedRows).filter(id => {
+                  const task = filteredData.find(t => t.id === id);
+                  return task && (task.status === 'pending' || task.status === 'in_progress');
+                }).length;
+                return `Are you sure you want to mark ${eligibleCount} task${eligibleCount > 1 ? 's' : ''} as completed?`;
+              })()}
+            </p>
+            
+            <div style={{ 
+              display: 'flex', 
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowCompleteConfirm(false)}
+                disabled={loading}
+                style={{
+                  padding: '8px 20px',
+                  backgroundColor: '#4a5568',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkMarkCompleted}
+                disabled={loading}
+                style={{
+                  padding: '8px 20px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  opacity: loading ? 0.6 : 1
+                }}
+              >
+                {loading ? '⏳ Marking...' : (() => {
+                  const eligibleCount = Array.from(selectedRows).filter(id => {
+                    const task = filteredData.find(t => t.id === id);
+                    return task && (task.status === 'pending' || task.status === 'in_progress');
+                  }).length;
+                  return `✅ Mark ${eligibleCount} Task${eligibleCount > 1 ? 's' : ''} as Completed`;
                 })()}
               </button>
             </div>

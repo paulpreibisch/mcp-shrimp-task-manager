@@ -740,25 +740,37 @@ async function startServer(testPort = null) {
                         if (taskIndex !== -1) {
                             const task = tasksData.tasks[taskIndex];
                             
-                            // Only update if task is currently completed
-                            if (task.status === 'completed') {
-                                // Update the task status and clear completion-related fields
-                                tasksData.tasks[taskIndex] = {
-                                    ...task,
-                                    status: newStatus,
-                                    updatedAt: getLocalISOString(),
-                                    // Clear completion-related fields
-                                    completedAt: undefined,
-                                    summary: undefined,
-                                    completionDetails: undefined
-                                };
+                            // Handle status transitions
+                            if ((task.status === 'completed' && newStatus === 'pending') || 
+                                (task.status === 'pending' && newStatus === 'completed') ||
+                                (task.status === 'in_progress' && newStatus === 'completed')) {
+                                
+                                if (newStatus === 'pending') {
+                                    // Reset to pending - clear completion data
+                                    tasksData.tasks[taskIndex] = {
+                                        ...task,
+                                        status: newStatus,
+                                        updatedAt: getLocalISOString(),
+                                        completedAt: undefined,
+                                        summary: undefined,
+                                        completionDetails: undefined
+                                    };
+                                } else if (newStatus === 'completed') {
+                                    // Mark as completed - add completion timestamp
+                                    tasksData.tasks[taskIndex] = {
+                                        ...task,
+                                        status: newStatus,
+                                        updatedAt: getLocalISOString(),
+                                        completedAt: getLocalISOString()
+                                    };
+                                }
                                 
                                 updatedTasks.push(tasksData.tasks[taskIndex]);
                                 updatedCount++;
                                 
-                                console.log(`Updated task ${taskId} from completed to ${newStatus}`);
+                                console.log(`Updated task ${taskId} from ${task.status} to ${newStatus}`);
                             } else {
-                                console.log(`Skipped task ${taskId} - current status: ${task.status}`);
+                                console.log(`Skipped task ${taskId} - invalid transition from ${task.status} to ${newStatus}`);
                             }
                         } else {
                             console.warn(`Task ${taskId} not found in project ${projectId}`);

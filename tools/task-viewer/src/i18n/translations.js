@@ -260,6 +260,13 @@ export const translations = {
     resetTasksSuccess: "Successfully reset {count} task(s) to pending status",
     resetTasksFailed: "Failed to update task statuses",
     
+    // Bulk mark as completed
+    markAsCompleted: "Mark as Completed",
+    markTasksCompleted: "Mark Tasks as Completed",
+    markTasksCompletedMessage: "Are you sure you want to mark {count} task(s) as completed?",
+    markTasksCompletedSuccess: "Successfully marked {count} task(s) as completed",
+    markTasksCompletedFailed: "Failed to mark tasks as completed",
+    
     // Agent functionality
     subAgents: "Sub-Agents",
     agents: "Agents", 
@@ -531,6 +538,13 @@ export const translations = {
     resetTasksConfirmMessage: "这将把 {count} 个已完成的任务重置为待处理状态。完成数据将被清除。",
     resetTasksSuccess: "成功重置 {count} 个任务为待处理状态",
     resetTasksFailed: "更新任务状态失败",
+    
+    // Bulk mark as completed
+    markAsCompleted: "标记为已完成",
+    markTasksCompleted: "标记任务为已完成",
+    markTasksCompletedMessage: "确定要将 {count} 个任务标记为已完成吗？",
+    markTasksCompletedSuccess: "成功标记 {count} 个任务为已完成",
+    markTasksCompletedFailed: "标记任务为已完成失败",
     
     // Agent functionality
     subAgents: "子代理",
@@ -804,6 +818,13 @@ export const translations = {
     resetTasksSuccess: "Se restablecieron con éxito {count} tarea(s) al estado pendiente",
     resetTasksFailed: "Error al actualizar los estados de las tareas",
     
+    // Bulk mark as completed
+    markAsCompleted: "Marcar como Completado",
+    markTasksCompleted: "Marcar Tareas como Completadas",
+    markTasksCompletedMessage: "¿Está seguro de que desea marcar {count} tarea(s) como completada(s)?",
+    markTasksCompletedSuccess: "Se marcaron exitosamente {count} tarea(s) como completada(s)",
+    markTasksCompletedFailed: "Error al marcar las tareas como completadas",
+    
     // Agent functionality
     subAgents: "Sub-Agentes",
     agents: "Agentes",
@@ -1005,6 +1026,13 @@ export const translations = {
     resetTasksConfirmMessage: "Isso redefinirá {count} tarefa(s) concluída(s) para o status pendente. Os dados de conclusão serão apagados.",
     resetTasksSuccess: "Redefinidas com sucesso {count} tarefa(s) para o status pendente",
     resetTasksFailed: "Falha ao atualizar os status das tarefas",
+    
+    // Bulk mark as completed
+    markAsCompleted: "Marcar como Concluído",
+    markTasksCompleted: "Marcar Tarefas como Concluídas",
+    markTasksCompletedMessage: "Tem certeza de que deseja marcar {count} tarefa(s) como concluída(s)?",
+    markTasksCompletedSuccess: "Marcou com sucesso {count} tarefa(s) como concluída(s)",
+    markTasksCompletedFailed: "Falha ao marcar as tarefas como concluídas",
     
     // Agent functionality
     subAgents: "Sub-Agentes",
@@ -1233,6 +1261,13 @@ export const translations = {
     resetTasksSuccess: "{count} görev başarıyla beklemede durumuna sıfırlandı",
     resetTasksFailed: "Görev durumları güncellenemedi",
     
+    // Bulk mark as completed
+    markAsCompleted: "Tamamlandı Olarak İşaretle",
+    markTasksCompleted: "Görevleri Tamamlandı Olarak İşaretle",
+    markTasksCompletedMessage: "{count} görevi tamamlandı olarak işaretlemek istediğinizden emin misiniz?",
+    markTasksCompletedSuccess: "{count} görev başarıyla tamamlandı olarak işaretlendi",
+    markTasksCompletedFailed: "Görevler tamamlandı olarak işaretlenemedi",
+    
     // Agent functionality
     subAgents: "Alt Ajanlar",
     agents: "Ajanlar",
@@ -1357,6 +1392,13 @@ export const translations = {
     resetTasksConfirmMessage: '{count}개의 완료된 작업을 대기 중 상태로 재설정합니다. 완료 데이터가 삭제됩니다.',
     resetTasksSuccess: '{count}개의 작업을 대기 중 상태로 성공적으로 재설정했습니다',
     resetTasksFailed: '작업 상태 업데이트 실패',
+    
+    // Bulk mark as completed
+    markAsCompleted: '완료로 표시',
+    markTasksCompleted: '작업을 완료로 표시',
+    markTasksCompletedMessage: '{count}개의 작업을 완료로 표시하시겠습니까?',
+    markTasksCompletedSuccess: '{count}개의 작업을 성공적으로 완료로 표시했습니다',
+    markTasksCompletedFailed: '작업을 완료로 표시하는데 실패했습니다',
     
     // Task actions
     viewDetails: "세부정보 보기",
@@ -1539,6 +1581,13 @@ export const translations = {
     resetTasksConfirmMessage: '{count}個の完了タスクを保留中状態にリセットします。完了データは削除されます。',
     resetTasksSuccess: '{count}個のタスクを保留中状態に正常にリセットしました',
     resetTasksFailed: 'タスクステータスの更新に失敗しました',
+    
+    // Bulk mark as completed
+    markAsCompleted: '完了としてマーク',
+    markTasksCompleted: 'タスクを完了としてマーク',
+    markTasksCompletedMessage: '{count}個のタスクを完了としてマークしますか？',
+    markTasksCompletedSuccess: '{count}個のタスクを正常に完了としてマークしました',
+    markTasksCompletedFailed: 'タスクを完了としてマークできませんでした',
     
     // Task actions
     viewDetails: "詳細表示",
