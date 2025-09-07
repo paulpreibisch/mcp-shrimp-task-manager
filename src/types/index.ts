@@ -48,6 +48,21 @@ export interface RelatedFile {
   // lineEnd?: number; // Ending line of related code block (optional)
 }
 
+// 任務完成詳細資訊：儲存任務完成時的結構化數據
+// Task completion details: Stores structured data when task is completed
+export interface TaskCompletionDetails {
+  keyAccomplishments: string[]; // 主要成就清單
+  // keyAccomplishments: string[]; // List of key accomplishments
+  implementationDetails: string[]; // 實施細節清單
+  // implementationDetails: string[]; // List of implementation details
+  technicalChallenges: string[]; // 技術挑戰清單
+  // technicalChallenges: string[]; // List of technical challenges
+  completedAt: Date; // 完成時間戳
+  // completedAt: Date; // Completion timestamp
+  verificationScore: number; // 驗證分數 (0-100)
+  // verificationScore: number; // Verification score (0-100)
+}
+
 // 任務介面：定義任務的完整數據結構
 // Task interface: Defines the complete data structure of tasks
 export interface Task {
@@ -93,6 +108,11 @@ export interface Task {
   // New field: Save verification standards and inspection methods
   verificationCriteria?: string; // 明確的驗證標準、測試要點和驗收條件
   // verificationCriteria?: string; // Clear verification standards, test points and acceptance conditions
+
+  // 任務完成詳細資訊：儲存結構化的完成數據（必填於任務完成時）
+  // Task completion details: Stores structured completion data (required when task is completed)
+  completionDetails?: TaskCompletionDetails; // 任務完成時的結構化詳細資訊
+  // completionDetails?: TaskCompletionDetails; // Structured detailed information when task is completed
 }
 
 // 任務複雜度級別：定義任務的複雜程度分類

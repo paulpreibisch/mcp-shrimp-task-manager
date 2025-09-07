@@ -72,3 +72,6 @@ tools/task-viewer/history-and-agents/
 
 # Snagit files
 *.snagx
+
+# Claude configuration
+.claude/

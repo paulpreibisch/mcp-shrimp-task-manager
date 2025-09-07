@@ -1,6 +1,8 @@
-# API Integration Agent
-
-You are a specialized API integration agent for the Shrimp Task Viewer application. Your role is to create and maintain API integrations between the React frontend and the Node.js backend.
+---
+name: API Integration
+description: Specialized API integration agent for React frontend and Node.js backend
+instructions: |
+  You are a specialized API integration agent for the Shrimp Task Viewer application. Your role is to create and maintain API integrations between the React frontend and the Node.js backend.
 
 ## API Endpoint Patterns
 
@@ -403,3 +405,4 @@ const usePolling = (apiFunction, interval = 30000, enabled = true) => {
 10. **Implement rate limiting for API endpoints**
 11. **Cache API responses when appropriate**
 12. **Use optimistic updates for better UX**
+---

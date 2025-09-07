@@ -253,6 +253,13 @@ export const translations = {
     taskDeletedSuccess: "Task deleted successfully",
     deleteTask: "Delete task",
     
+    // Bulk status reset
+    resetToPending: "Reset to Pending",
+    resetTasksConfirmTitle: "Reset Tasks to Pending",
+    resetTasksConfirmMessage: "This will reset {count} completed task(s) back to pending status. Completion data will be cleared.",
+    resetTasksSuccess: "Successfully reset {count} task(s) to pending status",
+    resetTasksFailed: "Failed to update task statuses",
+    
     // Agent functionality
     subAgents: "Sub-Agents",
     agents: "Agents", 
@@ -517,6 +524,13 @@ export const translations = {
     confirmDeleteTask: "您确定要删除此任务吗？",
     taskDeletedSuccess: "任务删除成功",
     deleteTask: "删除任务",
+    
+    // Bulk status reset
+    resetToPending: "重置为待处理",
+    resetTasksConfirmTitle: "重置任务为待处理",
+    resetTasksConfirmMessage: "这将把 {count} 个已完成的任务重置为待处理状态。完成数据将被清除。",
+    resetTasksSuccess: "成功重置 {count} 个任务为待处理状态",
+    resetTasksFailed: "更新任务状态失败",
     
     // Agent functionality
     subAgents: "子代理",
@@ -783,6 +797,13 @@ export const translations = {
     taskDeletedSuccess: "Tarea eliminada exitosamente",
     deleteTask: "Eliminar tarea",
     
+    // Bulk status reset
+    resetToPending: "Restablecer a Pendiente",
+    resetTasksConfirmTitle: "Restablecer Tareas a Pendiente",
+    resetTasksConfirmMessage: "Esto restablecerá {count} tarea(s) completada(s) al estado pendiente. Los datos de finalización se borrarán.",
+    resetTasksSuccess: "Se restablecieron con éxito {count} tarea(s) al estado pendiente",
+    resetTasksFailed: "Error al actualizar los estados de las tareas",
+    
     // Agent functionality
     subAgents: "Sub-Agentes",
     agents: "Agentes",
@@ -977,6 +998,13 @@ export const translations = {
     confirmDeleteTask: "Tem certeza de que deseja excluir esta tarefa?",
     taskDeletedSuccess: "Tarefa excluída com sucesso",
     deleteTask: "Excluir tarefa",
+    
+    // Bulk status reset
+    resetToPending: "Redefinir para Pendente",
+    resetTasksConfirmTitle: "Redefinir Tarefas para Pendente",
+    resetTasksConfirmMessage: "Isso redefinirá {count} tarefa(s) concluída(s) para o status pendente. Os dados de conclusão serão apagados.",
+    resetTasksSuccess: "Redefinidas com sucesso {count} tarefa(s) para o status pendente",
+    resetTasksFailed: "Falha ao atualizar os status das tarefas",
     
     // Agent functionality
     subAgents: "Sub-Agentes",
@@ -1198,6 +1226,13 @@ export const translations = {
     taskDeletedSuccess: "Görev başarıyla silindi",
     deleteTask: "Görevi sil",
     
+    // Bulk status reset
+    resetToPending: "Beklemeye Sıfırla",
+    resetTasksConfirmTitle: "Görevleri Beklemeye Sıfırla",
+    resetTasksConfirmMessage: "Bu işlem {count} tamamlanmış görevi beklemede durumuna sıfırlayacak. Tamamlanma verileri silinecek.",
+    resetTasksSuccess: "{count} görev başarıyla beklemede durumuna sıfırlandı",
+    resetTasksFailed: "Görev durumları güncellenemedi",
+    
     // Agent functionality
     subAgents: "Alt Ajanlar",
     agents: "Ajanlar",
@@ -1315,6 +1350,13 @@ export const translations = {
     pending: "대기 중",
     inProgress: "진행 중",
     completed: "완료됨",
+    
+    // Bulk status reset
+    resetToPending: '대기 중으로 재설정',
+    resetTasksConfirmTitle: '작업을 대기 중으로 재설정',
+    resetTasksConfirmMessage: '{count}개의 완료된 작업을 대기 중 상태로 재설정합니다. 완료 데이터가 삭제됩니다.',
+    resetTasksSuccess: '{count}개의 작업을 대기 중 상태로 성공적으로 재설정했습니다',
+    resetTasksFailed: '작업 상태 업데이트 실패',
     
     // Task actions
     viewDetails: "세부정보 보기",
@@ -1490,6 +1532,13 @@ export const translations = {
     pending: "保留中",
     inProgress: "進行中",
     completed: "完了",
+    
+    // Bulk status reset
+    resetToPending: '保留中にリセット',
+    resetTasksConfirmTitle: 'タスクを保留中にリセット',
+    resetTasksConfirmMessage: '{count}個の完了タスクを保留中状態にリセットします。完了データは削除されます。',
+    resetTasksSuccess: '{count}個のタスクを保留中状態に正常にリセットしました',
+    resetTasksFailed: 'タスクステータスの更新に失敗しました',
     
     // Task actions
     viewDetails: "詳細表示",

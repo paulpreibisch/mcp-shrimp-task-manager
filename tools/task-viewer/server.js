@@ -694,6 +694,99 @@ async function startServer(testPort = null) {
                 }
             });
             
+        } else if (url.pathname === '/api/tasks/bulk-status-update' && req.method === 'PUT') {
+            // Handle bulk status update - reset completed tasks to pending
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { projectId, taskIds, newStatus } = JSON.parse(body);
+                    
+                    // Validate input
+                    if (!projectId || !taskIds || !Array.isArray(taskIds) || !newStatus) {
+                        res.writeHead(400, { 'Content-Type': 'text/plain' });
+                        res.end('Invalid request: missing required fields');
+                        return;
+                    }
+                    
+                    // Find the project
+                    const project = projects.find(p => p.id === projectId);
+                    
+                    if (!project) {
+                        console.error('Project not found:', projectId, 'Available projects:', projects.map(p => p.id));
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('Project not found');
+                        return;
+                    }
+                    
+                    // Read current tasks
+                    const data = await fs.readFile(project.path, 'utf8');
+                    const tasksData = JSON.parse(data);
+                    
+                    // Ensure tasks array exists
+                    if (!tasksData.tasks || !Array.isArray(tasksData.tasks)) {
+                        res.writeHead(500, { 'Content-Type': 'text/plain' });
+                        res.end('Invalid task data structure');
+                        return;
+                    }
+                    
+                    // Update status for each eligible task
+                    let updatedCount = 0;
+                    const updatedTasks = [];
+                    
+                    taskIds.forEach(taskId => {
+                        const taskIndex = tasksData.tasks.findIndex(t => t.id === taskId);
+                        
+                        if (taskIndex !== -1) {
+                            const task = tasksData.tasks[taskIndex];
+                            
+                            // Only update if task is currently completed
+                            if (task.status === 'completed') {
+                                // Update the task status and clear completion-related fields
+                                tasksData.tasks[taskIndex] = {
+                                    ...task,
+                                    status: newStatus,
+                                    updatedAt: getLocalISOString(),
+                                    // Clear completion-related fields
+                                    completedAt: undefined,
+                                    summary: undefined,
+                                    completionDetails: undefined
+                                };
+                                
+                                updatedTasks.push(tasksData.tasks[taskIndex]);
+                                updatedCount++;
+                                
+                                console.log(`Updated task ${taskId} from completed to ${newStatus}`);
+                            } else {
+                                console.log(`Skipped task ${taskId} - current status: ${task.status}`);
+                            }
+                        } else {
+                            console.warn(`Task ${taskId} not found in project ${projectId}`);
+                        }
+                    });
+                    
+                    // Only write to file if there were actual updates
+                    if (updatedCount > 0) {
+                        await fs.writeFile(project.path, JSON.stringify(tasksData, null, 2));
+                        console.log(`Successfully updated ${updatedCount} task(s) to ${newStatus} status`);
+                    }
+                    
+                    // Return success response with details
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        success: true, 
+                        updatedCount,
+                        message: `Updated ${updatedCount} of ${taskIds.length} task(s)`,
+                        updatedTasks: updatedTasks.map(t => ({ id: t.id, name: t.name, status: t.status }))
+                    }));
+                    
+                } catch (err) {
+                    console.error('Error updating task statuses:', err);
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error updating task statuses: ' + err.message);
+                }
+            });
+            
         } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/delete') && req.method === 'DELETE') {
             // Handle task delete
             const pathParts = url.pathname.split('/');

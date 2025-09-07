@@ -86,6 +86,7 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
   const [loading, setLoading] = useState(false);
   const [localTaskUpdates, setLocalTaskUpdates] = useState({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   
   // Merge server data with local updates
   const mergedData = useMemo(() => {
@@ -971,6 +972,62 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
     }
   };
 
+  // Bulk reset status function - reset completed tasks to pending
+  const handleBulkResetStatus = async () => {
+    const selectedTaskIds = Array.from(selectedRows);
+    const eligibleTasks = selectedTaskIds.filter(id => 
+      filteredData.find(t => t.id === id)?.status === 'completed'
+    );
+    
+    if (eligibleTasks.length === 0) return;
+    
+    setLoading(true);
+    
+    try {
+      const response = await fetch('/api/tasks/bulk-status-update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: profileId,
+          taskIds: eligibleTasks,
+          newStatus: 'pending'
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Refresh task data to show updated statuses
+        if (onTaskSaved) {
+          await onTaskSaved();
+        }
+        
+        // Clear selection and close modals
+        setSelectedRows(new Set());
+        setShowBulkActions(false);
+        setShowResetConfirm(false);
+        
+        // Show success message with correct parameter order (message, type)
+        if (showToast) {
+          showToast(`Successfully reset ${result.updatedCount || eligibleTasks.length} task(s) to pending status`, 'success');
+        }
+      } else {
+        // Handle error response
+        const errorText = await response.text();
+        console.error('Failed to update task statuses:', errorText);
+        throw new Error('Failed to update task statuses');
+      }
+    } catch (error) {
+      console.error('Error resetting task statuses:', error);
+      // Show error message with correct parameter order (message, type)
+      if (showToast) {
+        showToast('Failed to update task statuses', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Bulk delete function
   const handleBulkDelete = async () => {
     const selectedTaskIds = Array.from(selectedRows);
@@ -1040,6 +1097,28 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
             >
               {loading ? '⏳ Processing...' : `🤖 AI Assign Agents`}
             </button>
+            {(() => {
+              const eligibleCount = Array.from(selectedRows).filter(id => 
+                filteredData.find(t => t.id === id)?.status === 'completed'
+              ).length;
+              const hasCompletedTasks = eligibleCount > 0;
+              
+              return hasCompletedTasks && (
+                <button 
+                  className="bulk-action-button reset"
+                  data-testid="bulk-reset-button"
+                  onClick={() => setShowResetConfirm(true)}
+                  disabled={loading || !hasCompletedTasks}
+                  style={{
+                    backgroundColor: '#f59e0b',
+                    color: 'white',
+                    marginLeft: '10px'
+                  }}
+                >
+                  ↻ Reset {eligibleCount} to Pending
+                </button>
+              );
+            })()}
             <button 
               className="bulk-action-button delete"
               data-testid="bulk-delete-button"
@@ -1269,6 +1348,105 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
                 }}
               >
                 {loading ? '⏳ Deleting...' : `🗑️ Delete ${selectedRows.size} Task${selectedRows.size > 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {showResetConfirm && (
+        <div 
+          className="modal-overlay" 
+          onClick={() => setShowResetConfirm(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div 
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: '#1a1a1a',
+              border: '1px solid #333',
+              borderRadius: '8px',
+              padding: '24px',
+              maxWidth: '500px',
+              width: '90%',
+              color: '#fff'
+            }}
+          >
+            <h3 style={{ 
+              margin: '0 0 16px 0', 
+              color: '#f59e0b',
+              fontSize: '20px'
+            }}>
+              ↻ Confirm Reset to Pending
+            </h3>
+            
+            <p style={{ 
+              marginBottom: '20px',
+              color: '#ccc',
+              lineHeight: '1.5'
+            }}>
+              {(() => {
+                const eligibleCount = Array.from(selectedRows).filter(id => 
+                  filteredData.find(t => t.id === id)?.status === 'completed'
+                ).length;
+                return `Are you sure you want to reset ${eligibleCount} completed task${eligibleCount > 1 ? 's' : ''} to pending status? This will clear their completion data.`;
+              })()}
+            </p>
+            
+            <div style={{ 
+              display: 'flex', 
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                disabled={loading}
+                style={{
+                  padding: '8px 20px',
+                  backgroundColor: '#4a5568',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkResetStatus}
+                disabled={loading}
+                style={{
+                  padding: '8px 20px',
+                  backgroundColor: '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  opacity: loading ? 0.6 : 1
+                }}
+              >
+                {loading ? '⏳ Resetting...' : (() => {
+                  const eligibleCount = Array.from(selectedRows).filter(id => 
+                    filteredData.find(t => t.id === id)?.status === 'completed'
+                  ).length;
+                  return `↻ Reset ${eligibleCount} Task${eligibleCount > 1 ? 's' : ''}`;
+                })()}
               </button>
             </div>
           </div>

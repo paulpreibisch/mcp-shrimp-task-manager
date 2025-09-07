@@ -20,7 +20,7 @@ function ReleaseNotes() {
   const currentLanguage = i18n.language;
   const uiStrings = getUIStrings('releaseNotes', currentLanguage);
   const lightbox = useLightbox();
-  const imagesRef = useRef([]);
+  const [releaseImages, setReleaseImages] = useState([]);
   const contentRef = useRef(null);
 
   // Use the ScrollSpy hook for sidebar auto-scroll and active section tracking
@@ -192,6 +192,10 @@ function ReleaseNotes() {
       const toc = extractTableOfContents(content);
       setTableOfContents(prev => ({ ...prev, [version]: toc }));
       
+      // Extract and set images for lightbox
+      const images = extractImagesFromContent(content);
+      setReleaseImages(images);
+      
     } catch (error) {
       console.error('Error loading release content:', error);
       const errorContent = `# ${version}\n\n${uiStrings.error}`;
@@ -200,6 +204,36 @@ function ReleaseNotes() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const extractImagesFromContent = (content) => {
+    if (!content) return [];
+    
+    const lines = content.split('\n');
+    const images = [];
+    
+    lines.forEach((line) => {
+      const imgMatch = line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+      if (imgMatch) {
+        const altText = imgMatch[1];
+        let imgUrl = imgMatch[2];
+        
+        // Resolve relative image paths to /releases/ directory
+        if (imgUrl.startsWith('./')) {
+          imgUrl = `/releases/${imgUrl.substring(2)}`;
+        } else if (!imgUrl.startsWith('http') && !imgUrl.startsWith('/')) {
+          imgUrl = `/releases/${imgUrl}`;
+        }
+        
+        images.push({
+          src: imgUrl,
+          title: altText || `Image ${images.length + 1}`,
+          description: altText
+        });
+      }
+    });
+    
+    return images;
   };
 
   const extractTableOfContents = (content) => {
@@ -554,7 +588,7 @@ function ReleaseNotes() {
     
     const lines = content.split('\n');
     const elements = [];
-    const imageList = [];
+    let imageIndex = 0; // Track current image index for click handlers
     const parentPath = []; // Track parent sections for unique ID generation
     let i = 0;
     
@@ -734,13 +768,8 @@ function ReleaseNotes() {
             imgUrl = `/releases/${imgUrl}`;
           }
           
-          const imageIndex = imageList.length;
-          
-          imageList.push({
-            src: imgUrl,
-            title: altText || `Image ${imageIndex + 1}`,
-            description: altText
-          });
+          const currentImageIndex = imageIndex;
+          imageIndex++; // Increment for next image
           
           elements.push(
             <div key={i} className="release-image">
@@ -748,7 +777,13 @@ function ReleaseNotes() {
                 src={imgUrl} 
                 alt={altText} 
                 style={{ maxWidth: '75%', height: 'auto', margin: '1rem 0', cursor: 'pointer' }}
-                onClick={() => lightbox.openLightbox(imagesRef.current, imageIndex)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (releaseImages && releaseImages.length > currentImageIndex) {
+                    lightbox.openLightbox(releaseImages, currentImageIndex);
+                  }
+                }}
               />
             </div>
           );
@@ -777,9 +812,6 @@ function ReleaseNotes() {
         i++;
       }
     }
-    
-    // Store images in ref to avoid re-renders
-    imagesRef.current = imageList;
     
     return elements;
   };
@@ -954,12 +986,14 @@ function ReleaseNotes() {
         </div>
       </div>
       
-      <ImageLightbox
-        isOpen={lightbox.isOpen}
-        onClose={lightbox.closeLightbox}
-        images={lightbox.images}
-        currentIndex={lightbox.currentIndex}
-      />
+      {lightbox.isOpen && (
+        <ImageLightbox
+          isOpen={lightbox.isOpen}
+          onClose={lightbox.closeLightbox}
+          images={lightbox.images}
+          currentIndex={lightbox.currentIndex}
+        />
+      )}
     </div>
   );
 }

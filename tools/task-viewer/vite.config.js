@@ -14,10 +14,6 @@ export default defineConfig({
         target: 'http://localhost:9998',
         changeOrigin: true,
       },
-      '/releases': {
-        target: 'http://localhost:9998',
-        changeOrigin: true,
-      },
     },
   },
 });
