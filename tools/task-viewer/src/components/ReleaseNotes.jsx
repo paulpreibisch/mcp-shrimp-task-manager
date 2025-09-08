@@ -43,7 +43,7 @@ function ReleaseNotes() {
 
   // Print handler using react-to-print
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `Shrimp Task Manager - Release Notes v${selectedVersion}`,
     pageStyle: `
       @page {
