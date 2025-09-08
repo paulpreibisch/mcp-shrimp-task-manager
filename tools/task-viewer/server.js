@@ -1398,10 +1398,15 @@ Progress achieved so far and remaining scope`
                 }
             }
             
-        } else if (url.pathname === '/api/readme' && req.method === 'GET') {
-            // Serve README.md file
+        } else if (url.pathname.startsWith('/api/readme') && req.method === 'GET') {
+            // Serve README.md file (with language-specific support)
             try {
-                const readmePath = path.join(__dirname, 'README.md');
+                // Extract language suffix from path (e.g., /api/readme-ko -> ko)
+                const pathParts = url.pathname.split('-');
+                const languageSuffix = pathParts.length > 1 ? `-${pathParts[1]}` : '';
+                const readmeFilename = `README${languageSuffix}.md`;
+                const readmePath = path.join(__dirname, readmeFilename);
+                
                 const data = await fs.readFile(readmePath, 'utf8');
                 res.writeHead(200, { 
                     'Content-Type': 'text/markdown; charset=utf-8',
@@ -1409,9 +1414,16 @@ Progress achieved so far and remaining scope`
                 });
                 res.end(data);
             } catch (err) {
-                console.error('Error reading README:', err);
-                res.writeHead(404, { 'Content-Type': 'text/plain' });
-                res.end('README not found');
+                // If language-specific README not found, return 404 so client can fallback
+                if (url.pathname !== '/api/readme') {
+                    console.error(`Language-specific README not found: ${url.pathname}`, err.message);
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Language-specific README not found');
+                } else {
+                    console.error('Error reading README:', err);
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('README not found');
+                }
             }
 
         // Template management API routes

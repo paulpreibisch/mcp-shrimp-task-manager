@@ -156,215 +156,37 @@ function Help() {
     try {
       let content = '';
       
-      // Quick Start section to be inserted at the top
-      const quickStartSection = `
-# 🦐 Shrimp Task Manager Viewer
-
-## 🚀 Quick Start
-
-### Installation & Setup
-
-1. **Clone and navigate to the task viewer directory**
-   \`\`\`bash
-   cd path/to/mcp-shrimp-task-manager/tools/task-viewer
-   \`\`\`
-
-2. **Install dependencies**
-   \`\`\`bash
-   npm install
-   \`\`\`
-
-3. **Build the React application**
-   \`\`\`bash
-   npm run build
-   \`\`\`
-
-4. **Start the server**
-   \`\`\`bash
-   npm start
-   \`\`\`
-
-   The viewer will be available at \`http://localhost:9998\`
-
-### Development Mode
-
-For development with hot reload:
-
-\`\`\`bash
-# Starting both the API server and development server together
-npm run start:all
-
-# Running servers separately if needed:
-npm start          # API server on port 9998
-npm run dev        # Vite dev server on port 3000
-\`\`\`
-
-The app will be available at \`http://localhost:3000\` with automatic rebuilding on file changes.
-
-### Production Deployment
-
-#### Standard Deployment
-
-\`\`\`bash
-# Building the application for production
-npm run build
-
-# Starting the production server
-npm start
-\`\`\`
-
----
-
-`;
-      
-      // Archive documentation will be added after main content  
-      const archiveDocumentation = `
-
----
-
-## Archive Feature
-
-### Overview
-
-The Archive feature is a powerful tool that allows you to save your current task lists for later use. This is particularly useful when you need to switch between different projects or features without losing your planning work.
-
-### Use Cases
-
-#### When to Archive Your Task List Using the Archive Feature
-
-The Archive feature becomes invaluable when you're juggling multiple projects or need to pivot your focus without losing your carefully crafted task plans. Imagine you're in the middle of implementing a complex authentication system with 30+ interconnected tasks, dependencies mapped out, and agents assigned. Suddenly, a critical bug in production demands your immediate attention. Rather than losing all that planning work or trying to work around it, you can archive your current task list with a single click, preserving every detail including task descriptions, dependencies, completion status, and even the initial request that spawned the project.
-
-This feature particularly shines when you're working across multiple features or experiments. For example, you might be exploring two different architectural approaches for a new feature. You can fully plan out the first approach with all its tasks, archive it with a descriptive name like "Microservices Architecture Approach", then start fresh with the second approach. Later, you can compare both archived plans side by side, or import the one that proves most viable. The Archive feature also serves as an excellent template system – if you find yourself repeatedly implementing similar features across different projects, you can archive a well-structured task list and reuse it as a starting template for future work, saving hours of planning time.
-
-### Working with Archives
-
-#### Creating an Archive
-
-![Archive Dialog](/releases/archive-dialog.png)
-*The Archive Current Tasks dialog shows a summary of what will be archived, including the project name, task counts, and the complete initial request that created these tasks*
-
-To archive your current tasks:
-1. Click the **Archive** button in the main toolbar
-2. The archive dialog will show:
-   - Your current project name
-   - Total number of tasks
-   - Task status breakdown (completed, in progress, pending)
-   - The initial request that created these tasks
-3. Click **Continue** to save the archive
-4. Your tasks will be stored locally and persist across sessions
-
-#### Viewing Archives
-
-![Archive List](/releases/archive-list.png)
-*The Archive tab displays all archived task lists with creation dates, statistics, and action buttons. Click "View" to examine all tasks within an archived list, "Delete" to remove an archive, or "Import" to restore tasks to your current workflow*
-
-Navigate to the **Archive** tab to see all your saved task lists:
-- View the date each archive was created
-- See the project name and task statistics
-- Review the initial request that spawned the tasks
-- **Click "View"** to examine all tasks within the archived task list
-- **Click "Delete"** to permanently remove an archive
-- **Click "Import"** to restore the archived tasks to your current task list
-
-![Archive Details View](/releases/archive-details.png)
-
-The Archive Details page provides a comprehensive view of the archived task list, including the complete initial request and full task breakdown with all dependencies and descriptions preserved.
-
-#### Importing Archives
-
-![Import Archive Dialog](/releases/archive-import.png)
-*The Import Archive dialog offers flexible options for restoring archived tasks - either append them to your current task list or completely replace your existing tasks with the archived ones*
-
-To restore tasks from an archive:
-1. Go to the **Archive** tab
-2. Click the **Import** button next to the archive you want to restore
-3. Choose your import mode:
-   - **Append to current tasks**: Adds archived tasks to your existing task list
-   - **Replace all current tasks**: Removes existing tasks and imports only the archived ones
-4. Click **Import** to restore the tasks
-
-### Archive Storage
-
-#### Data Preservation
-
-- Archives are stored locally in your browser's storage
-- Each archive preserves:
-  - All task details and descriptions
-  - Task dependencies and relationships
-  - The original initial request
-  - Task completion status
-  - Agent assignments
-- You can maintain multiple archives simultaneously
-- Archives persist across browser sessions`;
-      
       // First check if we have translated content
-      const translatedContent = getReadmeContent(currentLanguage);
-      if (translatedContent && translatedContent.content) {
-        // For translated content, prepend Quick Start
-        content = quickStartSection + translatedContent.content + archiveDocumentation;
+      // Try to load translated content from the documentation files
+      const translatedReadme = getReadmeContent(currentLanguage);
+      
+      if (translatedReadme && translatedReadme.content) {
+        // Use the translated content directly from the documentation files
+        content = translatedReadme.content;
         setReadmeContent(content);
-      } else if (currentLanguage === 'en') {
-        // Load from README.md for English
-        const response = await fetch('/api/readme');
-        
-        if (response.ok) {
-          let readmeText = await response.text();
-          
-          // Remove the original title and quick start section if present
-          // Keep everything after the first "## " that isn't Quick Start
-          const lines = readmeText.split('\n');
-          let startIndex = 0;
-          let foundFirstSection = false;
-          
-          for (let i = 0; i < lines.length; i++) {
-            // Skip title and initial content until we find the first feature section
-            if (lines[i].startsWith('## ') && !lines[i].includes('Quick Start')) {
-              // Found the first non-quick-start section
-              startIndex = i;
-              foundFirstSection = true;
-              break;
-            }
-          }
-          
-          if (foundFirstSection) {
-            readmeText = lines.slice(startIndex).join('\n');
-          }
-          
-          // Prepend our Quick Start section
-          content = quickStartSection + readmeText + archiveDocumentation;
-          setReadmeContent(content);
-        } else {
-          content = quickStartSection + `\n\n## Help Content Not Found\n\n${uiStrings.notFound}` + archiveDocumentation;
-          setReadmeContent(content);
-        }
       } else {
-        // Fallback to English if translation not available
-        const response = await fetch('/api/readme');
+        // Fallback to fetching from API if no translated content in documentation
+        const languageSuffix = currentLanguage === 'en' ? '' : `-${currentLanguage}`;
+        const readmeUrl = `/api/readme${languageSuffix}`;
+        
+        const response = await fetch(readmeUrl);
         
         if (response.ok) {
-          let readmeText = await response.text();
-          
-          // Remove the original title and quick start section if present
-          const lines = readmeText.split('\n');
-          let startIndex = 0;
-          let foundFirstSection = false;
-          
-          for (let i = 0; i < lines.length; i++) {
-            if (lines[i].startsWith('## ') && !lines[i].includes('Quick Start')) {
-              startIndex = i;
-              foundFirstSection = true;
-              break;
-            }
-          }
-          
-          if (foundFirstSection) {
-            readmeText = lines.slice(startIndex).join('\n');
-          }
-          
-          content = quickStartSection + readmeText + archiveDocumentation;
+          content = await response.text();
           setReadmeContent(content);
+        } else if (response.status === 404 && currentLanguage !== 'en') {
+          // Fallback to English if translation not available
+          const englishResponse = await fetch('/api/readme');
+          
+          if (englishResponse.ok) {
+            content = await englishResponse.text();
+            setReadmeContent(content);
+          } else {
+            content = `# Help\n\n${uiStrings.notFound}`;
+            setReadmeContent(content);
+          }
         } else {
-          content = quickStartSection + `\n\n## Help Content Not Found\n\n${uiStrings.notFound}` + archiveDocumentation;
+          content = `# Help\n\n${uiStrings.notFound}`;
           setReadmeContent(content);
         }
       }
