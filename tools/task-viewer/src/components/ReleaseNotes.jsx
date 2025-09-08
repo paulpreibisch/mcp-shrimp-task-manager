@@ -8,6 +8,8 @@ import { getUIStrings, getReleaseContent } from '../i18n/documentation/index.js'
 import ImageLightbox, { useLightbox } from './ImageLightbox';
 import { Link as ScrollLink, Element as ScrollElement, Events, scrollSpy, scroller } from 'react-scroll';
 import { useScrollSpy } from '../hooks/useScrollSpy.jsx';
+import { useReactToPrint } from 'react-to-print';
+import './ReleaseNotes.print.css';
 
 function ReleaseNotes() {
   const [selectedVersion, setSelectedVersion] = useState(releaseMetadata[0]?.version || '');
@@ -22,6 +24,7 @@ function ReleaseNotes() {
   const lightbox = useLightbox();
   const [releaseImages, setReleaseImages] = useState([]);
   const contentRef = useRef(null);
+  const printRef = useRef(null);
 
   // Use the ScrollSpy hook for sidebar auto-scroll and active section tracking
   const {
@@ -36,6 +39,87 @@ function ReleaseNotes() {
     scrollElementAttribute: 'data-scroll-element',
     scrollOffset: 50,
     enabled: true
+  });
+
+  // Print handler using react-to-print
+  const handlePrint = useReactToPrint({
+    content: () => printRef.current,
+    documentTitle: `Shrimp Task Manager - Release Notes v${selectedVersion}`,
+    pageStyle: `
+      @page {
+        size: A4;
+        margin: 20mm;
+      }
+      @media print {
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .release-sidebar,
+        .print-button,
+        .release-notes-header,
+        .expand-collapse-buttons,
+        .toc-toggle-button {
+          display: none !important;
+        }
+        .release-details {
+          width: 100% !important;
+          max-width: 100% !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          overflow: visible !important;
+        }
+        .release-notes-content {
+          display: block !important;
+        }
+        h1, h2, h3, h4, h5 {
+          page-break-after: avoid;
+          margin-top: 1.5em;
+        }
+        h1 { 
+          color: #333 !important;
+          font-size: 24pt !important;
+        }
+        h2 { 
+          color: #444 !important;
+          font-size: 18pt !important;
+        }
+        h3 { 
+          color: #555 !important;
+          font-size: 14pt !important;
+        }
+        pre, code {
+          background: #f5f5f5 !important;
+          border: 1px solid #ddd !important;
+          page-break-inside: avoid;
+        }
+        pre {
+          padding: 10px !important;
+          margin: 10px 0 !important;
+        }
+        code {
+          padding: 2px 4px !important;
+        }
+        img {
+          max-width: 100% !important;
+          page-break-inside: avoid;
+          display: block;
+          margin: 10px auto;
+        }
+        ul, ol {
+          page-break-inside: avoid;
+        }
+        li {
+          margin: 5px 0;
+        }
+        blockquote {
+          border-left: 4px solid #ddd !important;
+          padding-left: 10px !important;
+          margin: 10px 0 !important;
+        }
+      }
+    `
   });
 
   // Centralized ID generation function to ensure consistency
@@ -852,9 +936,40 @@ function ReleaseNotes() {
         overflow: 'hidden'
       }}>
         <div className="release-notes-header" style={{
-          flexShrink: 0
+          flexShrink: 0,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingRight: '1rem'
         }}>
           <h2>{uiStrings.header}</h2>
+          <button
+            className="print-button"
+            onClick={handlePrint}
+            title="Print to PDF"
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#4fbdba',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'background-color 0.3s ease',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#3da9a6';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#4fbdba';
+            }}
+          >
+            🖨️ Print PDF
+          </button>
         </div>
         
         <div className="release-notes-content" style={{
@@ -999,8 +1114,15 @@ function ReleaseNotes() {
             {loading ? (
               <div className="release-loading">{uiStrings.loading}</div>
             ) : (
-              <div className="release-markdown-content" style={{ paddingBottom: '2rem' }}>
-                {renderMarkdown(releaseContent)}
+              <div ref={printRef}>
+                <div className="print-header" style={{ display: 'none' }}>
+                  <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                    Shrimp Task Manager - Release Notes v{selectedVersion}
+                  </h1>
+                </div>
+                <div className="release-markdown-content" style={{ paddingBottom: '2rem' }}>
+                  {renderMarkdown(releaseContent)}
+                </div>
               </div>
             )}
           </div>

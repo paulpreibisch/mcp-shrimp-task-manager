@@ -1,0 +1,299 @@
+/* Print-specific styles for Release Notes */
+@media print {
+  /* Hide non-printable elements */
+  .release-sidebar,
+  .print-button,
+  .release-notes-header,
+  .expand-collapse-buttons,
+  .toc-toggle-button,
+  .release-loading {
+    display: none !important;
+  }
+
+  /* Show print-only elements */
+  .print-header {
+    display: block !important;
+    page-break-after: avoid;
+  }
+
+  /* General page setup */
+  @page {
+    size: A4;
+    margin: 20mm 15mm;
+  }
+
+  /* Reset body styles for print */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #000 !important;
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Main content area */
+  .release-notes-tab-content,
+  .release-notes-inner,
+  .release-notes-content {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .release-details {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .release-markdown-content {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Typography for print */
+  h1 {
+    color: #000 !important;
+    font-size: 24pt !important;
+    font-weight: bold !important;
+    margin: 20pt 0 10pt 0 !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  h2 {
+    color: #222 !important;
+    font-size: 18pt !important;
+    font-weight: bold !important;
+    margin: 18pt 0 8pt 0 !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  h3 {
+    color: #333 !important;
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    margin: 14pt 0 6pt 0 !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  h4 {
+    color: #444 !important;
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    margin: 12pt 0 6pt 0 !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  h5 {
+    color: #555 !important;
+    font-size: 11pt !important;
+    font-weight: bold !important;
+    margin: 10pt 0 5pt 0 !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  p {
+    margin: 8pt 0 !important;
+    text-align: justify;
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Lists */
+  ul, ol {
+    margin: 8pt 0 8pt 20pt !important;
+    page-break-inside: avoid;
+  }
+
+  li {
+    margin: 4pt 0 !important;
+    page-break-inside: avoid;
+  }
+
+  /* Code blocks */
+  pre {
+    background: #f8f8f8 !important;
+    border: 1px solid #ddd !important;
+    border-radius: 3px !important;
+    padding: 10pt !important;
+    margin: 10pt 0 !important;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    font-size: 9pt !important;
+    line-height: 1.4 !important;
+    page-break-inside: avoid;
+    overflow-wrap: break-word !important;
+    white-space: pre-wrap !important;
+  }
+
+  code {
+    background: #f5f5f5 !important;
+    padding: 2pt 4pt !important;
+    border-radius: 2px !important;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    font-size: 9pt !important;
+    color: #d14 !important;
+  }
+
+  pre code {
+    background: transparent !important;
+    padding: 0 !important;
+    color: #333 !important;
+  }
+
+  /* Syntax highlighting for print */
+  .token.comment { color: #708090 !important; }
+  .token.string { color: #008000 !important; }
+  .token.keyword { color: #0000FF !important; }
+  .token.number { color: #008080 !important; }
+  .token.operator { color: #000000 !important; }
+  .token.function { color: #900 !important; }
+
+  /* Images */
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+    page-break-inside: avoid;
+    page-break-after: avoid;
+    display: block !important;
+    margin: 10pt auto !important;
+  }
+
+  /* Ensure images with captions stay together */
+  figure {
+    page-break-inside: avoid;
+    margin: 15pt 0 !important;
+  }
+
+  figcaption {
+    font-size: 9pt !important;
+    color: #666 !important;
+    text-align: center !important;
+    margin-top: 5pt !important;
+  }
+
+  /* Tables */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: avoid;
+    margin: 10pt 0 !important;
+  }
+
+  th, td {
+    border: 1px solid #ddd !important;
+    padding: 6pt !important;
+    text-align: left !important;
+  }
+
+  th {
+    background: #f5f5f5 !important;
+    font-weight: bold !important;
+  }
+
+  /* Blockquotes */
+  blockquote {
+    border-left: 4px solid #ddd !important;
+    padding-left: 10pt !important;
+    margin: 10pt 0 10pt 10pt !important;
+    color: #555 !important;
+    font-style: italic !important;
+    page-break-inside: avoid;
+  }
+
+  /* Links - show URL for external links */
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    font-size: 8pt;
+    color: #666;
+  }
+
+  /* But not for internal anchors */
+  a[href^="#"]:after {
+    content: "";
+  }
+
+  /* Horizontal rules */
+  hr {
+    border: none !important;
+    border-top: 1px solid #ccc !important;
+    margin: 15pt 0 !important;
+    page-break-after: avoid;
+  }
+
+  /* Ensure content starts on new page for major sections */
+  h1:not(:first-child) {
+    page-break-before: always;
+  }
+
+  /* Keep related content together */
+  h1 + *, h2 + *, h3 + *, h4 + *, h5 + * {
+    page-break-before: avoid;
+  }
+
+  /* Special handling for release notes sections */
+  .release-h1 {
+    border-bottom: 2px solid #333 !important;
+    padding-bottom: 5pt !important;
+  }
+
+  /* Add version header on each page */
+  @page {
+    @top-center {
+      content: "Shrimp Task Manager - Release Notes";
+      font-size: 10pt;
+      color: #666;
+    }
+    @bottom-right {
+      content: counter(page);
+      font-size: 10pt;
+      color: #666;
+    }
+  }
+
+  /* Remove any animations or transitions */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Ensure emojis print correctly */
+  .emoji {
+    font-size: 12pt !important;
+    line-height: 1 !important;
+  }
+
+  /* Handle inline code within headers */
+  h1 code, h2 code, h3 code, h4 code, h5 code {
+    font-size: 0.9em !important;
+    background: #f0f0f0 !important;
+    padding: 1pt 3pt !important;
+  }
+
+  /* Keep short code blocks from breaking */
+  pre:has(code:only-child) {
+    min-height: 20pt;
+  }
+
+  /* Badges and labels */
+  .badge, .label {
+    display: inline-block !important;
+    padding: 2pt 4pt !important;
+    font-size: 9pt !important;
+    background: #f0f0f0 !important;
+    color: #333 !important;
+    border: 1px solid #ddd !important;
+    border-radius: 2px !important;
+  }
+}
