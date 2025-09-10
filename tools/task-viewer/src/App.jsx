@@ -15,6 +15,7 @@ import ArchiveDetailView from './components/ArchiveDetailView';
 import GlobalSettingsView from './components/GlobalSettingsView';
 import SubAgentsView from './components/SubAgentsView';
 import ProjectAgentsView from './components/ProjectAgentsView';
+import BMADView from './components/BMADView';
 import ToastContainer from './components/ToastContainer';
 import LanguageSelector from './components/LanguageSelector';
 import ChatAgent from './components/ChatAgent';
@@ -29,6 +30,7 @@ import NestedTabs from './components/NestedTabs';
 import { debugLog, performanceMonitor } from './utils/debug';
 import { usePerformanceMonitoring } from './utils/optimizedHooks';
 import { exportToCSV, exportToMarkdown } from './utils/exportUtils';
+import { taskFileWatcher } from './utils/taskFileWatcher';
 
 function AppContent() {
   const { t, i18n } = useTranslation();
@@ -63,6 +65,8 @@ function AppContent() {
     const saved = localStorage.getItem('refreshInterval');
     return saved !== null ? Number(saved) : 30;
   });
+  const [watcherEnabled, setWatcherEnabled] = useState(false); // Default to false to prevent auto-start errors
+  const [watcherStatus, setWatcherStatus] = useState({});
   const [globalFilter, setGlobalFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'completed', 'in_progress', 'pending'
   const [showAddProfile, setShowAddProfile] = useState(false);
@@ -103,6 +107,9 @@ function AppContent() {
   // Emoji template states
   const [robotEmojiTemplate, setRobotEmojiTemplate] = useState('');
   const [armEmojiTemplate, setArmEmojiTemplate] = useState('');
+  
+  // BMAD Integration state
+  const [bmadStatus, setBmadStatus] = useState({ detected: false, enabled: true });
   
   // History management states
   const [historyView, setHistoryView] = useState(initialUrlState.history || ''); // 'list' or 'details' or '' for normal view
@@ -445,19 +452,102 @@ function AppContent() {
     }
   };
 
-  // Auto-refresh interval
+  // Intelligent file watcher for real-time updates
+  useEffect(() => {
+    if (watcherEnabled && selectedProfile && !isInEditMode && !isInDetailView) {
+      console.log(`Starting intelligent file watcher for profile: ${selectedProfile}`);
+      console.log('Profiles available:', profiles);
+      
+      // Start watching the selected profile
+      const profile = profiles.find(p => p.id === selectedProfile);
+      console.log('Selected profile:', profile);
+      
+      if (profile && profile.path) {
+        console.log(`Starting file watcher for path: ${profile.path}`);
+        taskFileWatcher.startWatching(selectedProfile, profile.path);
+      } else {
+        console.warn('No profile found or no path available:', { profile, selectedProfile });
+      }
+
+      // Set up event listeners for file changes
+      const handleTasksUpdated = (event) => {
+        if (event.profileId === selectedProfile) {
+          console.log('Tasks updated via file watcher:', event);
+          setTasks(event.tasks || []);
+          setWatcherStatus(prev => ({
+            ...prev,
+            [selectedProfile]: { lastUpdate: event.timestamp, status: 'updated' }
+          }));
+        }
+      };
+
+      const handleTaskStatusChanged = (event) => {
+        if (event.profileId === selectedProfile) {
+          console.log('Task status changed via file watcher:', event);
+          setTasks(prevTasks => 
+            prevTasks.map(task => 
+              task.id === event.taskId 
+                ? { ...task, status: event.newStatus, updatedAt: new Date().toISOString() }
+                : task
+            )
+          );
+        }
+      };
+
+      const handleWatcherError = (event) => {
+        if (event.profileId === selectedProfile) {
+          console.error('File watcher error:', event);
+          
+          // Extract error message properly
+          let errorMessage = 'Unknown file watcher error';
+          if (typeof event.error === 'string') {
+            errorMessage = event.error;
+          } else if (event.error && typeof event.error.message === 'string') {
+            errorMessage = event.error.message;
+          } else if (event.error && typeof event.error.toString === 'function') {
+            errorMessage = event.error.toString();
+          }
+          
+          console.error('Extracted error message:', errorMessage);
+          setError(`File watcher error: ${errorMessage}`);
+          setWatcherStatus(prev => ({
+            ...prev,
+            [selectedProfile]: { status: 'error', error: errorMessage }
+          }));
+        }
+      };
+
+      // Add event listeners
+      taskFileWatcher.on('tasksUpdated', handleTasksUpdated);
+      taskFileWatcher.on('taskStatusChanged', handleTaskStatusChanged);
+      taskFileWatcher.on('error', handleWatcherError);
+
+      return () => {
+        // Clean up event listeners
+        taskFileWatcher.off('tasksUpdated', handleTasksUpdated);
+        taskFileWatcher.off('taskStatusChanged', handleTaskStatusChanged);
+        taskFileWatcher.off('error', handleWatcherError);
+        
+        // Stop watching when component unmounts or profile changes
+        taskFileWatcher.stopWatching(selectedProfile);
+        console.log(`Stopped file watcher for profile: ${selectedProfile}`);
+      };
+    }
+  }, [watcherEnabled, selectedProfile, isInEditMode, isInDetailView, profiles]);
+
+  // Fallback auto-refresh interval (only when file watcher is disabled)
   useEffect(() => {
     let interval;
-    if (autoRefresh && selectedProfile && !isInEditMode && !isInDetailView) {
+    if (!watcherEnabled && autoRefresh && selectedProfile && !isInEditMode && !isInDetailView) {
       interval = setInterval(() => {
-        console.log(`Auto-refreshing tasks every ${refreshInterval}s...`);
-        loadTasks(selectedProfile, true); // Force refresh for auto-refresh
+        console.log(`Fallback auto-refreshing tasks every ${refreshInterval}s...`);
+        loadTasks(selectedProfile, true);
       }, refreshInterval * 1000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [autoRefresh, selectedProfile, refreshInterval, isInEditMode, isInDetailView]);
+  }, [watcherEnabled, autoRefresh, selectedProfile, refreshInterval, isInEditMode, isInDetailView]);
 
   // Load profiles on mount
   useEffect(() => {
@@ -507,6 +597,35 @@ function AppContent() {
     
     loadGlobalSettings();
   }, []);
+
+  // Check BMAD status when project changes
+  useEffect(() => {
+    const checkBMADStatus = async () => {
+      const currentProfile = getSafeProfiles().find(p => p.id === selectedProfile);
+      if (!currentProfile || !currentProfile.projectRoot) {
+        setBmadStatus({ detected: false, enabled: true });
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/bmad-status/${selectedProfile}`);
+        if (response.ok) {
+          const status = await response.json();
+          setBmadStatus(status);
+        } else {
+          setBmadStatus({ detected: false, enabled: true });
+        }
+      } catch (err) {
+        console.error('Error checking BMAD status:', err);
+        setBmadStatus({ detected: false, enabled: true });
+      }
+    };
+
+    // Only check BMAD status if we have a selected profile and profiles are loaded
+    if (selectedProfile && profiles.length > 0) {
+      checkBMADStatus();
+    }
+  }, [selectedProfile, profiles]);
   
   // Handle browser back/forward navigation
   useEffect(() => {
@@ -1395,7 +1514,25 @@ function AppContent() {
       )}
       
       <header className="header">
-        <h1>{t('appTitle')}</h1>
+        <h1 style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          gap: '12px',
+          margin: '0 auto',
+          fontSize: '1.8rem'
+        }}>
+          <img 
+            src="/mad-shrimp-logo.png" 
+            alt="Mad Shrimp Logo" 
+            style={{ 
+              width: '40px', 
+              height: '40px',
+              objectFit: 'contain'
+            }}
+          />
+          <span>Mad Shrimp</span>
+        </h1>
         <div className="header-content">
           <div className="version-info">
             <span>{t('header.version')} 4.1.0</span> • 
@@ -1455,6 +1592,10 @@ function AppContent() {
               setTasksTabRefresh(prev => prev + 1);
               setForceResetDetailView(prev => prev + 1); // Reset task detail view
             }
+            // Handle BMAD tab navigation
+            if (tab === 'bmad') {
+              // BMAD tab handles its own state management
+            }
             // Update URL
             pushUrlState({
               tab: 'projects',
@@ -1474,6 +1615,7 @@ function AppContent() {
           loading={loading}
           error={error}
           claudeFolderPath={claudeFolderPath}
+          bmadStatus={bmadStatus}
           children={{
             tasks: !selectedProfile && profiles.length > 0 ? (
               <div className="content-container" name="no-profile-container">
@@ -1597,15 +1739,35 @@ function AppContent() {
                     </button>
 
                     <div className="auto-refresh-controls" name="auto-refresh-controls" title="Configure automatic task refresh">
+                      <div className="refresh-mode-controls">
+                        <label className="refresh-mode" name="intelligent-watcher-toggle">
+                          <input 
+                            type="checkbox"
+                            name="intelligent-watcher-checkbox"
+                            checked={watcherEnabled}
+                            onChange={(e) => setWatcherEnabled(e.target.checked)}
+                            title="Enable intelligent file watching for instant updates"
+                          />
+                          🔍 Smart Updates
+                        </label>
+                        {watcherStatus[selectedProfile] && (
+                          <span className={`watcher-status ${watcherStatus[selectedProfile].status}`}>
+                            {watcherStatus[selectedProfile].status === 'updated' ? '✅' : 
+                             watcherStatus[selectedProfile].status === 'error' ? '❌' : '⏳'}
+                          </span>
+                        )}
+                      </div>
+                      
                       <label className="auto-refresh" name="auto-refresh-toggle">
                         <input 
                           type="checkbox"
                           name="auto-refresh-checkbox"
                           checked={autoRefresh}
                           onChange={(e) => setAutoRefresh(e.target.checked)}
-                          title={`Enable automatic refresh every ${refreshInterval} seconds`}
+                          disabled={watcherEnabled}
+                          title={watcherEnabled ? "Disabled when Smart Updates is active" : `Enable polling refresh every ${refreshInterval} seconds`}
                         />
-                        {t('autoRefresh')}
+                        {t('autoRefresh')} {watcherEnabled && '(Fallback)'}
                       </label>
                       
                       <select 
@@ -1613,8 +1775,8 @@ function AppContent() {
                         name="refresh-interval-selector"
                         value={refreshInterval}
                         onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                        disabled={!autoRefresh}
-                        title="Set how often to automatically refresh task data"
+                        disabled={!autoRefresh || watcherEnabled}
+                        title="Set how often to automatically refresh task data (fallback when Smart Updates disabled)"
                       >
                         <option value={5}>5s</option>
                         <option value={10}>10s</option>
@@ -1862,6 +2024,14 @@ function AppContent() {
                 }}
               />
             ),
+            bmad: (
+              <BMADView 
+                profileId={selectedProfile} 
+                projectRoot={projectRoot} 
+                showToast={showToast}
+                bmadStatus={bmadStatus}
+              />
+            ),
             settings: (
               <div className="content-container" name="settings-content-area">
                 <div className="settings-panel">
@@ -1877,6 +2047,19 @@ function AppContent() {
                       if (taskPath && !taskPath.trim().endsWith('.json')) {
                         setError('Task path must point to a .json file');
                         return;
+                      }
+                      
+                      // Save BMAD settings
+                      if (bmadStatus.detected) {
+                        try {
+                          await fetch(`/api/bmad-config/${selectedProfile}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ enabled: bmadStatus.enabled })
+                          });
+                        } catch (err) {
+                          console.error('Error saving BMAD settings:', err);
+                        }
                       }
                       
                       await handleUpdateProfile(selectedProfile, { 
@@ -1929,6 +2112,102 @@ function AppContent() {
                           {t('projectRootEditHint')}
                         </span>
                       </div>
+
+                      {/* BMAD Integration Section */}
+                      <div className="form-group" name="bmad-integration-group" style={{ 
+                        marginTop: '30px', 
+                        padding: '20px', 
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}>
+                        <h3 style={{ marginTop: 0, marginBottom: '15px', fontSize: '18px', color: '#cbd5e1' }}>
+                          🤖 BMAD Integration
+                        </h3>
+                        
+                        <div style={{ marginBottom: '15px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                            <span style={{ fontWeight: 'bold', color: '#cbd5e1' }}>Status:</span>
+                            {bmadStatus.detected ? (
+                              <span style={{ color: '#22c55e', fontWeight: 'bold' }}>
+                                ✅ BMAD System Detected
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94a3b8' }}>
+                                ❌ BMAD Not Detected
+                              </span>
+                            )}
+                          </div>
+                          
+                          {bmadStatus.detected && (
+                            <>
+                              <div style={{ marginBottom: '10px', fontSize: '14px', color: '#94a3b8' }}>
+                                Path: {getSafeProfiles().find(p => p.id === selectedProfile)?.projectRoot}/.bmad-core
+                              </div>
+                              
+                              <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '15px',
+                                padding: '10px',
+                                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(255, 255, 255, 0.1)'
+                              }}>
+                                <label htmlFor="bmadEnabled" style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '10px',
+                                  cursor: 'pointer',
+                                  userSelect: 'none'
+                                }}>
+                                  <input
+                                    type="checkbox"
+                                    id="bmadEnabled"
+                                    name="bmadEnabled"
+                                    checked={bmadStatus.enabled}
+                                    onChange={(e) => setBmadStatus(prev => ({ ...prev, enabled: e.target.checked }))}
+                                    style={{ 
+                                      width: '20px', 
+                                      height: '20px',
+                                      cursor: 'pointer'
+                                    }}
+                                  />
+                                  <span style={{ fontWeight: '500', color: '#cbd5e1' }}>
+                                    Enable BMAD Execution
+                                  </span>
+                                </label>
+                              </div>
+                              
+                              <div style={{ 
+                                marginTop: '10px', 
+                                padding: '10px', 
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                borderRadius: '4px',
+                                fontSize: '13px',
+                                color: '#cbd5e1'
+                              }}>
+                                <strong>When enabled:</strong> Shrimp will delegate task execution to BMAD agents for stories, epics, and other BMAD-compatible tasks.
+                                <br />
+                                <strong>When disabled:</strong> Shrimp will use standard execution for all tasks.
+                              </div>
+                            </>
+                          )}
+                          
+                          {!bmadStatus.detected && (
+                            <div style={{ 
+                              marginTop: '10px', 
+                              padding: '10px', 
+                              backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              color: '#cbd5e1'
+                            }}>
+                              BMAD system not found in this project. To enable BMAD integration, ensure the .bmad-core directory exists in your project root.
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       
                       {/* Emoji Template Configuration */}
                       <div className="form-group" name="robot-emoji-template-group">
@@ -1950,7 +2229,12 @@ function AppContent() {
                             width: '100%',
                             minWidth: '600px',
                             minHeight: '120px',
-                            resize: 'vertical'
+                            resize: 'vertical',
+                            backgroundColor: '#1a1a1a',
+                            color: '#e0e0e0',
+                            border: '1px solid #444',
+                            borderRadius: '4px',
+                            padding: '8px'
                           }}
                         />
                         <span className="form-hint">
@@ -1977,7 +2261,12 @@ function AppContent() {
                             width: '100%',
                             minWidth: '600px',
                             minHeight: '120px',
-                            resize: 'vertical'
+                            resize: 'vertical',
+                            backgroundColor: '#1a1a1a',
+                            color: '#e0e0e0',
+                            border: '1px solid #444',
+                            borderRadius: '4px',
+                            padding: '8px'
                           }}
                         />
                         <span className="form-hint">
