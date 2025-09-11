@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
 import dotenv from 'dotenv';
+import mcpBridge from './src/utils/mcp-bridge.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -47,6 +48,73 @@ function getLocalISOString() {
 const defaultAgents = [];
 
 let projects = []; // Project list
+
+// Parse BMAD agent metadata from embedded YAML block
+function parseBMADAgentMetadata(content) {
+    const metadata = {
+        name: '',
+        title: '',
+        icon: '',
+        whenToUse: '',
+        description: '',
+        tools: [],
+        color: null,
+        isBMAD: true
+    };
+    
+    if (!content) return metadata;
+    
+    // Look for YAML block in BMAD format (```yaml ... ```)
+    const yamlBlockRegex = /```yaml\s*\n([\s\S]*?)\n```/;
+    const yamlMatch = content.match(yamlBlockRegex);
+    
+    if (yamlMatch) {
+        const yamlContent = yamlMatch[1];
+        const lines = yamlContent.split('\n');
+        
+        let inAgent = false;
+        let indentLevel = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+            
+            // Track when we're in the agent section
+            if (trimmed === 'agent:') {
+                inAgent = true;
+                indentLevel = line.indexOf('agent:');
+                continue;
+            }
+            
+            // Exit agent section if we hit another top-level key
+            if (inAgent && !line.startsWith(' ') && trimmed.includes(':')) {
+                inAgent = false;
+            }
+            
+            // Parse agent fields
+            if (inAgent) {
+                if (trimmed.startsWith('name:')) {
+                    metadata.name = trimmed.substring(5).trim();
+                } else if (trimmed.startsWith('id:')) {
+                    metadata.id = trimmed.substring(3).trim();
+                } else if (trimmed.startsWith('title:')) {
+                    metadata.title = trimmed.substring(6).trim();
+                } else if (trimmed.startsWith('icon:')) {
+                    metadata.icon = trimmed.substring(5).trim();
+                } else if (trimmed.startsWith('whenToUse:')) {
+                    metadata.whenToUse = trimmed.substring(10).trim();
+                }
+            }
+        }
+        
+        // Use whenToUse as description if available
+        if (metadata.whenToUse) {
+            metadata.description = metadata.whenToUse;
+        }
+    }
+    
+    return metadata;
+}
 
 // Parse YAML frontmatter from agent file content
 function parseAgentMetadata(content) {
@@ -131,7 +199,20 @@ async function loadSettings() {
         const data = await fs.readFile(SETTINGS_FILE, 'utf8');
         const settings = JSON.parse(data);
         console.log('Loaded settings:', settings);
-        return settings.projects || settings.profiles || settings.agents || []; // Support new 'projects' and old keys for backward compatibility
+        const projects = settings.projects || settings.profiles || settings.agents || []; // Support new 'projects' and old keys for backward compatibility
+        
+        // Ensure all projects have an 'id' field (for backward compatibility with old 'profileName' format)
+        const processedProjects = projects.map(project => {
+            if (!project.id && project.profileName) {
+                // Generate ID from profileName for backward compatibility
+                project.id = project.profileName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-');
+                console.log(`Generated ID '${project.id}' from profileName '${project.profileName}'`);
+            }
+            return project;
+        });
+        
+        console.log('Final projects with IDs:', processedProjects.map(p => ({ id: p.id, name: p.name || p.profileName })));
+        return processedProjects;
     } catch (err) {
         console.error('Error loading settings:', err.message);
         await saveSettings(defaultAgents);
@@ -1087,8 +1168,251 @@ Progress achieved so far and remaining scope`
                     res.end(JSON.stringify({ error: 'Invalid request data' }));
                 }
             });
+
+        } else if (url.pathname === '/api/tasks/archive' && req.method === 'POST') {
+            // Handle task archiving using MCP bridge
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
             
-        } else if (url.pathname.startsWith('/api/tasks/')) {
+            req.on('end', async () => {
+                try {
+                    const { storyId, tasks = [] } = JSON.parse(body);
+                    
+                    if (!storyId) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'storyId is required' }));
+                        return;
+                    }
+                    
+                    console.log(`Archiving tasks for story ${storyId}`);
+                    
+                    const result = await mcpBridge.archiveTasks(storyId, tasks);
+                    
+                    if (result.success) {
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify(result));
+                    } else {
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: result.error || 'Failed to archive tasks' }));
+                    }
+                } catch (err) {
+                    console.error('Error archiving tasks:', err);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Error archiving tasks: ' + err.message }));
+                }
+            });
+
+        } else if (url.pathname === '/api/tasks/current' && req.method === 'GET') {
+            // Handle getting current tasks using MCP bridge
+            try {
+                console.log('Getting current tasks');
+                
+                // Check MCP connection status first
+                const connectionStatus = await mcpBridge.checkMCPConnection();
+                
+                if (!connectionStatus.connected) {
+                    res.writeHead(503, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: 'MCP bridge not available', 
+                        details: connectionStatus.error,
+                        connected: false 
+                    }));
+                    return;
+                }
+                
+                // For now, return a placeholder response since the MCP bridge doesn't have a getCurrentTasks function
+                // This should be implemented when the actual MCP integration is ready
+                const result = {
+                    success: true,
+                    tasks: [],
+                    message: "Current tasks endpoint - implementation pending MCP integration",
+                    metadata: {
+                        timestamp: new Date().toISOString(),
+                        source: 'mcp-bridge',
+                        connectionStatus
+                    }
+                };
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(result));
+                
+            } catch (err) {
+                console.error('Error getting current tasks:', err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Error getting current tasks: ' + err.message }));
+            }
+
+        } else if (url.pathname === '/api/tasks/clear-all' && req.method === 'DELETE') {
+            // Handle clearing all tasks using MCP bridge
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            
+            req.on('end', async () => {
+                try {
+                    const { confirm = false } = JSON.parse(body || '{}');
+                    
+                    console.log(`Clearing all tasks (confirm: ${confirm})`);
+                    
+                    const result = await mcpBridge.clearAllTasks(confirm);
+                    
+                    if (result.success) {
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify(result));
+                    } else {
+                        const statusCode = result.requiresConfirmation ? 400 : 500;
+                        res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify(result));
+                    }
+                } catch (err) {
+                    console.error('Error clearing all tasks:', err);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Error clearing all tasks: ' + err.message }));
+                }
+            });
+            
+        } else if (url.pathname.match(/^\/api\/tasks\/[^\/]+\/watch$/) && req.method === 'GET') {
+            // Server-Sent Events endpoint for real-time task updates (MOVED UP TO AVOID CONFLICT)
+            const projectId = url.pathname.split('/')[3]; // Extract projectId from /api/tasks/{projectId}/watch
+            console.log(`SSE request for projectId: '${projectId}'`);
+            console.log('Available project IDs:', projects.map(p => `'${p.id}'`));
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                console.error(`Project not found: '${projectId}' (exact match)`);
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            console.log(`Found project for SSE: ${project.name || project.profileName}`);
+            console.log(`Project path: ${project.path || project.taskPath || project.filePath}`);
+            
+            // Set up SSE headers
+            res.writeHead(200, {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Cache-Control'
+            });
+            
+            // Send initial connection event
+            res.write(`data: ${JSON.stringify({ type: 'connected', projectId, timestamp: Date.now() })}\n\n`);
+            
+            let watcher = null;
+            let lastModified = null;
+            
+            try {
+                // Get initial file stats
+                const projectPath = project.path || project.taskPath || project.filePath;
+                console.log(`Starting file watcher for: ${projectPath}`);
+                
+                const stats = await fs.stat(projectPath);
+                lastModified = stats.mtime.getTime();
+                
+                // Set up file watcher
+                const fsWatch = await import('fs');
+                watcher = fsWatch.watch(projectPath, { persistent: false }, async (eventType) => {
+                    if (eventType === 'change') {
+                        try {
+                            // Debounce rapid changes
+                            setTimeout(async () => {
+                                try {
+                                    const newStats = await fs.stat(projectPath);
+                                    const newModified = newStats.mtime.getTime();
+                                    
+                                    // Only process if file actually changed
+                                    if (newModified > lastModified) {
+                                        lastModified = newModified;
+                                        
+                                        // Read updated tasks
+                                        const data = await fs.readFile(projectPath, 'utf8');
+                                        let tasksData = JSON.parse(data);
+                                        
+                                        // Handle backward compatibility
+                                        if (Array.isArray(tasksData)) {
+                                            tasksData = { tasks: tasksData };
+                                        }
+                                        
+                                        // Send update event
+                                        const updateEvent = {
+                                            type: 'tasks_updated',
+                                            projectId,
+                                            tasks: tasksData.tasks || [],
+                                            timestamp: newModified
+                                        };
+                                        
+                                        res.write(`data: ${JSON.stringify(updateEvent)}\n\n`);
+                                        console.log(`Sent task update for ${projectId}`);
+                                    }
+                                } catch (error) {
+                                    console.error(`Error processing file change for ${projectId}:`, error);
+                                    const errorEvent = {
+                                        type: 'error',
+                                        projectId,
+                                        error: error.message || error.toString() || 'Unknown error',
+                                        timestamp: Date.now()
+                                    };
+                                    try {
+                                        res.write(`data: ${JSON.stringify(errorEvent)}\n\n`);
+                                    } catch (writeError) {
+                                        console.error('Error writing SSE error event:', writeError);
+                                    }
+                                }
+                            }, 300); // 300ms debounce
+                        } catch (error) {
+                            console.error('File watcher error:', error);
+                        }
+                    }
+                });
+                
+                console.log(`Started watching tasks file for project: ${projectId}`);
+                
+            } catch (error) {
+                console.error(`Failed to start file watcher for ${projectId}:`, error);
+                const errorEvent = {
+                    type: 'error',
+                    projectId,
+                    error: error.message || error.toString() || 'Failed to start file watcher',
+                    timestamp: Date.now()
+                };
+                try {
+                    res.write(`data: ${JSON.stringify(errorEvent)}\n\n`);
+                } catch (writeError) {
+                    console.error('Error writing SSE startup error:', writeError);
+                }
+            }
+            
+            // Handle client disconnect
+            req.on('close', () => {
+                if (watcher) {
+                    try {
+                        watcher.close();
+                        console.log(`Stopped watching tasks file for project: ${projectId}`);
+                    } catch (error) {
+                        console.error('Error closing file watcher:', error);
+                    }
+                }
+            });
+            
+            // Keep connection alive with periodic heartbeat
+            const heartbeat = setInterval(() => {
+                try {
+                    res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+                } catch (error) {
+                    clearInterval(heartbeat);
+                }
+            }, 30000); // 30 seconds
+            
+            req.on('close', () => {
+                clearInterval(heartbeat);
+            });
+            
+        } else if (url.pathname.startsWith('/api/tasks/') && req.method === 'GET') {
             const projectId = url.pathname.split('?')[0].split('/').pop();
             const project = projects.find(p => p.id === projectId);
             
@@ -1159,6 +1483,27 @@ Progress achieved so far and remaining scope`
                 console.error(`Error reading file ${project.path}:`, err);
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
                 res.end('Error reading task file: ' + err.message);
+            }
+            
+        } else if (url.pathname.startsWith('/api/file-stats') && req.method === 'GET') {
+            // File stats endpoint for the client-side watcher
+            const filePath = url.searchParams.get('path');
+            if (!filePath) {
+                res.writeHead(400, { 'Content-Type': 'text/plain' });
+                res.end('Missing path parameter');
+                return;
+            }
+            
+            try {
+                const stats = await fs.stat(filePath);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    mtime: stats.mtime.toISOString(),
+                    size: stats.size
+                }));
+            } catch (error) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('File not found');
             }
             
         } else if (url.pathname.startsWith('/api/history/') && url.pathname.split('/').length === 4) {
@@ -1668,29 +2013,48 @@ Progress achieved so far and remaining scope`
                     return;
                 }
                 
-                const agentsDir = path.join(projectRoot, '.claude', 'agents');
-                console.log('Looking for agents in directory:', agentsDir);
-                let agentFiles = [];
+                // Check both .claude/agents and .bmad-core/agents directories
+                const claudeAgentsDir = path.join(projectRoot, '.claude', 'agents');
+                const bmadAgentsDir = path.join(projectRoot, '.bmad-core', 'agents');
                 
+                console.log('Looking for agents in directories:', claudeAgentsDir, bmadAgentsDir);
+                
+                // Load agents from .claude/agents
+                let claudeAgentFiles = [];
                 try {
-                    const files = await fs.readdir(agentsDir);
-                    console.log('Found files in agents directory:', files);
-                    agentFiles = files.filter(file => 
+                    const files = await fs.readdir(claudeAgentsDir);
+                    console.log('Found files in .claude/agents directory:', files);
+                    claudeAgentFiles = files.filter(file => 
                         file.endsWith('.md') || file.endsWith('.yaml') || file.endsWith('.yml')
                     );
-                    console.log('Filtered agent files:', agentFiles);
+                    console.log('Filtered Claude agent files:', claudeAgentFiles);
                 } catch (err) {
-                    // Directory doesn't exist, return empty array
-                    console.log('Error reading agents directory:', err.message);
+                    console.log('Error reading .claude/agents directory:', err.message);
+                }
+                
+                // Load agents from .bmad-core/agents
+                let bmadAgentFiles = [];
+                try {
+                    const files = await fs.readdir(bmadAgentsDir);
+                    console.log('Found files in .bmad-core/agents directory:', files);
+                    bmadAgentFiles = files.filter(file => file.endsWith('.md'));
+                    console.log('Filtered BMAD agent files:', bmadAgentFiles);
+                } catch (err) {
+                    console.log('Error reading .bmad-core/agents directory:', err.message);
+                }
+                
+                // If no agents found in either directory
+                if (claudeAgentFiles.length === 0 && bmadAgentFiles.length === 0) {
+                    console.log('No agents found in either directory');
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify([]));
                     return;
                 }
                 
-                // Read each agent file to get content
-                const projectAgents = await Promise.all(agentFiles.map(async (filename) => {
+                // Read each Claude agent file to get content
+                const claudeAgents = await Promise.all(claudeAgentFiles.map(async (filename) => {
                     try {
-                        const filePath = path.join(agentsDir, filename);
+                        const filePath = path.join(claudeAgentsDir, filename);
                         const content = await fs.readFile(filePath, 'utf8');
                         const metadata = parseAgentMetadata(content);
                         // Debug logging for project agents
@@ -1709,15 +2073,55 @@ Progress achieved so far and remaining scope`
                         return {
                             name: filename,
                             content: '',
-                            path: path.join(agentsDir, filename),
+                            path: path.join(claudeAgentsDir, filename),
                             error: err.message,
                             metadata: parseAgentMetadata('')
                         };
                     }
                 }));
                 
+                // Read each BMAD agent file to get content
+                const bmadAgents = await Promise.all(bmadAgentFiles.map(async (filename) => {
+                    try {
+                        const filePath = path.join(bmadAgentsDir, filename);
+                        const content = await fs.readFile(filePath, 'utf8');
+                        const metadata = parseBMADAgentMetadata(content);
+                        
+                        // Use the BMAD metadata to enhance the agent info
+                        return {
+                            name: filename,
+                            content: content,
+                            path: filePath,
+                            metadata: {
+                                ...metadata,
+                                name: metadata.name || filename.replace('.md', ''),
+                                description: metadata.description || metadata.whenToUse || '',
+                                tools: [], // BMAD agents typically have access to all tools
+                                icon: metadata.icon || '🤖',
+                                isBMAD: true
+                            }
+                        };
+                    } catch (err) {
+                        return {
+                            name: filename,
+                            content: '',
+                            path: path.join(bmadAgentsDir, filename),
+                            error: err.message,
+                            metadata: {
+                                name: filename.replace('.md', ''),
+                                description: '',
+                                tools: [],
+                                isBMAD: true
+                            }
+                        };
+                    }
+                }));
+                
+                // Combine both sets of agents
+                const combinedAgents = [...claudeAgents, ...bmadAgents];
+                
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify(projectAgents));
+                res.end(JSON.stringify(combinedAgents));
             } catch (err) {
                 res.writeHead(500, { 'Content-Type': 'text/plain' });
                 res.end('Error loading project agents: ' + err.message);
@@ -1874,6 +2278,880 @@ Progress achieved so far and remaining scope`
                 }
             });
             
+        } else if (url.pathname.startsWith('/api/bmad-status/') && req.method === 'GET') {
+            // Check BMAD status for a project
+            const profileId = url.pathname.split('/').pop();
+            const project = projects.find(p => p.id === profileId);
+            
+            if (!project || !project.projectRoot) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ detected: false, enabled: true }));
+                return;
+            }
+            
+            try {
+                // Check if .bmad-core directory exists
+                const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                
+                let enabled = true;
+                if (bmadExists) {
+                    try {
+                        // Check for .shrimp-bmad.json config file
+                        const configPath = path.join(project.projectRoot, '.shrimp-bmad.json');
+                        const configData = await fs.readFile(configPath, 'utf8');
+                        const config = JSON.parse(configData);
+                        enabled = config.enabled !== false;
+                    } catch (err) {
+                        // Config file doesn't exist, default to enabled
+                        enabled = true;
+                    }
+                }
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ detected: bmadExists, enabled: enabled }));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error checking BMAD status: ' + err.message);
+            }
+            
+        } else if (url.pathname.startsWith('/api/bmad-config/') && req.method === 'PUT') {
+            // Update BMAD configuration for a project
+            const profileId = url.pathname.split('/').pop();
+            const project = projects.find(p => p.id === profileId);
+            
+            if (!project || !project.projectRoot) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { enabled } = JSON.parse(body);
+                    
+                    // Load existing config or create new one
+                    const configPath = path.join(project.projectRoot, '.shrimp-bmad.json');
+                    let config = {
+                        enabled: true,
+                        autoDetect: true,
+                        preferBMAD: true,
+                        agentMappings: {
+                            development: "dev",
+                            testing: "qa",
+                            architecture: "architect",
+                            product: "pm",
+                            analysis: "analyst",
+                            ux: "ux-expert",
+                            scrum: "sm",
+                            "product-owner": "po"
+                        },
+                        storyFileLocation: "stories"
+                    };
+                    
+                    try {
+                        const existingConfig = await fs.readFile(configPath, 'utf8');
+                        config = { ...config, ...JSON.parse(existingConfig) };
+                    } catch (err) {
+                        // Config file doesn't exist, use defaults
+                    }
+                    
+                    // Update enabled status
+                    config.enabled = enabled;
+                    
+                    // Save config
+                    await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true }));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error updating BMAD config: ' + err.message);
+                }
+            });
+
+        } else if (url.pathname.startsWith('/api/bmad-content/') && req.method === 'GET') {
+            // Get BMAD stories and epics for a project
+            const profileId = url.pathname.split('/').pop();
+            const project = projects.find(p => p.id === profileId);
+            
+            if (!project || !project.projectRoot) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            try {
+                // Check if .bmad-core directory exists
+                const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                
+                if (!bmadExists) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ stories: [], epics: [] }));
+                    return;
+                }
+                
+                const stories = [];
+                const epics = [];
+                
+                // Scan only the docs/epics directory for BMAD content
+                // Epic files: docs/epics/EPIC-XXX-*.md
+                // Story files: docs/epics/stories/STORY-XXX-*.md
+                for (const epicDir of ['docs/epics', '.bmad-core/epics']) {
+                    const epicsPath = path.join(project.projectRoot, epicDir);
+                    
+                    try {
+                        const entries = await fs.readdir(epicsPath, { withFileTypes: true });
+                        
+                        // Process epic files at the root of docs/epics
+                        for (const entry of entries) {
+                            if (entry.isFile() && entry.name.endsWith('.md')) {
+                                // Only process files that follow EPIC-XXX pattern
+                                if (/^EPIC-\d+/i.test(entry.name)) {
+                                    const fullPath = path.join(epicsPath, entry.name);
+                                    try {
+                                        const content = await fs.readFile(fullPath, 'utf8');
+                                        const epicNumMatch = entry.name.match(/^EPIC-(\d+)/i);
+                                        if (epicNumMatch) {
+                                            const epicId = epicNumMatch[1];
+                                            
+                                            // Extract title from content
+                                            const titleMatch = content.match(/^#\s+(.+)/m);
+                                            let title = titleMatch ? titleMatch[1].trim() : `Epic ${epicId}`;
+                                            // Remove "Epic XXX:" prefix if present
+                                            title = title.replace(/^Epic\s+\d+:\s*/i, '');
+                                            
+                                            // Extract description
+                                            const descMatch = content.match(/##\s*Epic\s*(?:Description|Goal)[:\s]*\n+([\s\S]*?)(?=\n##|$)/i);
+                                            const description = descMatch ? descMatch[1].trim() : '';
+                                            
+                                            epics.push({
+                                                id: epicId,
+                                                title: title,
+                                                description: description,
+                                                stories: [],
+                                                filePath: path.relative(project.projectRoot, fullPath)
+                                            });
+                                        }
+                                    } catch (err) {
+                                        console.error(`Error reading epic file ${entry.name}:`, err);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Process story files in the stories subdirectory
+                        const storiesPath = path.join(epicsPath, 'stories');
+                        try {
+                            const storyEntries = await fs.readdir(storiesPath, { withFileTypes: true });
+                            
+                            for (const entry of storyEntries) {
+                                if (entry.isFile() && entry.name.endsWith('.md')) {
+                                    // Only process files that follow STORY-XXX pattern
+                                    if (/^STORY-\d+/i.test(entry.name)) {
+                                        const fullPath = path.join(storiesPath, entry.name);
+                                        try {
+                                            const content = await fs.readFile(fullPath, 'utf8');
+                                            const storyNumMatch = entry.name.match(/^STORY-(\d+)/i);
+                                            if (storyNumMatch) {
+                                                const storyNum = storyNumMatch[1];
+                                                // Stories in docs/epics/stories belong to epic 001
+                                                const epicId = '001';
+                                                const storyId = `${epicId}.${storyNum}`;
+                                                
+                                                // Extract title
+                                                const titleMatch = content.match(/^#\s+Story\s+\d+:\s*(.+)/m);
+                                                const title = titleMatch ? titleMatch[1].trim() : entry.name.replace('.md', '');
+                                                
+                                                // Extract user story
+                                                const userStoryMatch = content.match(/##\s*User Story\s*\n([\s\S]*?)(?=\n##|$)/i);
+                                                const description = userStoryMatch ? userStoryMatch[1].trim() : '';
+                                                
+                                                // Extract status
+                                                const statusMatch = content.match(/##\s*Status:\s*(.+)/i);
+                                                const status = statusMatch ? statusMatch[1].trim() : 'Unknown';
+                                                
+                                                stories.push({
+                                                    id: storyId,
+                                                    epicId: epicId,
+                                                    name: title,
+                                                    title: title,
+                                                    description: description,
+                                                    status: status,
+                                                    filename: entry.name,
+                                                    path: fullPath,
+                                                    directory: path.relative(project.projectRoot, storiesPath),
+                                                    filePath: path.relative(project.projectRoot, fullPath)
+                                                });
+                                            }
+                                        } catch (err) {
+                                            console.error(`Error reading story file ${entry.name}:`, err);
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (err) {
+                            // Stories directory doesn't exist
+                        }
+                    } catch (err) {
+                        // Epic directory doesn't exist
+                    }
+                }
+                
+                // Group stories by epic ID
+                const epicMap = new Map();
+                
+                // First, add actual epic files to the map
+                for (const epic of epics) {
+                    const epicKey = epic.epicId || epic.id || epic.name;
+                    epicMap.set(epicKey, {
+                        id: epicKey,
+                        title: epic.title || epic.name,
+                        description: epic.description,
+                        stories: [],
+                        filePath: epic.filePath
+                    });
+                }
+                
+                // Then group stories by their epic ID
+                for (const story of stories) {
+                    if (story.epicId) {
+                        if (!epicMap.has(story.epicId)) {
+                            // Create epic from story if epic file doesn't exist
+                            epicMap.set(story.epicId, {
+                                id: story.epicId,
+                                title: `Epic ${story.epicId}`,
+                                description: `Stories for Epic ${story.epicId}`,
+                                stories: []
+                            });
+                        }
+                        epicMap.get(story.epicId).stories.push(story);
+                    }
+                }
+                
+                // Convert map to array and sort
+                const finalEpics = Array.from(epicMap.values()).sort((a, b) => {
+                    // Sort numerically if IDs are numbers
+                    const aNum = parseInt(a.id);
+                    const bNum = parseInt(b.id);
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return aNum - bNum;
+                    }
+                    // Otherwise sort alphabetically
+                    return a.id.localeCompare(b.id);
+                });
+                
+                // Sort stories within each epic
+                finalEpics.forEach(epic => {
+                    epic.stories.sort((a, b) => {
+                        if (a.id && b.id) {
+                            // Sort by story ID if available
+                            return a.id.localeCompare(b.id);
+                        }
+                        return 0;
+                    });
+                });
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ stories, epics: finalEpics }));
+                
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading BMAD content: ' + err.message);
+            }
+            
+        } else if (url.pathname.startsWith('/api/bmad-story/') && req.method === 'GET') {
+            // Get individual story content
+            const pathParts = url.pathname.split('/').slice(3); // Get everything after /api/bmad-story/
+            const profileId = pathParts[0];
+            // Reconstruct the relative path from the remaining parts
+            const relativePath = decodeURIComponent(pathParts.slice(1).join('/'));
+            const project = projects.find(p => p.id === profileId);
+            
+            if (!project || !project.projectRoot) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            try {
+                // The relative path already includes the directory structure
+                const storyPath = path.join(project.projectRoot, relativePath);
+                
+                try {
+                    const storyContent = await fs.readFile(storyPath, 'utf8');
+                    res.writeHead(200, { 'Content-Type': 'text/plain' });
+                    res.end(storyContent);
+                } catch (err) {
+                    // If not found with the direct path, try looking in common directories
+                    const storyDirs = ['docs', 'stories', 'docs/stories'];
+                    let storyContent = null;
+                    const filename = path.basename(relativePath);
+                    
+                    for (const dir of storyDirs) {
+                        try {
+                            const altPath = path.join(project.projectRoot, dir, filename);
+                            storyContent = await fs.readFile(altPath, 'utf8');
+                            break;
+                        } catch (err) {
+                            // File not found in this directory, try next
+                        }
+                    }
+                    
+                    if (storyContent) {
+                        res.writeHead(200, { 'Content-Type': 'text/plain' });
+                        res.end(storyContent);
+                    } else {
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('Story file not found');
+                    }
+                }
+                
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading story content: ' + err.message);
+            }
+
+        } else if (url.pathname.startsWith('/api/bmad-document/') && req.method === 'GET') {
+            // Get document content (PRD, Coding Standards, Source Tree, Tech Stack)
+            const pathParts = url.pathname.split('/').slice(3);
+            const profileId = pathParts[0];
+            const docType = pathParts[1];
+            const project = projects.find(p => p.id === profileId);
+            
+            if (!project || !project.projectRoot) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            try {
+                let docPath;
+                switch(docType) {
+                    case 'prd':
+                        docPath = path.join(project.projectRoot, 'docs', 'prd.md');
+                        break;
+                    case 'coding-standards':
+                        docPath = path.join(project.projectRoot, 'docs', 'architecture', 'coding-standards.md');
+                        break;
+                    case 'source-tree':
+                        docPath = path.join(project.projectRoot, 'docs', 'architecture', 'source-tree.md');
+                        break;
+                    case 'tech-stack':
+                        docPath = path.join(project.projectRoot, 'docs', 'architecture', 'tech-stack.md');
+                        break;
+                    default:
+                        res.writeHead(404, { 'Content-Type': 'text/plain' });
+                        res.end('Unknown document type');
+                        return;
+                }
+                
+                try {
+                    const docContent = await fs.readFile(docPath, 'utf8');
+                    res.writeHead(200, { 'Content-Type': 'text/plain' });
+                    res.end(docContent);
+                } catch (err) {
+                    // Document doesn't exist yet, return empty
+                    res.writeHead(200, { 'Content-Type': 'text/plain' });
+                    res.end('');
+                }
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading document: ' + err.message);
+            }
+            
+        } else if (url.pathname.startsWith('/api/bmad-document/') && req.method === 'PUT') {
+            // Save document content
+            const pathParts = url.pathname.split('/').slice(3);
+            const profileId = pathParts[0];
+            const docType = pathParts[1];
+            const project = projects.find(p => p.id === profileId);
+            
+            if (!project || !project.projectRoot) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            
+            req.on('end', async () => {
+                try {
+                    let docPath;
+                    switch(docType) {
+                        case 'prd':
+                            docPath = path.join(project.projectRoot, 'docs', 'prd.md');
+                            break;
+                        case 'coding-standards':
+                            docPath = path.join(project.projectRoot, 'docs', 'architecture', 'coding-standards.md');
+                            break;
+                        case 'source-tree':
+                            docPath = path.join(project.projectRoot, 'docs', 'architecture', 'source-tree.md');
+                            break;
+                        case 'tech-stack':
+                            docPath = path.join(project.projectRoot, 'docs', 'architecture', 'tech-stack.md');
+                            break;
+                        default:
+                            res.writeHead(404, { 'Content-Type': 'text/plain' });
+                            res.end('Unknown document type');
+                            return;
+                    }
+                    
+                    // Ensure directory exists
+                    const docDir = path.dirname(docPath);
+                    await fs.mkdir(docDir, { recursive: true });
+                    
+                    // Write the document
+                    await fs.writeFile(docPath, body, 'utf8');
+                    
+                    res.writeHead(200, { 'Content-Type': 'text/plain' });
+                    res.end('Document saved successfully');
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error saving document: ' + err.message);
+                }
+            });
+            return;
+
+        // BMAD Archive API endpoints
+        } else if (url.pathname.startsWith('/api/bmad-archived-epics/') && req.method === 'GET') {
+            // Get archived epics for a project
+            const profileId = url.pathname.split('/').pop();
+            const project = projects.find(p => p.id === profileId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            try {
+                // Load archived epics from a JSON file in the project root
+                const archivePath = path.join(project.projectRoot, '.bmad-archives.json');
+                let archivedEpics = [];
+                
+                try {
+                    const archiveData = await fs.readFile(archivePath, 'utf8');
+                    const parsed = JSON.parse(archiveData);
+                    archivedEpics = parsed.epics || [];
+                } catch (err) {
+                    // File doesn't exist yet, return empty array
+                    archivedEpics = [];
+                }
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ archivedEpics }));
+                
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading archived epics: ' + err.message);
+            }
+            
+        } else if (url.pathname.startsWith('/api/bmad-archive-epic/') && req.method === 'POST') {
+            // Archive an epic
+            const pathParts = url.pathname.split('/').slice(3);
+            const profileId = pathParts[0];
+            const epicId = pathParts[1];
+            const project = projects.find(p => p.id === profileId);
+            
+            if (!project || !project.projectRoot) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { epic } = JSON.parse(body);
+                    
+                    // Load existing archives
+                    const archivePath = path.join(project.projectRoot, '.bmad-archives.json');
+                    let archives = { epics: [] };
+                    
+                    try {
+                        const archiveData = await fs.readFile(archivePath, 'utf8');
+                        archives = JSON.parse(archiveData);
+                    } catch (err) {
+                        // File doesn't exist yet
+                    }
+                    
+                    // Add epic to archives with timestamp
+                    archives.epics = archives.epics || [];
+                    const archivedEpic = {
+                        ...epic,
+                        archivedAt: new Date().toISOString()
+                    };
+                    
+                    // Check if already archived
+                    const existingIndex = archives.epics.findIndex(e => e.id === epicId);
+                    if (existingIndex >= 0) {
+                        archives.epics[existingIndex] = archivedEpic;
+                    } else {
+                        archives.epics.push(archivedEpic);
+                    }
+                    
+                    // Save archives
+                    await fs.writeFile(archivePath, JSON.stringify(archives, null, 2), 'utf8');
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, epic: archivedEpic }));
+                    
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error archiving epic: ' + err.message);
+                }
+            });
+            return;
+            
+        } else if (url.pathname.startsWith('/api/bmad-unarchive-epic/') && req.method === 'POST') {
+            // Unarchive/restore an epic
+            const pathParts = url.pathname.split('/').slice(3);
+            const profileId = pathParts[0];
+            const epicId = pathParts[1];
+            const project = projects.find(p => p.id === profileId);
+            
+            if (!project || !project.projectRoot) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', async () => {
+                try {
+                    const { epic } = JSON.parse(body);
+                    
+                    // Load existing archives
+                    const archivePath = path.join(project.projectRoot, '.bmad-archives.json');
+                    let archives = { epics: [] };
+                    
+                    try {
+                        const archiveData = await fs.readFile(archivePath, 'utf8');
+                        archives = JSON.parse(archiveData);
+                    } catch (err) {
+                        // File doesn't exist yet
+                    }
+                    
+                    // Remove epic from archives
+                    archives.epics = (archives.epics || []).filter(e => e.id !== epicId);
+                    
+                    // Save archives
+                    await fs.writeFile(archivePath, JSON.stringify(archives, null, 2), 'utf8');
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, epic }));
+                    
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error unarchiving epic: ' + err.message);
+                }
+            });
+            return;
+
+        // BMAD MadShrimp API endpoints
+        } else if (url.pathname === '/api/bmad/stories' && req.method === 'GET') {
+            // Get all stories
+            try {
+                const stories = []; // TODO: Implement story parsing
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(stories));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading stories: ' + err.message);
+            }
+
+        } else if (url.pathname.startsWith('/api/bmad/stories/') && req.method === 'GET') {
+            // Get specific story
+            const storyId = url.pathname.split('/').pop();
+            try {
+                // TODO: Implement story retrieval by ID
+                const story = null;
+                if (story) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(story));
+                } else {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Story not found');
+                }
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading story: ' + err.message);
+            }
+
+        } else if (url.pathname.startsWith('/api/bmad/stories/') && req.method === 'PUT') {
+            // Update story
+            const storyId = url.pathname.split('/').pop();
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const storyData = JSON.parse(body);
+                    // TODO: Implement story update
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, storyId }));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error updating story: ' + err.message);
+                }
+            });
+
+        } else if (url.pathname === '/api/bmad/epics' && req.method === 'GET') {
+            // Get all epics
+            try {
+                // Get the current project from query params or use default
+                const queryParams = new URLSearchParams(url.search);
+                const profileId = queryParams.get('profileId');
+                
+                // Find the project root
+                let projectRoot = process.cwd();
+                if (profileId) {
+                    const project = projects.find(p => p.id === profileId);
+                    if (project && project.projectRoot) {
+                        projectRoot = project.projectRoot;
+                    }
+                }
+                
+                // Get stories first to group them by epic
+                const stories = [];
+                // Look specifically in docs/epics for BMAD epic structure
+                const epicsDirs = [
+                    'docs/epics',      // Main epics directory
+                    '.bmad-core/epics' // Alternative BMAD location
+                ];
+                
+                // First, scan for epic files to build epic metadata
+                const epicMap = new Map();
+                
+                for (const dir of epicsDirs) {
+                    const epicsPath = path.join(projectRoot, dir);
+                    try {
+                        const entries = await fs.readdir(epicsPath, { withFileTypes: true });
+                        
+                        // First pass: find epic files
+                        for (const entry of entries) {
+                            if (entry.isFile() && entry.name.startsWith('EPIC-')) {
+                                // Extract epic ID from filename like "EPIC-001-persona-based.md"
+                                const epicMatch = entry.name.match(/^EPIC-(\d+).*\.md$/);
+                                if (epicMatch) {
+                                    const epicId = epicMatch[1];
+                                    const fullPath = path.join(epicsPath, entry.name);
+                                    
+                                    try {
+                                        const content = await fs.readFile(fullPath, 'utf-8');
+                                        const titleMatch = content.match(/^#\s*(.+)/m);
+                                        const descMatch = content.match(/##\s*Epic\s*Description[:\s]*\n+([\s\S]*?)(?=\n##|$)/i);
+                                        
+                                        epicMap.set(epicId, {
+                                            id: epicId,
+                                            title: titleMatch ? titleMatch[1].replace(/^Epic\s*\d+:\s*/i, '').trim() : `Epic ${epicId}`,
+                                            description: descMatch ? descMatch[1].trim() : '',
+                                            stories: [],
+                                            filename: entry.name,
+                                            directory: dir
+                                        });
+                                    } catch (err) {
+                                        console.error(`Error reading epic file ${entry.name}:`, err);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Second pass: look for stories in the stories subdirectory
+                        const storiesPath = path.join(epicsPath, 'stories');
+                        try {
+                            const storyEntries = await fs.readdir(storiesPath, { withFileTypes: true });
+                            for (const entry of storyEntries) {
+                                if (entry.isFile() && entry.name.startsWith('STORY-')) {
+                                    // Extract story ID from filename like "STORY-001-job-naming.md"
+                                    const storyMatch = entry.name.match(/^STORY-(\d+).*\.md$/);
+                                    if (storyMatch) {
+                                        const storyNum = storyMatch[1];
+                                        // Assume stories belong to epic 001 if present
+                                        const epicId = '001';
+                                        const fullStoryId = `${epicId}.${storyNum}`;
+                                        
+                                        try {
+                                            const fullPath = path.join(storiesPath, entry.name);
+                                            const content = await fs.readFile(fullPath, 'utf-8');
+                                        
+                                            // Parse basic story info from content
+                                            const titleMatch = content.match(/^#\s*Story\s+\d+:\s*(.+)/m);
+                                            const statusMatch = content.match(/##\s*Status:\s*(.+)/m);
+                                            const userStoryMatch = content.match(/##\s*User Story\s*\n([\s\S]*?)(?=\n##|$)/);
+                                            const parallelMatch = content.match(/\*\*Parallel Work:\*\*\s*(.*)/);
+                                            
+                                            const story = {
+                                                id: fullStoryId,
+                                                epicId: epicId,
+                                                title: titleMatch ? titleMatch[1].trim() : entry.name,
+                                                status: statusMatch ? statusMatch[1].trim() : 'Unknown',
+                                                description: userStoryMatch ? userStoryMatch[1].trim() : '',
+                                                filename: entry.name,
+                                                directory: `${dir}/stories`,
+                                                parallelWork: {
+                                                    multiDevOK: parallelMatch ? parallelMatch[1].includes('Multi-Dev OK') : false,
+                                                    reason: parallelMatch ? parallelMatch[1] : ''
+                                                }
+                                            };
+                                            
+                                            stories.push(story);
+                                            
+                                            // Add story to its epic
+                                            if (!epicMap.has(epicId)) {
+                                                // Create a default epic if we haven't found the epic file yet
+                                                epicMap.set(epicId, {
+                                                    id: epicId,
+                                                    title: `Epic ${epicId}`,
+                                                    description: '',
+                                                    stories: [],
+                                                    directory: dir
+                                                });
+                                            }
+                                            epicMap.get(epicId).stories.push(story);
+                                            
+                                        } catch (fileErr) {
+                                            console.error(`Error reading story file ${entry.name}:`, fileErr.message);
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (storiesErr) {
+                            // Stories subdirectory doesn't exist, skip
+                        }
+                    } catch (dirErr) {
+                        // Epic directory doesn't exist, skip
+                    }
+                }
+                
+                // Convert map to array and sort by epic ID
+                const epics = Array.from(epicMap.values()).sort((a, b) => {
+                    const aId = parseInt(a.id) || 0;
+                    const bId = parseInt(b.id) || 0;
+                    return aId - bId;
+                });
+                
+                // Sort stories within each epic
+                epics.forEach(epic => {
+                    epic.stories.sort((a, b) => {
+                        const aStoryNum = parseInt(a.id.split('.')[1]) || 0;
+                        const bStoryNum = parseInt(b.id.split('.')[1]) || 0;
+                        return aStoryNum - bStoryNum;
+                    });
+                });
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(epics));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading epics: ' + err.message);
+            }
+
+        } else if (url.pathname.startsWith('/api/bmad/verification/') && req.method === 'GET') {
+            // Get verification results
+            const storyId = url.pathname.split('/').pop();
+            try {
+                // TODO: Implement verification retrieval
+                const verification = null;
+                if (verification) {
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(verification));
+                } else {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('Verification not found');
+                }
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading verification: ' + err.message);
+            }
+
+        } else if (url.pathname === '/api/bmad/verification' && req.method === 'GET') {
+            // Get all verification results
+            try {
+                const verificationDir = path.join(PROJECT_ROOT, '.ai', 'verification');
+                const verifications = [];
+                
+                if (await fs.access(verificationDir).then(() => true).catch(() => false)) {
+                    const files = await fs.readdir(verificationDir);
+                    const jsonFiles = files.filter(f => f.endsWith('.json') && !f.includes('failed'));
+                    
+                    for (const file of jsonFiles) {
+                        try {
+                            const filePath = path.join(verificationDir, file);
+                            const content = await fs.readFile(filePath, 'utf-8');
+                            const verification = JSON.parse(content);
+                            verifications.push(verification);
+                        } catch (err) {
+                            console.error(`Error reading verification file ${file}:`, err);
+                        }
+                    }
+                }
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(verifications));
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading verifications: ' + err.message);
+            }
+
+        } else if (url.pathname === '/api/bmad/verify' && req.method === 'POST') {
+            // Trigger verification
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { storyId } = JSON.parse(body);
+                    // TODO: Implement verification trigger
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true, message: 'Verification triggered', storyId }));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error triggering verification: ' + err.message);
+                }
+            });
+
+        } else if (url.pathname === '/api/bmad/prd' && req.method === 'GET') {
+            // Get PRD content
+            try {
+                const prdPath = path.join(PROJECT_ROOT, 'docs', 'prd.md');
+                if (await fs.access(prdPath).then(() => true).catch(() => false)) {
+                    const content = await fs.readFile(prdPath, 'utf-8');
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ content }));
+                } else {
+                    res.writeHead(404, { 'Content-Type': 'text/plain' });
+                    res.end('PRD not found');
+                }
+            } catch (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error loading PRD: ' + err.message);
+            }
+
+        } else if (url.pathname === '/api/bmad/prd' && req.method === 'PUT') {
+            // Update PRD content
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', async () => {
+                try {
+                    const { content } = JSON.parse(body);
+                    const prdPath = path.join(PROJECT_ROOT, 'docs', 'prd.md');
+                    await fs.writeFile(prdPath, content);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true }));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Error updating PRD: ' + err.message);
+                }
+            });
+
         } else if (url.pathname.startsWith('/api/agents/combined/') && req.method === 'GET') {
             // Get combined list of global and project agents
             const profileId = url.pathname.split('/').pop();
@@ -2511,7 +3789,9 @@ Progress achieved so far and remaining scope`
             console.log('  - No projects configured. Add projects via the web interface.');
         } else {
             projects.forEach(project => {
-                console.log(`  - ${project.name} (${project.path})`);
+                const name = project.name || project.profileName || 'Unnamed Project';
+                const path = project.path || project.taskPath || project.filePath || 'No path';
+                console.log(`  - ${name} (${path})`);
             });
         }
         console.log('\n🎯 Features:');

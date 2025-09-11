@@ -45,6 +45,11 @@ temp/
 .DS_Store
 Thumbs.db
 
+# MCP configuration files (may contain sensitive data)
+.mcp*.json
+*.mcp.json
+.mcp/
+
 # 覆蓋率報告
 coverage/
 

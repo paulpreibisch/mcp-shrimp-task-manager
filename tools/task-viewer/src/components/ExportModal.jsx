@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import { filterTasksByStatus } from '../utils/exportUtils';
-import { exportCompletionReports } from '../utils/exportCompletions';
 
 const ExportModal = ({ isOpen, onClose, onExport, tasks = [] }) => {
   const [selectedFormat, setSelectedFormat] = useState('csv');
@@ -22,27 +21,7 @@ const ExportModal = ({ isOpen, onClose, onExport, tasks = [] }) => {
   };
 
   const handleExport = async () => {
-    // Handle completion report exports
-    if (selectedFormat === 'completion-markdown' || selectedFormat === 'completion-json') {
-      const format = selectedFormat === 'completion-markdown' ? 'markdown' : 'json';
-      const options = {
-        includeIncomplete: selectedStatuses.includes('pending') || selectedStatuses.includes('in_progress'),
-        groupByAgent: false,
-        groupByDate: true,
-        includeDetails: true
-      };
-      
-      try {
-        exportCompletionReports(filteredTasks, format, options);
-        onClose();
-        return;
-      } catch (error) {
-        console.error('Export failed:', error);
-        return;
-      }
-    }
-    
-    // Handle existing export formats
+    // Handle export formats with enhanced data
     const success = await onExport({
       format: selectedFormat,
       selectedStatuses,
@@ -137,7 +116,7 @@ const ExportModal = ({ isOpen, onClose, onExport, tasks = [] }) => {
               <div>
                 <div>CSV</div>
                 <div style={{ fontSize: '12px', color: '#888', fontWeight: 'normal' }}>
-                  Basic task info for spreadsheets
+                  Complete task data for spreadsheets and analysis
                 </div>
               </div>
             </label>
@@ -152,7 +131,7 @@ const ExportModal = ({ isOpen, onClose, onExport, tasks = [] }) => {
               <div>
                 <div>Markdown</div>
                 <div style={{ fontSize: '12px', color: '#888', fontWeight: 'normal' }}>
-                  Complete details including notes, files, dependencies
+                  Full documentation with all task details, completion info, and analysis
                 </div>
               </div>
             </label>
@@ -160,29 +139,14 @@ const ExportModal = ({ isOpen, onClose, onExport, tasks = [] }) => {
               <input
                 type="radio"
                 name="format"
-                value="completion-markdown"
-                checked={selectedFormat === 'completion-markdown'}
+                value="json"
+                checked={selectedFormat === 'json'}
                 onChange={(e) => setSelectedFormat(e.target.value)}
               />
               <div>
-                <div>Completion Report (Markdown)</div>
+                <div>JSON</div>
                 <div style={{ fontSize: '12px', color: '#888', fontWeight: 'normal' }}>
-                  Detailed completion summaries for documentation
-                </div>
-              </div>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              <input
-                type="radio"
-                name="format"
-                value="completion-json"
-                checked={selectedFormat === 'completion-json'}
-                onChange={(e) => setSelectedFormat(e.target.value)}
-              />
-              <div>
-                <div>Completion Report (JSON)</div>
-                <div style={{ fontSize: '12px', color: '#888', fontWeight: 'normal' }}>
-                  Structured completion data for analysis/reimport
+                  Complete structured data for backup, reimport, or programmatic access
                 </div>
               </div>
             </label>

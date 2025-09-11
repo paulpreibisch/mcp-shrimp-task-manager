@@ -36,22 +36,99 @@ const escapeCSVField = (value) => {
 };
 
 /**
- * Exports tasks to CSV format
+ * Exports tasks to CSV format with all details
  * @param {Array} tasks - Array of task objects
+ * @param {string} initialRequest - The initial request that started the task planning
  * @returns {string} CSV formatted string
  */
-export const exportToCSV = (tasks) => {
-  const headers = ['ID', 'Name', 'Description', 'Status', 'Created At', 'Updated At'];
+export const exportToCSV = (tasks, initialRequest = '') => {
+  const headers = [
+    'Task Number',
+    'ID',
+    'Name',
+    'Description',
+    'Status',
+    'Notes',
+    'Implementation Guide',
+    'Verification Criteria',
+    'Summary',
+    'Completion Summary',
+    'Key Accomplishments',
+    'Implementation Details',
+    'Technical Challenges',
+    'Verification Score',
+    'Analysis Result',
+    'Related Files',
+    'Dependencies',
+    'Agent',
+    'Created At',
+    'Updated At',
+    'Completed At'
+  ];
   const csvRows = [headers.join(',')];
   
-  tasks.forEach(task => {
+  // Add initial request as a special row if provided
+  if (initialRequest) {
+    const requestRow = [
+      escapeCSVField('Initial Request'),
+      escapeCSVField(''),
+      escapeCSVField(''),
+      escapeCSVField(initialRequest),
+      ...Array(headers.length - 4).fill('')
+    ];
+    csvRows.push(requestRow.join(','));
+  }
+  
+  tasks.forEach((task, index) => {
+    // Parse completion details if available
+    let keyAccomplishments = '';
+    let implementationDetails = '';
+    let technicalChallenges = '';
+    let verificationScore = '';
+    
+    if (task.completionDetails) {
+      keyAccomplishments = (task.completionDetails.keyAccomplishments || []).join('; ');
+      implementationDetails = (task.completionDetails.implementationDetails || []).join('; ');
+      technicalChallenges = (task.completionDetails.technicalChallenges || []).join('; ');
+      verificationScore = task.completionDetails.verificationScore || '';
+    }
+    
+    // Format related files
+    const relatedFiles = (task.relatedFiles || []).map(file => 
+      `${file.path} (${file.type})${file.description ? ': ' + file.description : ''}`
+    ).join('; ');
+    
+    // Format dependencies
+    const dependencies = (task.dependencies || []).map(dep => {
+      if (typeof dep === 'string') return dep;
+      if (dep && typeof dep === 'object') {
+        return dep.taskId || dep.id || 'Unknown';
+      }
+      return '';
+    }).join('; ');
+    
     const row = [
+      escapeCSVField(`Task ${index + 1}`),
       escapeCSVField(task.id),
       escapeCSVField(task.name),
       escapeCSVField(task.description || ''),
       escapeCSVField(task.status),
-      escapeCSVField(task.createdAt),
-      escapeCSVField(task.updatedAt)
+      escapeCSVField(task.notes || ''),
+      escapeCSVField(task.implementationGuide || task.metadata?.implementationNotes || ''),
+      escapeCSVField(task.verificationCriteria || task.metadata?.verificationCriteria || ''),
+      escapeCSVField(task.summary || ''),
+      escapeCSVField(task.completionSummary || ''),
+      escapeCSVField(keyAccomplishments),
+      escapeCSVField(implementationDetails),
+      escapeCSVField(technicalChallenges),
+      escapeCSVField(verificationScore.toString()),
+      escapeCSVField(task.analysisResult || ''),
+      escapeCSVField(relatedFiles),
+      escapeCSVField(dependencies),
+      escapeCSVField(task.agent || ''),
+      escapeCSVField(task.createdAt || task.metadata?.createdAt || ''),
+      escapeCSVField(task.updatedAt || task.metadata?.updatedAt || ''),
+      escapeCSVField(task.completedAt || '')
     ];
     csvRows.push(row.join(','));
   });
@@ -117,12 +194,13 @@ const generateTaskStats = (tasks) => {
 };
 
 /**
- * Exports tasks to Markdown format
+ * Exports tasks to Markdown format with comprehensive details
  * @param {Array} tasks - Array of task objects
  * @param {string} initialRequest - The initial request that started the task planning
+ * @param {string} overallSummary - Overall summary of the tasks
  * @returns {string} Markdown formatted string
  */
-export const exportToMarkdown = (tasks, initialRequest = '') => {
+export const exportToMarkdown = (tasks, initialRequest = '', overallSummary = '') => {
   if (tasks.length === 0) {
     let markdown = `# Tasks Export
 
@@ -163,6 +241,17 @@ Total tasks: ${stats.total}
     markdown += `## Initial Request
 
 ${initialRequest}
+
+---
+
+`;
+  }
+  
+  // Add overall summary if provided
+  if (overallSummary) {
+    markdown += `## Overall Summary
+
+${overallSummary}
 
 ---
 
@@ -210,12 +299,16 @@ ${initialRequest}
         markdown += `**Notes:**  \n${task.notes}\n\n`;
       }
       
-      if (task.implementationGuide) {
-        markdown += `**Implementation Guide:**  \n${task.implementationGuide}\n\n`;
+      // Include implementation guide from task or metadata
+      const implementationGuide = task.implementationGuide || task.metadata?.implementationNotes;
+      if (implementationGuide) {
+        markdown += `**Implementation Guide:**  \n${implementationGuide}\n\n`;
       }
       
-      if (task.verificationCriteria) {
-        markdown += `**Verification Criteria:**  \n${task.verificationCriteria}\n\n`;
+      // Include verification criteria from task or metadata
+      const verificationCriteria = task.verificationCriteria || task.metadata?.verificationCriteria;
+      if (verificationCriteria) {
+        markdown += `**Verification Criteria:**  \n${verificationCriteria}\n\n`;
       }
       
       if (task.agent) {
@@ -224,6 +317,45 @@ ${initialRequest}
       
       if (task.summary) {
         markdown += `**Summary:**  \n${task.summary}\n\n`;
+      }
+      
+      // Add completion details section
+      if (task.completionSummary || task.completionDetails) {
+        markdown += `### Completion Details\n\n`;
+        
+        if (task.completionSummary) {
+          markdown += `**Completion Summary:**  \n${task.completionSummary}\n\n`;
+        }
+        
+        if (task.completionDetails) {
+          if (task.completionDetails.keyAccomplishments && task.completionDetails.keyAccomplishments.length > 0) {
+            markdown += `**Key Accomplishments:**\n`;
+            task.completionDetails.keyAccomplishments.forEach(item => {
+              markdown += `- ${item}\n`;
+            });
+            markdown += '\n';
+          }
+          
+          if (task.completionDetails.implementationDetails && task.completionDetails.implementationDetails.length > 0) {
+            markdown += `**Implementation Details:**\n`;
+            task.completionDetails.implementationDetails.forEach(item => {
+              markdown += `- ${item}\n`;
+            });
+            markdown += '\n';
+          }
+          
+          if (task.completionDetails.technicalChallenges && task.completionDetails.technicalChallenges.length > 0) {
+            markdown += `**Technical Challenges:**\n`;
+            task.completionDetails.technicalChallenges.forEach(item => {
+              markdown += `- ${item}\n`;
+            });
+            markdown += '\n';
+          }
+          
+          if (task.completionDetails.verificationScore) {
+            markdown += `**Verification Score:** ${task.completionDetails.verificationScore}/100\n\n`;
+          }
+        }
       }
       
       if (task.analysisResult) {
@@ -272,11 +404,63 @@ ${initialRequest}
       markdown += `**Metadata:**  \n`;
       markdown += `- **ID:** ${task.id}\n`;
       markdown += `- **Status:** ${status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}\n`;
-      markdown += `- **Created:** ${formatDateForMarkdown(task.createdAt)}\n`;
-      markdown += `- **Updated:** ${formatDateForMarkdown(task.updatedAt)}\n\n`;
-      markdown += '---\n\n';
+      markdown += `- **Created:** ${formatDateForMarkdown(task.createdAt || task.metadata?.createdAt)}\n`;
+      markdown += `- **Updated:** ${formatDateForMarkdown(task.updatedAt || task.metadata?.updatedAt)}\n`;
+      if (task.completedAt) {
+        markdown += `- **Completed:** ${formatDateForMarkdown(task.completedAt)}\n`;
+      }
+      if (task.metadata?.complexity) {
+        markdown += `- **Complexity:** ${task.metadata.complexity}\n`;
+      }
+      if (task.metadata?.estimatedHours) {
+        markdown += `- **Estimated Hours:** ${task.metadata.estimatedHours}\n`;
+      }
+      if (task.metadata?.requiredSkills && task.metadata.requiredSkills.length > 0) {
+        markdown += `- **Required Skills:** ${task.metadata.requiredSkills.join(', ')}\n`;
+      }
+      markdown += '\n---\n\n';
     });
   });
   
   return markdown.trim();
+};
+
+/**
+ * Exports tasks to JSON format with all details
+ * @param {Array} tasks - Array of task objects
+ * @param {string} initialRequest - The initial request that started the task planning
+ * @param {string} overallSummary - Overall summary of the tasks
+ * @returns {string} JSON formatted string
+ */
+export const exportToJSON = (tasks, initialRequest = '', overallSummary = '') => {
+  const exportData = {
+    exportDate: new Date().toISOString(),
+    version: '2.0',
+    initialRequest: initialRequest || null,
+    overallSummary: overallSummary || null,
+    statistics: generateTaskStats(tasks),
+    tasks: tasks.map((task, index) => ({
+      taskNumber: index + 1,
+      id: task.id,
+      name: task.name,
+      description: task.description || null,
+      status: task.status,
+      notes: task.notes || null,
+      implementationGuide: task.implementationGuide || task.metadata?.implementationNotes || null,
+      verificationCriteria: task.verificationCriteria || task.metadata?.verificationCriteria || null,
+      summary: task.summary || null,
+      completionSummary: task.completionSummary || null,
+      completionDetails: task.completionDetails || null,
+      analysisResult: task.analysisResult || null,
+      relatedFiles: task.relatedFiles || [],
+      dependencies: task.dependencies || [],
+      agent: task.agent || null,
+      metadata: task.metadata || {},
+      createdAt: task.createdAt || task.metadata?.createdAt || null,
+      updatedAt: task.updatedAt || task.metadata?.updatedAt || null,
+      completedAt: task.completedAt || null
+    }))
+  };
+  
+  return JSON.stringify(exportData, null, 2);
 };
