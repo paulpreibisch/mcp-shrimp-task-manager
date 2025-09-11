@@ -141,20 +141,25 @@ const NestedTabs = ({
                       {/* Inner project tabs */}
                       <div className="inner-tabs-wrapper">
                         <Tab.Group selectedIndex={
-                          projectInnerTab === 'tasks' ? 0 : 
-                          projectInnerTab === 'history' ? 1 : 
-                          (bmadStatus.detected && projectInnerTab === 'bmad') ? 2 :
-                          projectInnerTab === 'agents' ? (bmadStatus.detected ? 3 : 2) : 
-                          projectInnerTab === 'settings' ? (bmadStatus.detected ? 4 : 3) : 
-                          (bmadStatus.detected ? 5 : 4)
+                          projectInnerTab === 'dashboard' ? 0 :
+                          projectInnerTab === 'tasks' ? 1 : 
+                          projectInnerTab === 'history' ? 2 : 
+                          (bmadStatus.detected && projectInnerTab === 'bmad') ? 3 :
+                          projectInnerTab === 'agents' ? (bmadStatus.detected ? 4 : 3) : 
+                          projectInnerTab === 'settings' ? (bmadStatus.detected ? 5 : 4) : 
+                          (bmadStatus.detected ? 6 : 5)
                         } 
                         onChange={(index) => {
                           const tabs = bmadStatus.detected 
-                            ? ['tasks', 'history', 'bmad', 'agents', 'settings', 'archive']
-                            : ['tasks', 'history', 'agents', 'settings', 'archive'];
+                            ? ['dashboard', 'tasks', 'history', 'bmad', 'agents', 'settings', 'archive']
+                            : ['dashboard', 'tasks', 'history', 'agents', 'settings', 'archive'];
                           setProjectInnerTab(tabs[index]);
                         }}>
                           <Tab.List className="inner-tabs-list project-inner-tabs">
+                          <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}
+                               data-testid="project-dashboard-tab">
+                            <span>📊 Dashboard</span>
+                          </Tab>
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}
                                onClick={() => {
                                  // If already on tasks tab, force refresh to reset view
@@ -196,6 +201,10 @@ const NestedTabs = ({
                         </Tab.List>
 
                         <Tab.Panels className="inner-tab-panels">
+                          <Tab.Panel>
+                            {/* Dashboard content */}
+                            {children.dashboard}
+                          </Tab.Panel>
                           <Tab.Panel>
                             {/* Tasks content */}
                             {children.tasks}

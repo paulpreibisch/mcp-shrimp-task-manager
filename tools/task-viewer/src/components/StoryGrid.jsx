@@ -51,7 +51,7 @@ const StoryGrid = ({
       columnHelper.accessor('epicId', {
         header: 'Epic',
         cell: (info) => (
-          <span className="font-medium text-blue-600">
+          <span className="font-medium text-blue-600" data-testid={`story-grid-epic-${info.getValue() || '1'}`}>
             Epic {info.getValue() || '1'}
           </span>
         ),
@@ -201,7 +201,7 @@ const StoryGrid = ({
 
   if (stories.length === 0) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12" data-testid="story-grid-empty-state" aria-label="No stories available">
         <div className="text-4xl mb-4">📝</div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">
           No Stories Found
@@ -214,12 +214,12 @@ const StoryGrid = ({
   }
 
   return (
-    <div data-testid="stories-grid-container">
+    <div data-testid="story-grid-container" aria-label="Stories grid view">
       {/* Header with Search */}
       <div className="mb-6 flex items-center justify-between">
-        <div>
+        <div data-testid="story-grid-header">
           <h3 className="text-lg font-semibold text-gray-900">All Stories</h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-gray-600 mt-1" data-testid="story-grid-count">
             {stories.length} stories across all epics
           </p>
         </div>
@@ -231,27 +231,29 @@ const StoryGrid = ({
             className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             data-testid="story-search-input"
           />
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500" data-testid="story-grid-filter-count">
             Showing {table.getRowModel().rows.length} of {stories.length}
           </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden" data-testid="story-grid-table-container">
         <div className="overflow-x-auto">
-          <table className="w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="w-full divide-y divide-gray-200" data-testid="story-grid-table" aria-label="Stories data table">
+            <thead className="bg-gray-50" data-testid="story-grid-table-header">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
                     <th
                       key={header.id}
+                      data-testid={`story-grid-column-${header.id}`}
                       className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
                         header.column.getCanSort() ? 'cursor-pointer hover:bg-gray-100' : ''
                       }`}
                       onClick={header.column.getToggleSortingHandler()}
                       style={{ width: header.getSize() }}
+                      aria-label={`Sort by ${header.column.columnDef.header}`}
                     >
                       <div className="flex items-center gap-2">
                         {flexRender(
@@ -272,7 +274,7 @@ const StoryGrid = ({
                 </tr>
               ))}
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-200" data-testid="story-grid-table-body">
               {table.getRowModel().rows.map((row) => (
                 <tr 
                   key={row.id} 
@@ -298,7 +300,7 @@ const StoryGrid = ({
       </div>
 
       {table.getRowModel().rows.length === 0 && globalFilter && (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-gray-500" data-testid="story-grid-no-results">
           No stories found matching "{globalFilter}"
         </div>
       )}

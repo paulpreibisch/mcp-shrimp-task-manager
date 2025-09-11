@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Tab } from '@headlessui/react';
+import { 
+  Tabs, 
+  TabList, 
+  TabPanels, 
+  Tab, 
+  TabPanel 
+} from '@chakra-ui/react';
 import EpicTabs from './EpicTabs.jsx';
 import StoryGrid from './StoryGrid.jsx';
 import StoryEditor from './StoryEditor.jsx';
@@ -618,116 +624,127 @@ const BMADView = ({
       ) : selectedStory && !isEditingStory ? renderStoryViewer() : (
         <div className="bmad-content">
           <div className="inner-tabs-wrapper">
-            <Tab.Group selectedIndex={activeTab} onChange={setActiveTab}>
-            <Tab.List className="inner-tabs-list project-inner-tabs" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
-                Overview
-              </Tab>
-              <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
-                Stories
-              </Tab>
-              <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
-                Epics
-              </Tab>
-              <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
-                PRD
-              </Tab>
-              <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
-                Coding Standards
-              </Tab>
-              <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
-                Source Tree
-              </Tab>
-              <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
-                Tech Stack
-              </Tab>
-              {showArchivedTab && (
-                <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
-                  📦 Archived EPICs
-                </Tab>
-              )}
-              <Button
-                variant="primary"
-                size="small"
-                onClick={() => {
-                  loadBMADContent();
-                  loadDocuments();
-                }}
-                disabled={loading}
-                title="Refresh BMAD content"
-                icon={loading ? '⏳' : '🔄'}
-                style={{
-                  marginLeft: 'auto',
-                  marginRight: '10px'
-                }}
+            <Tabs 
+              index={activeTab} 
+              onChange={setActiveTab}
+              variant="line"
+              colorScheme="blue"
+              data-testid="bmad-main-tabs"
+            >
+              <TabList 
+                className="inner-tabs-list project-inner-tabs" 
+                style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
+                data-testid="bmad-main-tablist"
               >
-                Refresh
-              </Button>
-            </Tab.List>
-            <Tab.Panels className="inner-tab-panels">
-              <Tab.Panel>
-                {renderOverviewTab()}
-              </Tab.Panel>
-              <Tab.Panel>
-                <div className="p-6">
-                  <StoryGrid
-                    stories={stories}
-                    verifications={verifications}
-                    onEditStory={handleEditStory}
-                    onViewStory={viewStory}
-                  />
-                </div>
-              </Tab.Panel>
-              <Tab.Panel>
-                <div className="p-6">
-                  {epics && epics.length > 0 ? (
-                    <EpicTabs 
-                      epics={epics}
+                <Tab data-testid="overview-tab">
+                  Overview
+                </Tab>
+                <Tab data-testid="stories-tab">
+                  Stories
+                </Tab>
+                <Tab data-testid="epics-tab">
+                  Epics
+                </Tab>
+                <Tab data-testid="prd-tab">
+                  PRD
+                </Tab>
+                <Tab data-testid="coding-standards-tab">
+                  Coding Standards
+                </Tab>
+                <Tab data-testid="source-tree-tab">
+                  Source Tree
+                </Tab>
+                <Tab data-testid="tech-stack-tab">
+                  Tech Stack
+                </Tab>
+                {showArchivedTab && (
+                  <Tab data-testid="archived-epics-tab">
+                    📦 Archived EPICs
+                  </Tab>
+                )}
+                <Button
+                  variant="primary"
+                  size="small"
+                  onClick={() => {
+                    loadBMADContent();
+                    loadDocuments();
+                  }}
+                  disabled={loading}
+                  title="Refresh BMAD content"
+                  icon={loading ? '⏳' : '🔄'}
+                  style={{
+                    marginLeft: 'auto',
+                    marginRight: '10px'
+                  }}
+                  data-testid="refresh-button"
+                >
+                  Refresh
+                </Button>
+              </TabList>
+              <TabPanels className="inner-tab-panels" data-testid="bmad-main-tabpanels">
+                <TabPanel data-testid="overview-tabpanel">
+                  {renderOverviewTab()}
+                </TabPanel>
+                <TabPanel data-testid="stories-tabpanel">
+                  <div className="p-6">
+                    <StoryGrid
+                      stories={stories}
                       verifications={verifications}
                       onEditStory={handleEditStory}
                       onViewStory={viewStory}
-                      onArchiveEpic={archiveEpic}
                     />
-                  ) : (
-                    <div style={{ 
-                      textAlign: 'center', 
-                      padding: '40px',
-                      color: '#6c757d',
-                      fontSize: '16px'
-                    }}>
-                      <div style={{ fontSize: '48px', marginBottom: '20px' }}>📝</div>
-                      <h3>No Epics Found</h3>
-                      <p>Create epics using the MadShrimp agent to see them here.</p>
-                    </div>
-                  )}
-                </div>
-              </Tab.Panel>
-              <Tab.Panel>
-                {renderPRDTab()}
-              </Tab.Panel>
-              <Tab.Panel>
-                {renderCodingStandardsTab()}
-              </Tab.Panel>
-              <Tab.Panel>
-                {renderSourceTreeTab()}
-              </Tab.Panel>
-              <Tab.Panel>
-                {renderTechStackTab()}
-              </Tab.Panel>
-              {showArchivedTab && (
-                <Tab.Panel>
-                  <ArchivedEpicsTab
-                    archivedEpics={archivedEpics}
-                    onRestoreEpic={unarchiveEpic}
-                    onViewEpic={(epic) => {
-                      // For now, just show an alert with epic details
-                      alert(`Epic ${epic.id}: ${epic.title}\n\n${epic.description || 'No description'}\n\nStories: ${(epic.stories || []).length}`);
-                    }}
-                  />
-                </Tab.Panel>
-              )}
-            </Tab.Panels>
-          </Tab.Group>
+                  </div>
+                </TabPanel>
+                <TabPanel data-testid="epics-tabpanel">
+                  <div className="p-6">
+                    {epics && epics.length > 0 ? (
+                      <EpicTabs 
+                        epics={epics}
+                        verifications={verifications}
+                        onEditStory={handleEditStory}
+                        onViewStory={viewStory}
+                        onArchiveEpic={archiveEpic}
+                      />
+                    ) : (
+                      <div style={{ 
+                        textAlign: 'center', 
+                        padding: '40px',
+                        color: '#6c757d',
+                        fontSize: '16px'
+                      }}>
+                        <div style={{ fontSize: '48px', marginBottom: '20px' }}>📝</div>
+                        <h3>No Epics Found</h3>
+                        <p>Create epics using the MadShrimp agent to see them here.</p>
+                      </div>
+                    )}
+                  </div>
+                </TabPanel>
+                <TabPanel data-testid="prd-tabpanel">
+                  {renderPRDTab()}
+                </TabPanel>
+                <TabPanel data-testid="coding-standards-tabpanel">
+                  {renderCodingStandardsTab()}
+                </TabPanel>
+                <TabPanel data-testid="source-tree-tabpanel">
+                  {renderSourceTreeTab()}
+                </TabPanel>
+                <TabPanel data-testid="tech-stack-tabpanel">
+                  {renderTechStackTab()}
+                </TabPanel>
+                {showArchivedTab && (
+                  <TabPanel data-testid="archived-epics-tabpanel">
+                    <ArchivedEpicsTab
+                      archivedEpics={archivedEpics}
+                      onRestoreEpic={unarchiveEpic}
+                      onViewEpic={(epic) => {
+                        // For now, just show an alert with epic details
+                        alert(`Epic ${epic.id}: ${epic.title}\n\n${epic.description || 'No description'}\n\nStories: ${(epic.stories || []).length}`);
+                      }}
+                    />
+                  </TabPanel>
+                )}
+              </TabPanels>
+            </Tabs>
           </div>
 
           {stories.length === 0 && epics.length === 0 && !loading && (

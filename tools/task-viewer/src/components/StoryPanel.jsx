@@ -119,6 +119,8 @@ const StoryPanel = ({
             </span>
           </div>
           <span 
+            data-testid={`story-${story.id}-status-badge`}
+            aria-label={`Status: ${getStatusDisplayName(story.status)}`}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -137,19 +139,22 @@ const StoryPanel = ({
         </div>
         
         {/* Story Title */}
-        <h4 style={{ 
-          margin: '0 0 8px 0',
-          fontSize: '15px',
-          fontWeight: '600',
-          color: '#f1f5f9',
-          lineHeight: '1.4',
-          wordWrap: 'break-word',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical'
-        }}>
+        <h4 
+          data-testid={`story-${story.id}-title`}
+          style={{ 
+            margin: '0 0 8px 0',
+            fontSize: '15px',
+            fontWeight: '600',
+            color: '#f1f5f9',
+            lineHeight: '1.4',
+            wordWrap: 'break-word',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical'
+          }}
+        >
           {story.title}
         </h4>
 
@@ -165,19 +170,22 @@ const StoryPanel = ({
         }}
       >
         {/* Description */}
-        <p style={{ 
-          margin: '0 0 12px 0',
-          fontSize: '13px',
-          color: '#94a3b8',
-          lineHeight: '1.5',
-          wordWrap: 'break-word',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          display: '-webkit-box',
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: 'vertical',
-          flex: '1 1 auto'
-        }}>
+        <p 
+          data-testid={`story-${story.id}-description`}
+          style={{ 
+            margin: '0 0 12px 0',
+            fontSize: '13px',
+            color: '#94a3b8',
+            lineHeight: '1.5',
+            wordWrap: 'break-word',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            flex: '1 1 auto'
+          }}
+        >
           {story.description || 'No description available'}
         </p>
 
@@ -191,7 +199,10 @@ const StoryPanel = ({
           borderTop: '1px solid rgba(100, 149, 237, 0.1)'
         }}>
           {/* Parallel Indicator */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div 
+            data-testid={`story-${story.id}-parallel-indicator`}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
             <ParallelIndicator
               multiDevOK={story.parallelWork?.multiDevOK || false}
               reason={story.parallelWork?.reason || ''}
@@ -201,13 +212,17 @@ const StoryPanel = ({
             
             {/* Acceptance Criteria Count */}
             {story.acceptanceCriteria && story.acceptanceCriteria.length > 0 && (
-              <span style={{ 
-                fontSize: '11px', 
-                color: '#64748b',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}>
+              <span 
+                data-testid={`story-${story.id}-acceptance-criteria-count`}
+                aria-label={`${story.acceptanceCriteria.length} acceptance criteria`}
+                style={{ 
+                  fontSize: '11px', 
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
                 📋 {story.acceptanceCriteria.length}
               </span>
             )}
@@ -239,12 +254,14 @@ const StoryPanel = ({
             {/* View Button */}
             {onView && (
               <Button
+                data-testid={`story-${story.id}-view-button`}
                 variant="outline"
                 size="small"
                 onClick={(e) => {
                   e.stopPropagation();
                   onView(story);
                 }}
+                aria-label={`View details for story ${story.id}`}
               >
                 View
               </Button>

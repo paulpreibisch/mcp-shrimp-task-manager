@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { Tab } from '@headlessui/react';
 import StoryPanel from './StoryPanel.jsx';
 import Button from './Button.jsx';
+import EpicProgressBar from './EpicProgressBar.jsx';
 
 /**
  * EpicTabs component displays dynamic tabs for each epic with their stories
@@ -123,6 +124,7 @@ const EpicTabs = ({
                   </div>
                   {onArchiveEpic && (
                     <Button
+                      data-testid={`epic-${epic.id}-archive-button`}
                       variant="danger"
                       size="small"
                       onClick={() => {
@@ -133,22 +135,23 @@ const EpicTabs = ({
                       icon="📦"
                       title={`Archive Epic ${epic.id}`}
                       style={{ marginLeft: '16px' }}
+                      aria-label={`Archive Epic ${epic.id}`}
                     >
                       Archive
                     </Button>
                   )}
                 </div>
                 
-                {/* Compact Progress Stats */}
-                <div className="flex items-center justify-between text-sm mb-4">
-                  <div style={{ color: '#94a3b8' }}>
-                    {progress.completed} of {progress.total} stories completed
-                  </div>
-                  {progress.storiesNeedingAttention.length > 0 && (
-                    <div className="text-orange-400">
-                      ⚠️ {progress.storiesNeedingAttention.length} stories need attention
-                    </div>
-                  )}
+                {/* Epic Progress Visualization */}
+                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'rgba(45, 55, 72, 0.3)', borderRadius: '8px' }}>
+                  <EpicProgressBar
+                    epic={epic}
+                    verifications={verifications}
+                    variant="linear"
+                    size="md"
+                    showDetails={true}
+                    showScore={true}
+                  />
                 </div>
 
                 {/* View Mode Toggle */}
@@ -159,6 +162,7 @@ const EpicTabs = ({
                   gap: '8px'
                 }}>
                   <Button
+                    data-testid={`epic-${epic.id}-view-cards-button`}
                     variant={viewMode === 'cards' ? 'primary' : 'ghost'}
                     size="medium"
                     onClick={() => setViewMode('cards')}
@@ -166,10 +170,12 @@ const EpicTabs = ({
                     style={{
                       borderColor: viewMode === 'cards' ? '#3182ce' : '#2d3748'
                     }}
+                    aria-label={`Switch to card view for Epic ${epic.id}`}
                   >
                     Card View
                   </Button>
                   <Button
+                    data-testid={`epic-${epic.id}-view-list-button`}
                     variant={viewMode === 'list' ? 'primary' : 'ghost'}
                     size="medium"
                     onClick={() => setViewMode('list')}
@@ -177,6 +183,7 @@ const EpicTabs = ({
                     style={{
                       borderColor: viewMode === 'list' ? '#3182ce' : '#2d3748'
                     }}
+                    aria-label={`Switch to list view for Epic ${epic.id}`}
                   >
                     List View
                   </Button>
@@ -186,12 +193,15 @@ const EpicTabs = ({
                 {epic.stories && epic.stories.length > 0 ? (
                   <>
                     {viewMode === 'cards' ? (
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: '16px',
-                        padding: '16px 0'
-                      }}>
+                      <div 
+                        data-testid={`epic-${epic.id}-stories-card-view`}
+                        aria-label={`Stories in Epic ${epic.id} displayed as cards`}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, 1fr)',
+                          gap: '16px',
+                          padding: '16px 0'
+                        }}>
                         {epic.stories.map((story) => (
                           <StoryPanel
                             key={story.id}
@@ -203,11 +213,15 @@ const EpicTabs = ({
                         ))}
                       </div>
                     ) : (
-                      <div className="table-container" style={{
-                        backgroundColor: 'rgba(26, 32, 44, 0.5)',
-                        borderRadius: '8px',
-                        border: '1px solid #2d3748'
-                      }}>
+                      <div 
+                        className="table-container" 
+                        data-testid={`epic-${epic.id}-stories-list-view`}
+                        aria-label={`Stories in Epic ${epic.id} displayed as list`}
+                        style={{
+                          backgroundColor: 'rgba(26, 32, 44, 0.5)',
+                          borderRadius: '8px',
+                          border: '1px solid #2d3748'
+                        }}>
                         <table className="table-full-width">
                           <thead>
                             <tr style={{
@@ -233,6 +247,8 @@ const EpicTabs = ({
                               return (
                                 <tr 
                                   key={story.id}
+                                  data-testid={`epic-${epic.id}-story-${story.id}-row`}
+                                  aria-label={`Story ${story.id}: ${story.title}`}
                                   style={{
                                     borderBottom: '1px solid #2d3748',
                                     transition: 'background-color 0.2s ease',
@@ -304,24 +320,28 @@ const EpicTabs = ({
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                                       {onViewStory && (
                                         <Button
+                                          data-testid={`epic-${epic.id}-story-${story.id}-view-button`}
                                           variant="outline"
                                           size="small"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             onViewStory(story);
                                           }}
+                                          aria-label={`View story ${story.id}`}
                                         >
                                           View
                                         </Button>
                                       )}
                                       {onEditStory && (
                                         <Button
+                                          data-testid={`epic-${epic.id}-story-${story.id}-edit-button`}
                                           variant="primary"
                                           size="small"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             onEditStory(story);
                                           }}
+                                          aria-label={`Edit story ${story.id}`}
                                         >
                                           Edit
                                         </Button>
@@ -337,7 +357,11 @@ const EpicTabs = ({
                     )}
                   </>
                 ) : (
-                  <div className="text-center py-12">
+                  <div 
+                    className="text-center py-12"
+                    data-testid={`epic-${epic.id}-no-stories`}
+                    aria-label={`No stories available for Epic ${epic.id}`}
+                  >
                     <div className="text-4xl mb-4">📋</div>
                     <h3 className="text-lg font-medium mb-2" style={{ color: '#e2e8f0' }}>
                       No Stories Yet

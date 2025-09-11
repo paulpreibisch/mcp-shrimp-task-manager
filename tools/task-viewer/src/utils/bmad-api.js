@@ -420,6 +420,78 @@ export class BMADDataCache {
   }
 }
 
+/**
+ * Get tasks with story context integration
+ */
+export const getTasksWithStoryContext = async (tasks, projectId) => {
+  if (!projectId) {
+    console.warn('getTasksWithStoryContext called without projectId');
+    return tasks;
+  }
+  
+  try {
+    // Get stories for the project
+    const stories = await getStories(projectId);
+    
+    // Import the task-story mapper (dynamic import to avoid circular dependency)
+    const { enrichTasksWithStoryContext } = await import('./taskStoryMapper.js');
+    
+    // Enrich tasks with story context
+    return enrichTasksWithStoryContext(tasks, stories);
+  } catch (error) {
+    console.error('Error enriching tasks with story context:', error);
+    return tasks; // Return original tasks if enrichment fails
+  }
+};
+
+/**
+ * Get grouped tasks by story for better organization
+ */
+export const getGroupedTasksByStory = async (tasks, projectId) => {
+  if (!projectId) {
+    console.warn('getGroupedTasksByStory called without projectId');
+    return { withStory: new Map(), withoutStory: tasks };
+  }
+  
+  try {
+    // Get stories for the project
+    const stories = await getStories(projectId);
+    
+    // Import the task-story mapper
+    const { groupTasksByStory } = await import('./taskStoryMapper.js');
+    
+    // Group tasks by their associated stories
+    return groupTasksByStory(tasks, stories);
+  } catch (error) {
+    console.error('Error grouping tasks by story:', error);
+    return { withStory: new Map(), withoutStory: tasks };
+  }
+};
+
+/**
+ * Validate story-task linking for a project
+ */
+export const validateProjectStoryTaskLinking = async (tasks, projectId) => {
+  if (!projectId) {
+    console.warn('validateProjectStoryTaskLinking called without projectId');
+    return null;
+  }
+  
+  try {
+    // Get stories for the project
+    const stories = await getStories(projectId);
+    
+    // Import the task-story mapper
+    const { validateStoryTaskLinking } = await import('./taskStoryMapper.js');
+    
+    // Validate linking
+    return validateStoryTaskLinking(tasks, stories);
+  } catch (error) {
+    console.error('Error validating story-task linking:', error);
+    return null;
+  }
+};
+
 // Export singleton instances
 export const realTimeUpdater = new BMADRealTimeUpdater();
 export const pollingUpdater = new BMADPollingUpdater();

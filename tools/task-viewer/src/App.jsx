@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { ChakraProvider } from '@chakra-ui/react';
 import TaskTable from './components/TaskTable';
 import { analyzeTaskParallelization, copyToClipboard } from './utils/taskParallelization';
 import FinalSummary from './components/FinalSummary';
@@ -28,11 +29,13 @@ import ImportArchiveModal from './components/ImportArchiveModal';
 import { useTranslation } from 'react-i18next';
 import { parseUrlState, updateUrl, pushUrlState, getInitialUrlState, cleanUrlStateForTab } from './utils/urlStateSync';
 import NestedTabs from './components/NestedTabs';
+import DashboardView from './components/DashboardView';
 import { debugLog, performanceMonitor } from './utils/debug';
 import { createArchive } from './utils/archiveService';
 import { usePerformanceMonitoring } from './utils/optimizedHooks';
 import { exportToCSV, exportToMarkdown, exportToJSON } from './utils/exportUtils';
 import { taskFileWatcher } from './utils/taskFileWatcher';
+import chakraTheme from './theme/chakra-theme';
 
 function AppContent() {
   const { t, i18n } = useTranslation();
@@ -1601,6 +1604,15 @@ function AppContent() {
           claudeFolderPath={claudeFolderPath}
           bmadStatus={bmadStatus}
           children={{
+            dashboard: (
+              <DashboardView 
+                tasks={filteredAndSearchedTasks}
+                profileId={selectedProfile}
+                stats={stats}
+                loading={loading}
+                error={error}
+              />
+            ),
             tasks: !selectedProfile && profiles.length > 0 ? (
               <div className="content-container" name="no-profile-container">
                 <div className="loading" name="no-profile-message" title="Choose a profile from the dropdown above">Select a profile to view tasks</div>
@@ -2614,4 +2626,13 @@ function AppContent() {
   );
 }
 
-export default AppContent;
+// Main App component with ChakraProvider wrapper
+function App() {
+  return (
+    <ChakraProvider theme={chakraTheme}>
+      <AppContent />
+    </ChakraProvider>
+  );
+}
+
+export default App;

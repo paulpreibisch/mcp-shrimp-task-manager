@@ -49,6 +49,35 @@ const defaultAgents = [];
 
 let projects = []; // Project list
 
+// Enhanced task-story integration caching
+const taskStoryCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache TTL
+
+// Cache management functions
+function setCacheEntry(key, data) {
+    taskStoryCache.set(key, {
+        data,
+        timestamp: Date.now()
+    });
+}
+
+function getCacheEntry(key) {
+    const entry = taskStoryCache.get(key);
+    if (!entry) return null;
+    
+    const age = Date.now() - entry.timestamp;
+    if (age > CACHE_TTL) {
+        taskStoryCache.delete(key);
+        return null;
+    }
+    
+    return entry.data;
+}
+
+function clearCache() {
+    taskStoryCache.clear();
+}
+
 // Parse BMAD agent metadata from embedded YAML block
 function parseBMADAgentMetadata(content) {
     const metadata = {
@@ -1412,6 +1441,108 @@ Progress achieved so far and remaining scope`
                 clearInterval(heartbeat);
             });
             
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/grouped-by-story') && req.method === 'GET') {
+            // Get tasks grouped by story for a project
+            const projectId = url.pathname.split('/')[3]; // Extract projectId from /api/tasks/{projectId}/grouped-by-story
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Project not found');
+                return;
+            }
+            
+            try {
+                console.log(`Getting grouped tasks by story for project: ${projectId}`);
+                
+                // Check if tasks file exists
+                try {
+                    await fs.access(project.path);
+                } catch (accessErr) {
+                    // File doesn't exist - return empty response
+                    const emptyResponse = {
+                        withStory: {},
+                        withoutStory: [],
+                        message: "No tasks found. The tasks.json file hasn't been created yet."
+                    };
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-store, no-cache, must-revalidate'
+                    });
+                    res.end(JSON.stringify(emptyResponse));
+                    return;
+                }
+                
+                // Read and parse tasks
+                const data = await fs.readFile(project.path, 'utf8');
+                let tasksData = JSON.parse(data);
+                
+                // Handle backward compatibility
+                if (Array.isArray(tasksData)) {
+                    tasksData = { tasks: tasksData };
+                }
+                
+                let groupedTasks = { withStory: new Map(), withoutStory: tasksData.tasks || [] };
+                
+                try {
+                    // Check if BMAD integration is available
+                    const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                    const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                    
+                    if (bmadExists && tasksData.tasks && tasksData.tasks.length > 0) {
+                        // Dynamic import of BMAD API utilities
+                        const bmadApi = await import('./src/utils/bmad-api.js');
+                        
+                        // Group tasks by story with epic hierarchy information
+                        console.log(`Grouping ${tasksData.tasks.length} tasks by story with epic context for project ${projectId}`);
+                        groupedTasks = await bmadApi.getGroupedTasksByStory(tasksData.tasks, projectId);
+                        
+                        // Get stories and epics for enrichment
+                        const [stories, epics] = await Promise.all([
+                            bmadApi.getStories(projectId),
+                            bmadApi.getEpics(projectId)
+                        ]);
+                        
+                        // Create epic mapping for enrichment
+                        const epicMap = new Map();
+                        epics.forEach(epic => {
+                            epicMap.set(epic.id, epic);
+                        });
+                        
+                        // Convert Map to Object for JSON serialization and enrich with epic info
+                        const withStoryObject = {};
+                        for (const [storyId, storyGroup] of groupedTasks.withStory) {
+                            // Find the story's epic information
+                            const story = stories.find(s => s.id === storyId);
+                            const epicInfo = story && story.epic ? epicMap.get(story.epic) : null;
+                            
+                            withStoryObject[storyId] = {
+                                ...storyGroup,
+                                epic: epicInfo ? {
+                                    id: epicInfo.id,
+                                    title: epicInfo.title,
+                                    status: epicInfo.status
+                                } : null
+                            };
+                        }
+                        groupedTasks.withStory = withStoryObject;
+                    }
+                } catch (error) {
+                    console.error('Error grouping tasks by story:', error);
+                    // Continue with original ungrouped tasks
+                }
+                
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-store, no-cache, must-revalidate'
+                });
+                res.end(JSON.stringify(groupedTasks));
+            } catch (err) {
+                console.error(`Error getting grouped tasks for ${project.path}:`, err);
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error getting grouped tasks: ' + err.message);
+            }
+            
         } else if (url.pathname.startsWith('/api/tasks/') && req.method === 'GET') {
             const projectId = url.pathname.split('?')[0].split('/').pop();
             const project = projects.find(p => p.id === projectId);
@@ -1463,13 +1594,61 @@ Progress achieved so far and remaining scope`
                     console.log(`Task 880f4dd8 status: ${task880f.status}`);
                 }
                 
+                // Check if BMAD integration is enabled for story context
+                let enrichedTasks = tasksData.tasks || [];
+                let storyValidation = null;
+                
+                try {
+                    // Check if .bmad-core directory exists to determine BMAD integration
+                    const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                    const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                    
+                    if (bmadExists && enrichedTasks.length > 0) {
+                        // Dynamic import of BMAD API utilities
+                        const bmadApi = await import('./src/utils/bmad-api.js');
+                        
+                        // Enrich tasks with story context and epic hierarchy
+                        console.log(`Enriching ${enrichedTasks.length} tasks with story context and epic hierarchy for project ${projectId}`);
+                        enrichedTasks = await bmadApi.getTasksWithStoryContext(enrichedTasks, projectId);
+                        
+                        // Get stories and epics for epic hierarchy mapping
+                        const [stories, epics] = await Promise.all([
+                            bmadApi.getStories(projectId),
+                            bmadApi.getEpics(projectId)
+                        ]);
+                        
+                        // Create story-to-epic mapping
+                        const storyToEpicMap = new Map();
+                        stories.forEach(story => {
+                            if (story.epic) {
+                                storyToEpicMap.set(story.id, story.epic);
+                            }
+                        });
+                        
+                        // Add epic IDs to enriched tasks
+                        enrichedTasks.forEach(task => {
+                            if (task.storyId && storyToEpicMap.has(task.storyId)) {
+                                task.epicId = storyToEpicMap.get(task.storyId);
+                            }
+                        });
+                        
+                        // Get story validation information
+                        storyValidation = await bmadApi.validateProjectStoryTaskLinking(enrichedTasks, projectId);
+                        console.log('Story validation results:', storyValidation);
+                    }
+                } catch (error) {
+                    console.error('Error enriching tasks with story context:', error);
+                    // Continue with original tasks if enrichment fails
+                }
+
                 // Prepare response with all available data
                 const response = {
-                    tasks: tasksData.tasks || [],
+                    tasks: enrichedTasks,
                     initialRequest: tasksData.initialRequest || null,
                     summary: tasksData.summary || null,
                     summaryGeneratedAt: tasksData.summaryGeneratedAt || null,
-                    projectRoot: project.projectRoot || null
+                    projectRoot: project.projectRoot || null,
+                    storyValidation: storyValidation
                 };
                 
                 res.writeHead(200, { 
@@ -3765,6 +3944,393 @@ Progress achieved so far and remaining scope`
                     }));
                 }
             });
+            
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/with-stories') && req.method === 'GET') {
+            // Enhanced endpoint: Get tasks with enriched story data
+            const projectId = url.pathname.split('/')[3]; // Extract projectId from /api/tasks/{projectId}/with-stories
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Project not found' }));
+                return;
+            }
+            
+            try {
+                // Check cache first
+                const cacheKey = `with-stories-${projectId}`;
+                const cachedResponse = getCacheEntry(cacheKey);
+                
+                if (cachedResponse) {
+                    console.log(`Serving cached tasks with stories for project: ${projectId}`);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=300' // 5 minutes browser cache
+                    });
+                    res.end(JSON.stringify(cachedResponse));
+                    return;
+                }
+                
+                // Check if tasks file exists
+                try {
+                    await fs.access(project.path);
+                } catch (accessErr) {
+                    const emptyResponse = {
+                        tasks: [],
+                        enrichedData: {
+                            storyContext: {},
+                            epicHierarchy: {},
+                            aggregatedStats: {
+                                totalTasks: 0,
+                                tasksWithStories: 0,
+                                tasksWithoutStories: 0,
+                                storiesWithTasks: 0,
+                                storiesWithoutTasks: 0
+                            }
+                        },
+                        projectRoot: project.projectRoot || null,
+                        message: "No tasks found. The tasks.json file hasn't been created yet."
+                    };
+                    
+                    setCacheEntry(cacheKey, emptyResponse);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=300'
+                    });
+                    res.end(JSON.stringify(emptyResponse));
+                    return;
+                }
+                
+                // Read and parse tasks
+                const data = await fs.readFile(project.path, 'utf8');
+                let tasksData = JSON.parse(data);
+                
+                if (Array.isArray(tasksData)) {
+                    tasksData = { tasks: tasksData };
+                }
+                
+                let enrichedTasks = tasksData.tasks || [];
+                let enrichedData = {
+                    storyContext: {},
+                    epicHierarchy: {},
+                    aggregatedStats: {
+                        totalTasks: enrichedTasks.length,
+                        tasksWithStories: 0,
+                        tasksWithoutStories: enrichedTasks.length,
+                        storiesWithTasks: 0,
+                        storiesWithoutTasks: 0
+                    }
+                };
+                
+                // Enhanced BMAD integration
+                try {
+                    const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                    const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                    
+                    if (bmadExists && enrichedTasks.length > 0) {
+                        console.log(`Enhanced processing for ${enrichedTasks.length} tasks with BMAD integration for project ${projectId}`);
+                        
+                        const bmadApi = await import('./src/utils/bmad-api.js');
+                        
+                        // Get stories and epics
+                        const [stories, epics] = await Promise.all([
+                            bmadApi.getStories(projectId),
+                            bmadApi.getEpics(projectId)
+                        ]);
+                        
+                        // Enrich tasks with story context
+                        enrichedTasks = await bmadApi.getTasksWithStoryContext(enrichedTasks, projectId);
+                        
+                        // Build story context map
+                        const storyMap = new Map();
+                        stories.forEach(story => {
+                            storyMap.set(story.id, {
+                                id: story.id,
+                                title: story.title,
+                                epic: story.epic,
+                                status: story.status,
+                                tasks: []
+                            });
+                        });
+                        
+                        // Build epic hierarchy
+                        const epicMap = new Map();
+                        epics.forEach(epic => {
+                            epicMap.set(epic.id, {
+                                id: epic.id,
+                                title: epic.title,
+                                description: epic.description,
+                                status: epic.status,
+                                stories: []
+                            });
+                        });
+                        
+                        // Associate tasks with stories and calculate stats
+                        let tasksWithStories = 0;
+                        enrichedTasks.forEach(task => {
+                            if (task.storyId && storyMap.has(task.storyId)) {
+                                storyMap.get(task.storyId).tasks.push(task.id);
+                                tasksWithStories++;
+                            }
+                        });
+                        
+                        // Associate stories with epics
+                        stories.forEach(story => {
+                            if (story.epic && epicMap.has(story.epic)) {
+                                epicMap.get(story.epic).stories.push(story.id);
+                            }
+                        });
+                        
+                        // Convert maps to objects for JSON serialization
+                        enrichedData.storyContext = Object.fromEntries(storyMap);
+                        enrichedData.epicHierarchy = Object.fromEntries(epicMap);
+                        
+                        // Update aggregated stats
+                        enrichedData.aggregatedStats = {
+                            totalTasks: enrichedTasks.length,
+                            tasksWithStories,
+                            tasksWithoutStories: enrichedTasks.length - tasksWithStories,
+                            storiesWithTasks: Array.from(storyMap.values()).filter(s => s.tasks.length > 0).length,
+                            storiesWithoutTasks: Array.from(storyMap.values()).filter(s => s.tasks.length === 0).length,
+                            totalStories: stories.length,
+                            totalEpics: epics.length
+                        };
+                    }
+                } catch (error) {
+                    console.error('Error in enhanced BMAD processing:', error);
+                    // Continue with basic task data if enhancement fails
+                }
+                
+                const response = {
+                    tasks: enrichedTasks,
+                    enrichedData,
+                    initialRequest: tasksData.initialRequest || null,
+                    summary: tasksData.summary || null,
+                    summaryGeneratedAt: tasksData.summaryGeneratedAt || null,
+                    projectRoot: project.projectRoot || null,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Cache the response
+                setCacheEntry(cacheKey, response);
+                
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'private, max-age=300'
+                });
+                res.end(JSON.stringify(response));
+                
+            } catch (err) {
+                console.error(`Error in enhanced tasks endpoint for ${project.path}:`, err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    error: 'Failed to get enhanced task data',
+                    details: err.message 
+                }));
+            }
+            
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/dashboard-stats') && req.method === 'GET') {
+            // Enhanced endpoint: Get aggregated dashboard statistics
+            const projectId = url.pathname.split('/')[3]; // Extract projectId from /api/tasks/{projectId}/dashboard-stats
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Project not found' }));
+                return;
+            }
+            
+            try {
+                // Check cache first
+                const cacheKey = `dashboard-stats-${projectId}`;
+                const cachedStats = getCacheEntry(cacheKey);
+                
+                if (cachedStats) {
+                    console.log(`Serving cached dashboard stats for project: ${projectId}`);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=300'
+                    });
+                    res.end(JSON.stringify(cachedStats));
+                    return;
+                }
+                
+                // Check if tasks file exists
+                try {
+                    await fs.access(project.path);
+                } catch (accessErr) {
+                    const emptyStats = {
+                        taskStats: {
+                            total: 0,
+                            completed: 0,
+                            inProgress: 0,
+                            pending: 0,
+                            completionRate: 0
+                        },
+                        storyStats: {
+                            total: 0,
+                            withTasks: 0,
+                            withoutTasks: 0,
+                            avgTasksPerStory: 0
+                        },
+                        epicStats: {
+                            total: 0,
+                            withStories: 0,
+                            withoutStories: 0,
+                            avgStoriesPerEpic: 0
+                        },
+                        agentStats: {
+                            assigned: 0,
+                            unassigned: 0,
+                            agents: {}
+                        },
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    setCacheEntry(cacheKey, emptyStats);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=300'
+                    });
+                    res.end(JSON.stringify(emptyStats));
+                    return;
+                }
+                
+                // Read and parse tasks
+                const data = await fs.readFile(project.path, 'utf8');
+                let tasksData = JSON.parse(data);
+                
+                if (Array.isArray(tasksData)) {
+                    tasksData = { tasks: tasksData };
+                }
+                
+                const tasks = tasksData.tasks || [];
+                
+                // Basic task statistics
+                let taskStats = {
+                    total: tasks.length,
+                    completed: tasks.filter(t => t.status === 'completed').length,
+                    inProgress: tasks.filter(t => t.status === 'in_progress').length,
+                    pending: tasks.filter(t => t.status === 'pending').length,
+                    completionRate: 0
+                };
+                taskStats.completionRate = taskStats.total > 0 ? 
+                    Math.round((taskStats.completed / taskStats.total) * 100) : 0;
+                
+                // Agent statistics
+                let agentStats = {
+                    assigned: tasks.filter(t => t.agent && t.agent.trim() !== '').length,
+                    unassigned: tasks.filter(t => !t.agent || t.agent.trim() === '').length,
+                    agents: {}
+                };
+                
+                tasks.forEach(task => {
+                    if (task.agent && task.agent.trim() !== '') {
+                        if (!agentStats.agents[task.agent]) {
+                            agentStats.agents[task.agent] = {
+                                total: 0,
+                                completed: 0,
+                                inProgress: 0,
+                                pending: 0
+                            };
+                        }
+                        agentStats.agents[task.agent].total++;
+                        agentStats.agents[task.agent][task.status]++;
+                    }
+                });
+                
+                let storyStats = { total: 0, withTasks: 0, withoutTasks: 0, avgTasksPerStory: 0 };
+                let epicStats = { total: 0, withStories: 0, withoutStories: 0, avgStoriesPerEpic: 0 };
+                
+                // Enhanced statistics with BMAD integration
+                try {
+                    const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                    const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                    
+                    if (bmadExists) {
+                        const bmadApi = await import('./src/utils/bmad-api.js');
+                        
+                        const [stories, epics] = await Promise.all([
+                            bmadApi.getStories(projectId),
+                            bmadApi.getEpics(projectId)
+                        ]);
+                        
+                        // Story statistics
+                        const storiesWithTasks = stories.filter(story => 
+                            tasks.some(task => task.storyId === story.id)
+                        );
+                        
+                        storyStats = {
+                            total: stories.length,
+                            withTasks: storiesWithTasks.length,
+                            withoutTasks: stories.length - storiesWithTasks.length,
+                            avgTasksPerStory: stories.length > 0 ? 
+                                Math.round(tasks.filter(t => t.storyId).length / stories.length * 10) / 10 : 0
+                        };
+                        
+                        // Epic statistics
+                        const epicsWithStories = epics.filter(epic => 
+                            stories.some(story => story.epic === epic.id)
+                        );
+                        
+                        epicStats = {
+                            total: epics.length,
+                            withStories: epicsWithStories.length,
+                            withoutStories: epics.length - epicsWithStories.length,
+                            avgStoriesPerEpic: epics.length > 0 ? 
+                                Math.round(stories.length / epics.length * 10) / 10 : 0
+                        };
+                    }
+                } catch (error) {
+                    console.error('Error calculating enhanced statistics:', error);
+                }
+                
+                const dashboardStats = {
+                    taskStats,
+                    storyStats,
+                    epicStats,
+                    agentStats,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Cache the response
+                setCacheEntry(cacheKey, dashboardStats);
+                
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'private, max-age=300'
+                });
+                res.end(JSON.stringify(dashboardStats));
+                
+            } catch (err) {
+                console.error(`Error calculating dashboard stats for ${project.path}:`, err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    error: 'Failed to calculate dashboard statistics',
+                    details: err.message 
+                }));
+            }
+            
+        } else if (url.pathname === '/api/tasks/cache-clear' && req.method === 'POST') {
+            // Cache management endpoint
+            try {
+                clearCache();
+                console.log('Task-story integration cache cleared');
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    success: true,
+                    message: 'Cache cleared successfully',
+                    timestamp: new Date().toISOString()
+                }));
+            } catch (err) {
+                console.error('Error clearing cache:', err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    error: 'Failed to clear cache',
+                    details: err.message 
+                }));
+            }
             
         } else {
             // Serve static files (React app)
