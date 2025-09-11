@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { parseCompletionSummary } from '../../tools/task-viewer/src/utils/completionSummaryParser';
+import { parseCompletionSummary } from '../../tools/task-viewer/src/utils/completionSummaryParser.js';
 
 interface Task {
   id: string;
@@ -81,9 +81,9 @@ export async function migrateCompletionDetails(
       
       // Add completedAt if missing
       if (!task.completedAt) {
-        completionDetails.completedAt = new Date().toISOString();
+        completionDetails.completedAt = new Date();
       } else {
-        completionDetails.completedAt = task.completedAt;
+        completionDetails.completedAt = new Date(task.completedAt);
       }
       
       // Add default verification score if not present

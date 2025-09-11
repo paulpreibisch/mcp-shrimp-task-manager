@@ -36,8 +36,21 @@ a:visited {
 .app {
   min-height: 100vh;
   padding: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+/* Ensure all containers are full width */
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#root {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
 }
 
 .header {
@@ -429,46 +442,45 @@ a:visited {
 }
 
 
-.auto-refresh-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  white-space: nowrap;
-}
-
-.auto-refresh {
+.smart-updates-control {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #aaa;
   white-space: nowrap;
 }
 
-.auto-refresh input[type="checkbox"] {
+.refresh-mode {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4fbdba;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.refresh-mode input[type="checkbox"] {
   transform: scale(1.2);
+  accent-color: #4fbdba;
 }
 
-.refresh-interval-select {
-  padding: 6px 8px;
-  background: #2c3e50;
-  border: 1px solid #34495e;
-  border-radius: 4px;
-  color: white;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.3s;
+.watcher-status {
+  font-size: 0.9em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: bold;
 }
 
-.refresh-interval-select:focus {
-  outline: none;
-  border-color: #4fbdba;
+.watcher-status.updated {
+  background: rgba(76, 189, 186, 0.2);
+  color: #4fbdba;
 }
 
-.refresh-interval-select:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: #1a252f;
+.watcher-status.error {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
 }
+
+/* Auto-refresh removed - using Smart Updates only */
 
 .search-container {
   display: flex;
@@ -598,6 +610,20 @@ a:visited {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+}
+
+/* Full-width responsive table with fixed layout */
+.table-full-width {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  min-width: 800px;
+}
+
+.table-container {
+  width: 100%;
+  box-sizing: border-box;
+  overflow: auto;
 }
 
 /* Bulk Actions Bar Styles */
@@ -1259,7 +1285,7 @@ a:visited {
   }
   
   .table {
-    min-width: 800px;
+    min-width: 100%;
   }
   
   .stats-grid {
@@ -2668,9 +2694,18 @@ a:visited {
   height: 100%;
 }
 
+/* General wmde-markdown styling */
+.wmde-markdown,
+.wmde-markdown-color {
+  padding: 5px;
+  border-radius: 8px;
+}
+
 .markdown-content.wmde-markdown {
   background-color: transparent !important;
   color: #ecf0f1 !important;
+  padding: 5px;
+  border-radius: 8px;
 }
 
 .markdown-content h1 {
@@ -3347,8 +3382,7 @@ a:visited {
 /* Duplicate Template View Styles */
 .duplicate-template-view {
   padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .duplicate-template-header {
@@ -4077,6 +4111,31 @@ a:visited {
 }
 
 .export-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.optimize-button {
+  background: #f59e0b;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 10px 16px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+
+.optimize-button:hover:not(:disabled) {
+  background: #d97706;
+  transform: translateY(-1px);
+}
+
+.optimize-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

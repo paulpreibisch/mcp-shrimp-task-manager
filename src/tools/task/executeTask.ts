@@ -9,6 +9,13 @@ import {
 import { TaskStatus, Task } from "../../types/index.js";
 import { getExecuteTaskPrompt } from "../../prompts/index.js";
 import { loadTaskRelatedFiles } from "../../utils/fileLoader.js";
+import {
+  isBMADPresent,
+  shouldUseBMAD,
+  getBMADAgentForTask,
+  generateBMADCommand,
+  createBMADStoryFromTask,
+} from "../../utils/bmadDetector.js";
 
 // 執行任務工具
 // Execute task tool
@@ -95,6 +102,65 @@ export async function executeTask({
     // 更新任務狀態為「進行中」
     // Update task status to "in progress"
     await updateTaskStatus(taskId, TaskStatus.IN_PROGRESS);
+
+    // Check if BMAD should handle this task
+    const useBMAD = await shouldUseBMAD(task);
+    
+    if (useBMAD) {
+      // BMAD is present and should handle this task
+      const bmadAgent = getBMADAgentForTask(task);
+      
+      if (bmadAgent) {
+        // Generate BMAD command
+        const bmadCommand = generateBMADCommand(task, bmadAgent);
+        
+        // Check if we need to create a story file
+        let storyFileInfo = "";
+        if (task.name.toLowerCase().includes('story') && 
+            !task.name.toLowerCase().includes('develop')) {
+          // Create a BMAD-compatible story file
+          const storyPath = await createBMADStoryFromTask(task);
+          storyFileInfo = `\n\n📝 **Story file created:** ${storyPath}`;
+        }
+        
+        // Return BMAD execution prompt
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `## 🤖 BMAD Integration Detected
+
+Task "${task.name}" will be executed using BMAD agent: **${bmadAgent}**
+
+### Task Information
+- **ID:** ${taskId}
+- **Name:** ${task.name}
+- **Description:** ${task.description}
+${task.dependencies && task.dependencies.length > 0 ? `- **Dependencies:** ${task.dependencies.map(d => d.taskId).join(', ')}` : ''}
+
+### BMAD Execution Command
+\`\`\`
+${bmadCommand}
+\`\`\`
+${storyFileInfo}
+
+### Execution Instructions
+1. The BMAD ${bmadAgent} agent will handle this task following BMAD workflows
+2. Task status has been updated to "IN_PROGRESS" in Shrimp
+3. After BMAD completes the task, use \`complete_task\` to mark it as done
+4. Use \`verify_task\` to validate the implementation meets requirements
+
+### Why BMAD?
+- BMAD system detected in project (.bmad-core present)
+- Task pattern matches BMAD workflow (${task.name.includes('story') ? 'Story implementation' : 'Development task'})
+- BMAD agents provide specialized expertise for this task type
+
+**Note:** Shrimp will track progress while BMAD handles execution.`,
+            },
+          ],
+        };
+      }
+    }
 
     // 評估任務複雜度
     // Assess task complexity

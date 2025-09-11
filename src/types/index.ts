@@ -113,6 +113,15 @@ export interface Task {
   // Task completion details: Stores structured completion data (required when task is completed)
   completionDetails?: TaskCompletionDetails; // 任務完成時的結構化詳細資訊
   // completionDetails?: TaskCompletionDetails; // Structured detailed information when task is completed
+
+  // 元數據：用於存儲額外的配置和集成信息
+  // Metadata: Used to store additional configuration and integration information
+  metadata?: {
+    useBMAD?: boolean; // 是否使用BMAD系統執行此任務
+    // useBMAD?: boolean; // Whether to use BMAD system to execute this task
+    [key: string]: any; // 其他自定義元數據
+    // [key: string]: any; // Other custom metadata
+  };
 }
 
 // 任務複雜度級別：定義任務的複雜程度分類

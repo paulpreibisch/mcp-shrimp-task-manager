@@ -50,6 +50,15 @@ Thumbs.db
 *.mcp.json
 .mcp/
 
+# Testing artifacts
+.playwright-mcp/
+test-*.js
+test-*.md
+test-*.html
+
+# Build bundles
+web-bundles/
+
 # 覆蓋率報告
 coverage/
 

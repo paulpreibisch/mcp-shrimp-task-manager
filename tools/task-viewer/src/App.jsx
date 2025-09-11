@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import TaskTable from './components/TaskTable';
+import { analyzeTaskParallelization, copyToClipboard } from './utils/taskParallelization';
 import FinalSummary from './components/FinalSummary';
 import ReleaseNotes from './components/ReleaseNotes';
 import Help from './components/Help';
@@ -28,8 +29,9 @@ import { useTranslation } from 'react-i18next';
 import { parseUrlState, updateUrl, pushUrlState, getInitialUrlState, cleanUrlStateForTab } from './utils/urlStateSync';
 import NestedTabs from './components/NestedTabs';
 import { debugLog, performanceMonitor } from './utils/debug';
+import { createArchive } from './utils/archiveService';
 import { usePerformanceMonitoring } from './utils/optimizedHooks';
-import { exportToCSV, exportToMarkdown } from './utils/exportUtils';
+import { exportToCSV, exportToMarkdown, exportToJSON } from './utils/exportUtils';
 import { taskFileWatcher } from './utils/taskFileWatcher';
 
 function AppContent() {
@@ -57,15 +59,10 @@ function AppContent() {
   const [summary, setSummary] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [autoRefresh, setAutoRefresh] = useState(() => {
-    const saved = localStorage.getItem('autoRefresh');
-    return saved !== null ? saved === 'true' : true;
+  const [watcherEnabled, setWatcherEnabled] = useState(() => {
+    const saved = localStorage.getItem('watcherEnabled');
+    return saved !== null ? saved === 'true' : true; // Default to true for better UX
   });
-  const [refreshInterval, setRefreshInterval] = useState(() => {
-    const saved = localStorage.getItem('refreshInterval');
-    return saved !== null ? Number(saved) : 30;
-  });
-  const [watcherEnabled, setWatcherEnabled] = useState(false); // Default to false to prevent auto-start errors
   const [watcherStatus, setWatcherStatus] = useState({});
   const [globalFilter, setGlobalFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'completed', 'in_progress', 'pending'
@@ -137,6 +134,9 @@ function AppContent() {
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false);
 
+  // Optimize button states
+  const [optimizeTooltip, setOptimizeTooltip] = useState('');
+
   // Archive modal states
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -205,13 +205,17 @@ function AppContent() {
       let mimeType;
 
       if (format === 'csv') {
-        content = exportToCSV(filteredTasks);
+        content = exportToCSV(filteredTasks, initialRequest);
         filename = 'tasks.csv';
         mimeType = 'text/csv';
       } else if (format === 'markdown') {
-        content = exportToMarkdown(filteredTasks, initialRequest);
+        content = exportToMarkdown(filteredTasks, initialRequest, summary);
         filename = 'tasks.md';
         mimeType = 'text/markdown';
+      } else if (format === 'json') {
+        content = exportToJSON(filteredTasks, initialRequest, summary);
+        filename = 'tasks.json';
+        mimeType = 'application/json';
       } else {
         showToast('Invalid export format', 'error');
         return false;
@@ -242,47 +246,20 @@ function AppContent() {
   };
 
   // Archive handler function
-  const handleArchive = () => {
+  const handleArchive = async () => {
     if (!selectedProfile || tasks.length === 0) {
       showToast('No tasks to archive', 'error');
       return;
     }
 
     try {
-      // Create archive object
-      const archiveData = {
-        id: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
-        projectId: selectedProfile,
-        projectName: profiles?.find(p => p.id === selectedProfile)?.name || 'Unknown Project',
-        initialRequest: initialRequest || '',
-        tasks: tasks,
-        stats: {
-          total: tasks.length,
-          completed: tasks.filter(t => t.status === 'completed').length,
-          inProgress: tasks.filter(t => t.status === 'in_progress').length,
-          pending: tasks.filter(t => t.status === 'pending').length
-        },
-        summary: summary || ''
-      };
-
-      // Get existing archives from localStorage
-      const storageKey = `task-archives-${selectedProfile}`;
-      const existingArchives = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const projectName = profiles?.find(p => p.id === selectedProfile)?.name || 'Unknown Project';
+      const result = await createArchive(selectedProfile, projectName, initialRequest, tasks);
       
-      // Add new archive to the beginning
-      const updatedArchives = [archiveData, ...existingArchives];
+      // Update state with new archives
+      setArchives(result.archives);
       
-      // Limit to 50 archives to prevent localStorage overflow
-      const limitedArchives = updatedArchives.slice(0, 50);
-      
-      // Save to localStorage
-      localStorage.setItem(storageKey, JSON.stringify(limitedArchives));
-      
-      // Update state
-      setArchives(limitedArchives);
-      
-      showToast(`Archived ${tasks.length} tasks successfully`, 'success');
+      showToast(result.message, 'success');
     } catch (err) {
       console.error('Archive error:', err);
       showToast('Failed to archive tasks: ' + err.message, 'error');
@@ -535,19 +512,7 @@ function AppContent() {
     }
   }, [watcherEnabled, selectedProfile, isInEditMode, isInDetailView, profiles]);
 
-  // Fallback auto-refresh interval (only when file watcher is disabled)
-  useEffect(() => {
-    let interval;
-    if (!watcherEnabled && autoRefresh && selectedProfile && !isInEditMode && !isInDetailView) {
-      interval = setInterval(() => {
-        console.log(`Fallback auto-refreshing tasks every ${refreshInterval}s...`);
-        loadTasks(selectedProfile, true);
-      }, refreshInterval * 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [watcherEnabled, autoRefresh, selectedProfile, refreshInterval, isInEditMode, isInDetailView]);
+  // Auto-refresh removed - using Smart Updates only
 
   // Load profiles on mount
   useEffect(() => {
@@ -691,19 +656,15 @@ function AppContent() {
     localStorage.setItem('selectedOuterTab', selectedOuterTab);
   }, [selectedProfile, selectedOuterTab]);
   
-  // Save auto-refresh settings to localStorage when they change
+  // Save watcher enabled state to localStorage when it changes
   useEffect(() => {
-    localStorage.setItem('autoRefresh', autoRefresh.toString());
-  }, [autoRefresh]);
+    localStorage.setItem('watcherEnabled', watcherEnabled.toString());
+  }, [watcherEnabled]);
 
   // Save initial request collapse state to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('initialRequestCollapsed', initialRequestCollapsed.toString());
   }, [initialRequestCollapsed]);
-  
-  useEffect(() => {
-    localStorage.setItem('refreshInterval', refreshInterval.toString());
-  }, [refreshInterval]);
   
   // Update URL when history view changes
   useEffect(() => {
@@ -1497,6 +1458,29 @@ function AppContent() {
     }
   }), [selectedProfile, selectedOuterTab, projectInnerTab, urlStateInitialized, loading, stats, profiles.length, tasks.length, currentLanguage, performanceData]);
 
+  // Optimize button functionality
+  const handleOptimizeHover = () => {
+    const analysis = analyzeTaskParallelization(tasks);
+    setOptimizeTooltip(analysis.commandText);
+  };
+
+  const handleOptimizeClick = async () => {
+    const analysis = analyzeTaskParallelization(tasks);
+    const success = await copyToClipboard(analysis.commandText);
+    if (success) {
+      const taskCount = analysis.runnableTasks.length;
+      if (taskCount === 0) {
+        showToast('Dependency information copied to clipboard', 'info');
+      } else if (taskCount === 1) {
+        showToast('Single task command copied to clipboard!', 'success');
+      } else {
+        showToast(`Parallel execution command for ${taskCount} tasks copied!`, 'success');
+      }
+    } else {
+      showToast('Failed to copy to clipboard', 'error');
+    }
+  };
+
   return (
     <ErrorBoundary name="AppContent" logProps={false}>
       <div className="app">
@@ -1708,6 +1692,30 @@ function AppContent() {
                     </button>
 
                     <button
+                      name="optimize-tasks-button"
+                      className="optimize-button"
+                      onClick={handleOptimizeClick}
+                      onMouseEnter={handleOptimizeHover}
+                      disabled={loading || !selectedProfile || tasks.length === 0}
+                      title={optimizeTooltip || "Click to analyze and copy commands for task execution"}
+                      style={{
+                        padding: '8px 12px',
+                        marginRight: '8px',
+                        backgroundColor: '#f59e0b',
+                        border: 'none',
+                        borderRadius: '4px',
+                        color: '#fff',
+                        cursor: tasks.length > 0 && selectedProfile && !loading ? 'pointer' : 'not-allowed',
+                        fontSize: '14px',
+                        opacity: tasks.length > 0 && selectedProfile && !loading ? 1 : 0.5,
+                        maxWidth: '120px',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      ⚡ Optimize
+                    </button>
+
+                    <button
                       name="archive-tasks-button"
                       className="archive-button"
                       onClick={() => setShowArchiveModal(true)}
@@ -1738,54 +1746,23 @@ function AppContent() {
                       {loading ? '⏳' : '🔄'}
                     </button>
 
-                    <div className="auto-refresh-controls" name="auto-refresh-controls" title="Configure automatic task refresh">
-                      <div className="refresh-mode-controls">
-                        <label className="refresh-mode" name="intelligent-watcher-toggle">
-                          <input 
-                            type="checkbox"
-                            name="intelligent-watcher-checkbox"
-                            checked={watcherEnabled}
-                            onChange={(e) => setWatcherEnabled(e.target.checked)}
-                            title="Enable intelligent file watching for instant updates"
-                          />
-                          🔍 Smart Updates
-                        </label>
-                        {watcherStatus[selectedProfile] && (
-                          <span className={`watcher-status ${watcherStatus[selectedProfile].status}`}>
-                            {watcherStatus[selectedProfile].status === 'updated' ? '✅' : 
-                             watcherStatus[selectedProfile].status === 'error' ? '❌' : '⏳'}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <label className="auto-refresh" name="auto-refresh-toggle">
+                    <div className="smart-updates-control" name="smart-updates-control" title="Enable intelligent file watching for instant updates">
+                      <label className="refresh-mode" name="intelligent-watcher-toggle">
                         <input 
                           type="checkbox"
-                          name="auto-refresh-checkbox"
-                          checked={autoRefresh}
-                          onChange={(e) => setAutoRefresh(e.target.checked)}
-                          disabled={watcherEnabled}
-                          title={watcherEnabled ? "Disabled when Smart Updates is active" : `Enable polling refresh every ${refreshInterval} seconds`}
+                          name="intelligent-watcher-checkbox"
+                          checked={watcherEnabled}
+                          onChange={(e) => setWatcherEnabled(e.target.checked)}
+                          title="Enable intelligent file watching for instant updates"
                         />
-                        {t('autoRefresh')} {watcherEnabled && '(Fallback)'}
+                        🔍 Smart Updates
                       </label>
-                      
-                      <select 
-                        className="refresh-interval-select"
-                        name="refresh-interval-selector"
-                        value={refreshInterval}
-                        onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                        disabled={!autoRefresh || watcherEnabled}
-                        title="Set how often to automatically refresh task data (fallback when Smart Updates disabled)"
-                      >
-                        <option value={5}>5s</option>
-                        <option value={10}>10s</option>
-                        <option value={15}>15s</option>
-                        <option value={30}>30s</option>
-                        <option value={60}>1m</option>
-                        <option value={120}>2m</option>
-                        <option value={300}>5m</option>
-                      </select>
+                      {watcherStatus[selectedProfile] && (
+                        <span className={`watcher-status ${watcherStatus[selectedProfile].status}`}>
+                          {watcherStatus[selectedProfile].status === 'updated' ? '✅' : 
+                           watcherStatus[selectedProfile].status === 'error' ? '❌' : '⏳'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

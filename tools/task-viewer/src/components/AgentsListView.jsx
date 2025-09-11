@@ -131,8 +131,20 @@ function AgentsListView({
       accessorKey: 'name',
       header: t('agentName') || 'Agent Name',
       cell: ({ row }) => {
-        const agentName = row.original.metadata?.name || row.original.name.replace(/\.(md|yaml|yml)$/, '');
-        const color = row.original.metadata?.color;
+        const metadata = row.original.metadata;
+        const isBMAD = metadata?.isBMAD;
+        
+        // For BMAD agents, use their title and icon
+        const agentName = isBMAD 
+          ? (metadata?.title || metadata?.name || row.original.name.replace('.md', ''))
+          : (metadata?.name || row.original.name.replace(/\.(md|yaml|yml)$/, ''));
+        
+        const icon = isBMAD && metadata?.icon 
+          ? metadata.icon 
+          : getFileTypeIcon(row.original.name);
+        
+        const color = metadata?.color;
+        
         return (
           <div>
             <div className="task-name" style={color ? { 
@@ -142,12 +154,13 @@ function AgentsListView({
               borderRadius: '4px',
               display: 'inline-block'
             } : {}}>
-              <span className="template-icon">{getFileTypeIcon(row.original.name)}</span>
+              <span className="template-icon">{icon}</span>
               {agentName}
+              {isBMAD && <span style={{ marginLeft: '8px', fontSize: '0.8em', opacity: 0.7 }}>(BMAD)</span>}
             </div>
             <div className="task-meta">
               <span className="task-id">
-                {getFileType(row.original.name)}
+                {isBMAD ? 'BMAD Agent' : getFileType(row.original.name)}
               </span>
             </div>
           </div>
@@ -199,10 +212,20 @@ function AgentsListView({
       accessorKey: 'aiInstruction',
       header: t('aiInstruction') || 'AI Instruction',
       cell: ({ row }) => {
-        // Use absolute paths for both global and project agents
-        const agentPath = isGlobal 
-          ? `${claudeFolderPath || './claude'}/agents/${row.original.name}` 
-          : `${projectRoot || '.'}/.claude/agents/${row.original.name}`;
+        let instruction;
+        
+        // Check if this is a BMAD agent
+        if (row.original.metadata?.isBMAD) {
+          // BMAD agents use a different activation format
+          const agentId = row.original.metadata.id || row.original.name.replace('.md', '');
+          instruction = `/BMad:agents:${agentId}`;
+        } else {
+          // Standard Claude agents
+          const agentPath = isGlobal 
+            ? `${claudeFolderPath || './claude'}/agents/${row.original.name}` 
+            : `${projectRoot || '.'}/.claude/agents/${row.original.name}`;
+          instruction = `use subagent ${row.original.name} located in ${agentPath}:`;
+        }
         
         // Log for debugging
         console.log('Agent instruction generation:', {
@@ -210,10 +233,9 @@ function AgentsListView({
           projectRoot,
           claudeFolderPath,
           agentName: row.original.name,
-          agentPath
+          isBMAD: row.original.metadata?.isBMAD,
+          instruction
         });
-        
-        const instruction = `use subagent ${row.original.name} located in ${agentPath}:`;
         
         return (
           <div className="actions-cell">

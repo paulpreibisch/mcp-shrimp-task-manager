@@ -1,5 +1,5 @@
 {
-  "appTitle": "🦐 Shrimp Task Manager Viewer",
+  "appTitle": "🦐 MadShrimp",
   "unknown": "Unknown",
   "unknownTask": "Unknown Task",
   "task.name": "Task Name",
@@ -13,7 +13,7 @@
   "subAgents": "Sub-Agents",
   "settings": "Settings",
   "header": {
-    "appTitle": "🦐 Shrimp Task Manager Viewer",
+    "appTitle": "🦐 MadShrimp",
     "version": "Version",
     "releaseNotes": "Release Notes",
     "help": "Help",

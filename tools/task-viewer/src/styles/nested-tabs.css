@@ -124,6 +124,33 @@
   outline-offset: -2px;
 }
 
+/* Epic Tabs Specific Styling */
+.epic-tabs .inner-tabs-list {
+  background: rgba(45, 55, 72, 0.4);
+  border: 1px solid #2d3748;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.epic-tabs .inner-tab {
+  background: rgba(26, 32, 44, 0.6) !important;
+  border: 1px solid #4a5568 !important;
+  color: #cbd5e1 !important;
+  transition: all 0.2s ease;
+}
+
+.epic-tabs .inner-tab:hover:not(.active) {
+  background: rgba(74, 85, 104, 0.4) !important;
+  border-color: #718096 !important;
+}
+
+.epic-tabs .inner-tab.active {
+  background: #3182ce !important;
+  border-color: #3182ce !important;
+  color: white !important;
+  font-weight: 600;
+}
+
 /* Hide panel focus outline */
 [role="tabpanel"]:focus {
   outline: none;

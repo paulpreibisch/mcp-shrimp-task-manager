@@ -20,7 +20,8 @@ const NestedTabs = ({
   handleDragEnd,
   handleDrop,
   claudeFolderPath,
-  tasks = []
+  tasks = [],
+  bmadStatus = { detected: false, enabled: true }
 }) => {
   const { t } = useTranslation();
   
@@ -139,8 +140,20 @@ const NestedTabs = ({
                     <Tab.Panel key={profile.id}>
                       {/* Inner project tabs */}
                       <div className="inner-tabs-wrapper">
-                        <Tab.Group selectedIndex={projectInnerTab === 'tasks' ? 0 : projectInnerTab === 'history' ? 1 : projectInnerTab === 'agents' ? 2 : projectInnerTab === 'settings' ? 3 : 4} 
-                                   onChange={(index) => setProjectInnerTab(['tasks', 'history', 'agents', 'settings', 'archive'][index])}>
+                        <Tab.Group selectedIndex={
+                          projectInnerTab === 'tasks' ? 0 : 
+                          projectInnerTab === 'history' ? 1 : 
+                          (bmadStatus.detected && projectInnerTab === 'bmad') ? 2 :
+                          projectInnerTab === 'agents' ? (bmadStatus.detected ? 3 : 2) : 
+                          projectInnerTab === 'settings' ? (bmadStatus.detected ? 4 : 3) : 
+                          (bmadStatus.detected ? 5 : 4)
+                        } 
+                        onChange={(index) => {
+                          const tabs = bmadStatus.detected 
+                            ? ['tasks', 'history', 'bmad', 'agents', 'settings', 'archive']
+                            : ['tasks', 'history', 'agents', 'settings', 'archive'];
+                          setProjectInnerTab(tabs[index]);
+                        }}>
                           <Tab.List className="inner-tabs-list project-inner-tabs">
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}
                                onClick={() => {
@@ -154,6 +167,17 @@ const NestedTabs = ({
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}>
                             <span>📊 {t('history')}</span>
                           </Tab>
+                          {bmadStatus.detected && (
+                            <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}
+                                 onClick={() => {
+                                   // If already on BMAD tab, force refresh to reset view
+                                   if (projectInnerTab === 'bmad') {
+                                     setProjectInnerTab('bmad');
+                                   }
+                                 }}>
+                              <span>🤖 BMAD</span>
+                            </Tab>
+                          )}
                           <Tab className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}
                                onClick={() => {
                                  // If already on agents tab, force refresh to reset view
@@ -180,6 +204,12 @@ const NestedTabs = ({
                             {/* History content */}
                             {children.history}
                           </Tab.Panel>
+                          {bmadStatus.detected && (
+                            <Tab.Panel>
+                              {/* BMAD content */}
+                              {children.bmad}
+                            </Tab.Panel>
+                          )}
                           <Tab.Panel>
                             {/* Agents content */}
                             {children.agents}
