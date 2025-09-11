@@ -50,6 +50,10 @@
   ],
   "homepage": "https://github.com/cjo4m06/mcp-shrimp-task-manager#readme",
   "dependencies": {
+    "@chakra-ui/react": "^2.10.9",
+    "@chakra-ui/theme-tools": "^2.2.9",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@headlessui/react": "^2.2.7",
     "@tanstack/react-table": "^8.21.3",
     "@types/react": "^19.1.8",
@@ -59,6 +63,7 @@
     "@vitejs/plugin-react": "^4.6.0",
     "busboy": "^1.6.0",
     "dotenv": "^17.2.1",
+    "framer-motion": "^6.5.1",
     "i18next": "^25.3.2",
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",
