@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChakraProvider } from '@chakra-ui/react';
 import TaskTable from './components/TaskTable';
-import { analyzeTaskParallelization, copyToClipboard } from './utils/taskParallelization';
+import { analyzeTaskParallelization, generateFullExecutionPlan, copyToClipboard } from './utils/taskParallelization';
 import FinalSummary from './components/FinalSummary';
 import ReleaseNotes from './components/ReleaseNotes';
 import Help from './components/Help';
 import TemplateManagement from './components/TemplateManagement';
+import Tooltip from './components/Tooltip';
 import TemplateEditor from './components/TemplateEditor';
 import TemplatePreview from './components/TemplatePreview';
 import ActivationDialog from './components/ActivationDialog';
@@ -137,8 +138,10 @@ function AppContent() {
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false);
 
-  // Optimize button states
-  const [optimizeTooltip, setOptimizeTooltip] = useState('');
+  // Execute and Optimize All button states
+  const [executeTooltip, setExecuteTooltip] = useState('');
+  const [optimizeAllTooltip, setOptimizeAllTooltip] = useState('');
+  const [showOptimizeTooltip, setShowOptimizeTooltip] = useState(false);
 
   // Archive modal states
   const [showArchiveModal, setShowArchiveModal] = useState(false);
@@ -1461,13 +1464,13 @@ function AppContent() {
     }
   }), [selectedProfile, selectedOuterTab, projectInnerTab, urlStateInitialized, loading, stats, profiles.length, tasks.length, currentLanguage, performanceData]);
 
-  // Optimize button functionality
-  const handleOptimizeHover = () => {
+  // Execute button functionality (formerly Optimize)
+  const handleExecuteHover = () => {
     const analysis = analyzeTaskParallelization(tasks);
-    setOptimizeTooltip(analysis.commandText);
+    setExecuteTooltip(analysis.commandText);
   };
 
-  const handleOptimizeClick = async () => {
+  const handleExecuteClick = async () => {
     const analysis = analyzeTaskParallelization(tasks);
     const success = await copyToClipboard(analysis.commandText);
     if (success) {
@@ -1479,6 +1482,27 @@ function AppContent() {
       } else {
         showToast(`Parallel execution command for ${taskCount} tasks copied!`, 'success');
       }
+    } else {
+      showToast('Failed to copy to clipboard', 'error');
+    }
+  };
+
+  // Optimize All button functionality
+  const handleOptimizeAllHover = () => {
+    const plan = generateFullExecutionPlan(tasks);
+    setOptimizeAllTooltip(plan);
+    setShowOptimizeTooltip(true);
+  };
+
+  const handleOptimizeAllLeave = () => {
+    setShowOptimizeTooltip(false);
+  };
+
+  const handleOptimizeAllClick = async () => {
+    const plan = generateFullExecutionPlan(tasks);
+    const success = await copyToClipboard(plan);
+    if (success) {
+      showToast('Complete execution plan copied to clipboard!', 'success');
     } else {
       showToast('Failed to copy to clipboard', 'error');
     }
@@ -1704,16 +1728,16 @@ function AppContent() {
                     </button>
 
                     <button
-                      name="optimize-tasks-button"
-                      className="optimize-button"
-                      onClick={handleOptimizeClick}
-                      onMouseEnter={handleOptimizeHover}
+                      name="execute-tasks-button"
+                      className="execute-button"
+                      onClick={handleExecuteClick}
+                      onMouseEnter={handleExecuteHover}
                       disabled={loading || !selectedProfile || tasks.length === 0}
-                      title={optimizeTooltip || "Click to analyze and copy commands for task execution"}
+                      title={executeTooltip || "Click to copy commands for next executable tasks"}
                       style={{
                         padding: '8px 12px',
                         marginRight: '8px',
-                        backgroundColor: '#f59e0b',
+                        backgroundColor: '#10b981',
                         border: 'none',
                         borderRadius: '4px',
                         color: '#fff',
@@ -1724,8 +1748,76 @@ function AppContent() {
                         whiteSpace: 'nowrap'
                       }}
                     >
-                      ⚡ Optimize
+                      🚀 Execute
                     </button>
+
+                    <div style={{ display: 'inline-block', position: 'relative' }}>
+                      <button
+                        name="optimize-all-button"
+                        className="optimize-all-button"
+                        onClick={handleOptimizeAllClick}
+                        onMouseEnter={handleOptimizeAllHover}
+                        onMouseLeave={handleOptimizeAllLeave}
+                        disabled={loading || !selectedProfile || tasks.length === 0}
+                        style={{
+                          padding: '8px 12px',
+                          marginRight: '8px',
+                          backgroundColor: '#f59e0b',
+                          border: 'none',
+                          borderRadius: '4px',
+                          color: '#fff',
+                          cursor: tasks.length > 0 && selectedProfile && !loading ? 'pointer' : 'not-allowed',
+                          fontSize: '14px',
+                          opacity: tasks.length > 0 && selectedProfile && !loading ? 1 : 0.5,
+                          maxWidth: '140px',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        ⚡ Optimize All
+                      </button>
+                      {showOptimizeTooltip && optimizeAllTooltip && (
+                        <div
+                          className="execution-plan-tooltip"
+                          style={{
+                            position: 'absolute',
+                            bottom: '100%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            marginBottom: '10px',
+                            padding: '16px',
+                            backgroundColor: 'rgba(15, 23, 42, 0.98)',
+                            color: '#e2e8f0',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            fontFamily: 'Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                            whiteSpace: 'pre-line',
+                            minWidth: '400px',
+                            maxWidth: '800px',
+                            maxHeight: '500px',
+                            overflowY: 'auto',
+                            zIndex: 10000,
+                            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+                            border: '1px solid rgba(148, 163, 184, 0.2)',
+                            lineHeight: '1.4'
+                          }}
+                        >
+                          {optimizeAllTooltip}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '100%',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              width: 0,
+                              height: 0,
+                              borderLeft: '8px solid transparent',
+                              borderRight: '8px solid transparent',
+                              borderTop: '8px solid rgba(15, 23, 42, 0.98)'
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
 
                     <button
                       name="archive-tasks-button"
