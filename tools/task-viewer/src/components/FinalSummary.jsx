@@ -8,7 +8,6 @@ import {
   ModalBody,
   ModalCloseButton,
   Button,
-  useDisclosure,
 } from '@chakra-ui/react';
 
 const FinalSummary = forwardRef(({ 
@@ -22,11 +21,9 @@ const FinalSummary = forwardRef(({
   const [error, setError] = useState(null);
   
   // Modal controls
-  const {
-    isOpen: isSummaryModalOpen,
-    onOpen: onSummaryModalOpen,
-    onClose: onSummaryModalClose
-  } = useDisclosure();
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const onSummaryModalOpen = () => setIsSummaryModalOpen(true);
+  const onSummaryModalClose = () => setIsSummaryModalOpen(false);
   
   // Update summary when existingSummary prop changes
   useEffect(() => {

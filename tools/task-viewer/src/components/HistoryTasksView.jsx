@@ -19,7 +19,6 @@ import {
   ModalBody,
   ModalCloseButton,
   Button,
-  useDisclosure,
 } from '@chakra-ui/react';
 
 function HistoryTasksView({ 
@@ -36,18 +35,14 @@ function HistoryTasksView({
   const [selectedTask, setSelectedTask] = useState(null);
   
   // Modal controls for Initial Request
-  const {
-    isOpen: isInitialRequestOpen,
-    onOpen: onInitialRequestOpen,
-    onClose: onInitialRequestClose
-  } = useDisclosure();
+  const [isInitialRequestOpen, setIsInitialRequestOpen] = useState(false);
+  const onInitialRequestOpen = () => setIsInitialRequestOpen(true);
+  const onInitialRequestClose = () => setIsInitialRequestOpen(false);
   
   // Modal controls for Summary
-  const {
-    isOpen: isSummaryOpen,
-    onOpen: onSummaryOpen,
-    onClose: onSummaryClose
-  } = useDisclosure();
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const onSummaryOpen = () => setIsSummaryOpen(true);
+  const onSummaryClose = () => setIsSummaryOpen(false);
 
   const columns = useMemo(() => [
     {

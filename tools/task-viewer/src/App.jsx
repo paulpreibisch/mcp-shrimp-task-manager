@@ -9,7 +9,6 @@ import {
   ModalBody,
   ModalCloseButton,
   Button,
-  useDisclosure,
 } from '@chakra-ui/react';
 import TaskTable from './components/TaskTable';
 import { analyzeTaskParallelization, generateFullExecutionPlan, copyToClipboard } from './utils/taskParallelization';
@@ -142,11 +141,9 @@ function AppContent() {
   const [currentTask, setCurrentTask] = useState(null);
   
   // Modal controls for Initial Request
-  const {
-    isOpen: isInitialRequestOpen,
-    onOpen: onInitialRequestOpen,
-    onClose: onInitialRequestClose
-  } = useDisclosure();
+  const [isInitialRequestOpen, setIsInitialRequestOpen] = useState(false);
+  const onInitialRequestOpen = () => setIsInitialRequestOpen(true);
+  const onInitialRequestClose = () => setIsInitialRequestOpen(false);
 
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false);
