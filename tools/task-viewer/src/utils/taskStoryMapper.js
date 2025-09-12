@@ -33,17 +33,45 @@ export function extractStoryIdFromTask(task) {
 
   // Check task description for story references
   if (task.description) {
-    const storyMatch = task.description.match(/story[:\s]+([0-9]+\.[0-9]+)/i);
-    if (storyMatch) {
-      return storyMatch[1];
+    const patterns = [
+      /story[:\s]+([0-9]+\.[0-9]+)/i,
+      /STORY[-_]([0-9]+)/i,
+      /#([0-9]+\.[0-9]+)/,
+      /\b([0-9]{3}\.[0-9]{3})\b/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = task.description.match(pattern);
+      if (match) {
+        const storyNum = match[1];
+        // If we only got a number, assume it belongs to epic 001
+        if (storyNum.indexOf('.') === -1) {
+          return `001.${storyNum.padStart(3, '0')}`;
+        }
+        return storyNum;
+      }
     }
   }
 
   // Check task name for story patterns
   if (task.name) {
-    const storyMatch = task.name.match(/story[:\s]+([0-9]+\.[0-9]+)/i);
-    if (storyMatch) {
-      return storyMatch[1];
+    const patterns = [
+      /story[:\s]+([0-9]+\.[0-9]+)/i,
+      /STORY[-_]([0-9]+)/i,
+      /#([0-9]+\.[0-9]+)/,
+      /\b([0-9]{3}\.[0-9]{3})\b/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = task.name.match(pattern);
+      if (match) {
+        const storyNum = match[1];
+        // If we only got a number, assume it belongs to epic 001
+        if (storyNum.indexOf('.') === -1) {
+          return `001.${storyNum.padStart(3, '0')}`;
+        }
+        return storyNum;
+      }
     }
   }
 
@@ -141,19 +169,24 @@ export function groupTasksByStory(tasks, stories = []) {
  * Get story context for task display
  * @param {string} storyId - Story ID
  * @param {Array} stories - Array of available stories
+ * @param {Object} verifications - Optional verification data for stories
  * @returns {Object} - Story context object
  */
-export function getStoryContext(storyId, stories = []) {
+export function getStoryContext(storyId, stories = [], verifications = {}) {
   if (!storyId) return null;
 
   const story = stories.find(s => s.id === storyId);
+  const verification = verifications[storyId];
+  
   if (!story) {
     return {
       id: storyId,
       title: `Story ${storyId}`,
       description: 'Story details not available',
       status: 'unknown',
-      verified: false
+      verified: false,
+      verificationScore: verification?.score || null,
+      verificationStatus: 'not-found'
     };
   }
 
@@ -162,8 +195,10 @@ export function getStoryContext(storyId, stories = []) {
     title: story.title || `Story ${storyId}`,
     description: story.description || story.userStory || 'No description available',
     status: story.status || 'active',
-    verified: Boolean(story.verified),
-    epicId: story.epicId,
+    verified: Boolean(story.verified || verification?.verified),
+    verificationScore: verification?.score || story.verificationScore || null,
+    verificationStatus: story.verificationStatus || (verification ? 'verified' : 'pending'),
+    epicId: story.epicId || story.epic,
     directory: story.directory
   };
 }
@@ -172,12 +207,13 @@ export function getStoryContext(storyId, stories = []) {
  * Add story context to task data
  * @param {Array} tasks - Array of tasks
  * @param {Array} stories - Array of stories
+ * @param {Object} verifications - Optional verification data for stories
  * @returns {Array} - Tasks with story context added
  */
-export function enrichTasksWithStoryContext(tasks, stories = []) {
+export function enrichTasksWithStoryContext(tasks, stories = [], verifications = {}) {
   return tasks.map(task => {
     const storyId = extractStoryIdFromTask(task);
-    const storyContext = storyId ? getStoryContext(storyId, stories) : null;
+    const storyContext = storyId ? getStoryContext(storyId, stories, verifications) : null;
     
     return {
       ...task,

@@ -52,7 +52,7 @@ const ArchivedEpicsTab = ({
 
   if (archivedEpics.length === 0) {
     return (
-      <div style={{
+      <div data-testid="archived-epics-empty-state" style={{
         padding: '40px',
         textAlign: 'center',
         color: '#94a3b8',
@@ -72,28 +72,29 @@ const ArchivedEpicsTab = ({
   }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#e2e8f0', marginBottom: '8px' }}>
+    <div data-testid="archived-epics-container" style={{ padding: '20px' }}>
+      <div data-testid="archived-epics-header" style={{ marginBottom: '20px' }}>
+        <h2 data-testid="archived-epics-title" style={{ fontSize: '24px', fontWeight: '600', color: '#e2e8f0', marginBottom: '8px' }}>
           Archived EPICs
         </h2>
-        <p style={{ color: '#94a3b8', fontSize: '14px' }}>
+        <p data-testid="archived-epics-count" style={{ color: '#94a3b8', fontSize: '14px' }}>
           {archivedEpics.length} EPIC{archivedEpics.length !== 1 ? 's' : ''} archived
         </p>
       </div>
 
-      <div className="table-container" style={{
+      <div className="table-container" data-testid="archived-epics-table-container" style={{
         backgroundColor: 'rgba(26, 32, 44, 0.5)',
         borderRadius: '8px',
         border: '1px solid #2d3748'
       }}>
-        <table className="table-full-width">
-          <thead>
+        <table className="table-full-width" data-testid="archived-epics-table">
+          <thead data-testid="archived-epics-table-header">
             <tr style={{
               backgroundColor: 'rgba(45, 55, 72, 0.3)',
               borderBottom: '2px solid #2d3748'
             }}>
               <th 
+                data-testid="archived-epics-header-id"
                 onClick={() => handleSort('id')}
                 style={{ 
                   padding: '12px', 
@@ -109,6 +110,7 @@ const ArchivedEpicsTab = ({
                 EPIC ID {sortColumn === 'id' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
+                data-testid="archived-epics-header-title"
                 onClick={() => handleSort('title')}
                 style={{ 
                   padding: '12px', 
@@ -124,6 +126,7 @@ const ArchivedEpicsTab = ({
                 Title {sortColumn === 'title' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
+                data-testid="archived-epics-header-stories"
                 onClick={() => handleSort('storiesCount')}
                 style={{ 
                   padding: '12px', 
@@ -139,6 +142,7 @@ const ArchivedEpicsTab = ({
                 Stories {sortColumn === 'storiesCount' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
+                data-testid="archived-epics-header-date"
                 onClick={() => handleSort('archivedAt')}
                 style={{ 
                   padding: '12px', 
@@ -153,7 +157,7 @@ const ArchivedEpicsTab = ({
               >
                 Archived Date {sortColumn === 'archivedAt' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
-              <th style={{ 
+              <th data-testid="archived-epics-header-actions" style={{ 
                 padding: '12px', 
                 textAlign: 'center', 
                 color: '#cbd5e1', 
@@ -165,10 +169,11 @@ const ArchivedEpicsTab = ({
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody data-testid="archived-epics-table-body">
             {paginatedEpics.map((epic) => (
               <tr 
                 key={epic.id}
+                data-testid={`archived-epic-${epic.id}-row`}
                 style={{
                   borderBottom: '1px solid #2d3748',
                   transition: 'background-color 0.2s ease'
@@ -180,7 +185,7 @@ const ArchivedEpicsTab = ({
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
               >
-                <td style={{ 
+                <td data-testid={`archived-epic-${epic.id}-id-cell`} style={{ 
                   padding: '12px', 
                   fontSize: '13px', 
                   fontWeight: '600', 
@@ -188,13 +193,13 @@ const ArchivedEpicsTab = ({
                 }}>
                   Epic {epic.id}
                 </td>
-                <td style={{ 
+                <td data-testid={`archived-epic-${epic.id}-title-cell`} style={{ 
                   padding: '12px', 
                   fontSize: '13px', 
                   color: '#e2e8f0',
                   wordWrap: 'break-word'
                 }}>
-                  <div style={{ 
+                  <div data-testid={`archived-epic-${epic.id}-title`} style={{ 
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     lineHeight: '1.4',
@@ -206,7 +211,7 @@ const ArchivedEpicsTab = ({
                     {epic.title || `Epic ${epic.id}`}
                   </div>
                   {epic.description && (
-                    <div style={{ 
+                    <div data-testid={`archived-epic-${epic.id}-description`} style={{ 
                       fontSize: '11px', 
                       color: '#94a3b8',
                       marginTop: '4px',
@@ -222,7 +227,7 @@ const ArchivedEpicsTab = ({
                     </div>
                   )}
                 </td>
-                <td style={{ 
+                <td data-testid={`archived-epic-${epic.id}-stories-count-cell`} style={{ 
                   padding: '12px', 
                   textAlign: 'center',
                   color: '#cbd5e1',
@@ -230,7 +235,7 @@ const ArchivedEpicsTab = ({
                 }}>
                   {(epic.stories || []).length}
                 </td>
-                <td style={{ 
+                <td data-testid={`archived-epic-${epic.id}-date-cell`} style={{ 
                   padding: '12px', 
                   textAlign: 'center',
                   color: '#94a3b8',
@@ -238,13 +243,14 @@ const ArchivedEpicsTab = ({
                 }}>
                   {epic.archivedAt ? new Date(epic.archivedAt).toLocaleDateString() : 'Unknown'}
                 </td>
-                <td style={{ 
+                <td data-testid={`archived-epic-${epic.id}-actions-cell`} style={{ 
                   padding: '12px', 
                   textAlign: 'center' 
                 }}>
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                  <div data-testid={`archived-epic-${epic.id}-actions-container`} style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                     {onViewEpic && (
                       <Button
+                        data-testid={`archived-epic-${epic.id}-view-button`}
                         variant="outline"
                         size="small"
                         onClick={() => onViewEpic(epic)}
@@ -254,6 +260,7 @@ const ArchivedEpicsTab = ({
                     )}
                     {onRestoreEpic && (
                       <Button
+                        data-testid={`archived-epic-${epic.id}-restore-button`}
                         variant="success"
                         size="small"
                         onClick={() => {
@@ -275,7 +282,7 @@ const ArchivedEpicsTab = ({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div style={{
+        <div data-testid="archived-epics-pagination" style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -283,6 +290,7 @@ const ArchivedEpicsTab = ({
           marginTop: '20px'
         }}>
           <Button
+            data-testid="archived-epics-pagination-prev"
             variant={currentPage === 1 ? 'secondary' : 'primary'}
             size="small"
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
@@ -290,10 +298,11 @@ const ArchivedEpicsTab = ({
           >
             Previous
           </Button>
-          <span style={{ color: '#cbd5e1', fontSize: '13px' }}>
+          <span data-testid="archived-epics-pagination-info" style={{ color: '#cbd5e1', fontSize: '13px' }}>
             Page {currentPage} of {totalPages}
           </span>
           <Button
+            data-testid="archived-epics-pagination-next"
             variant={currentPage === totalPages ? 'secondary' : 'primary'}
             size="small"
             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}

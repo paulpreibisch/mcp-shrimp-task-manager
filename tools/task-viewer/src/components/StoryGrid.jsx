@@ -74,10 +74,11 @@ const StoryGrid = ({
               className="font-medium text-gray-900 truncate cursor-pointer hover:text-blue-600"
               title={info.getValue()}
               onClick={() => onViewStory?.(info.row.original)}
+              data-testid={`story-${info.row.original.id}-title-link`}
             >
               {info.getValue()}
             </div>
-            <div className="text-sm text-gray-500 truncate mt-1">
+            <div className="text-sm text-gray-500 truncate mt-1" data-testid={`story-${info.row.original.id}-description`}>
               {info.row.original.description || 'No description'}
             </div>
           </div>
@@ -87,12 +88,13 @@ const StoryGrid = ({
       columnHelper.accessor('status', {
         header: 'Status',
         cell: (info) => (
-          <div className="flex items-center gap-2">
-            <span className="text-lg">
+          <div className="flex items-center gap-2" data-testid={`story-${info.row.original.id}-status-container`}>
+            <span className="text-lg" data-testid={`story-${info.row.original.id}-status-icon`}>
               {getStatusIcon(info.getValue())}
             </span>
             <span 
               className="px-2 py-1 text-xs font-medium rounded-full"
+              data-testid={`story-${info.row.original.id}-status-badge`}
               style={{
                 color: getStatusColor(info.getValue()),
                 backgroundColor: `${getStatusColor(info.getValue())}20`,
@@ -124,7 +126,7 @@ const StoryGrid = ({
           const score = info.getValue();
           if (score === null || score === undefined) {
             return (
-              <span className="text-gray-400 text-sm">
+              <span className="text-gray-400 text-sm" data-testid={`story-${info.row.original.id}-score-na`}>
                 N/A
               </span>
             );
@@ -136,11 +138,12 @@ const StoryGrid = ({
                       score >= 60 ? '⚠️' : '❌';
           
           return (
-            <div className="flex items-center gap-2">
-              <span>{icon}</span>
+            <div className="flex items-center gap-2" data-testid={`story-${info.row.original.id}-score-container`}>
+              <span data-testid={`story-${info.row.original.id}-score-icon`}>{icon}</span>
               <span 
                 className="font-bold"
                 style={{ color }}
+                data-testid={`story-${info.row.original.id}-score-value`}
               >
                 {score}/100
               </span>
@@ -158,7 +161,7 @@ const StoryGrid = ({
         id: 'actions',
         header: 'Actions',
         cell: (info) => (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-testid={`story-${info.row.original.id}-actions-container`}>
             {onViewStory && (
               <button
                 onClick={() => onViewStory(info.row.original)}
@@ -261,7 +264,10 @@ const StoryGrid = ({
                           header.getContext()
                         )}
                         {header.column.getCanSort() && (
-                          <span className="text-gray-400">
+                          <span 
+                            className="text-gray-400"
+                            data-testid={`story-grid-column-${header.id}-sort-indicator`}
+                          >
                             {{
                               asc: '↑',
                               desc: '↓',

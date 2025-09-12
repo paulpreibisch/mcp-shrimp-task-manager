@@ -289,17 +289,17 @@ const BMADView = ({
   };
 
   const renderBMADNotDetected = () => (
-    <div className="template-management-view">
+    <div className="template-management-view" data-testid="bmad-not-detected-container">
       <div className="template-management-header">
-        <div className="header-content">
-          <div className="header-text">
+        <div className="header-content" data-testid="bmad-not-detected-header-content">
+          <div className="header-text" data-testid="bmad-not-detected-header-text">
             <h2>🤖 BMAD Integration</h2>
             <p>BMAD system not detected in this project</p>
           </div>
         </div>
       </div>
       
-      <div className="bmad-setup-container" style={{ 
+      <div className="bmad-setup-container" data-testid="bmad-setup-container" style={{ 
         padding: '40px',
         textAlign: 'center',
         backgroundColor: '#f8f9fa',
@@ -323,7 +323,7 @@ const BMADView = ({
           powerful workflow automation.
         </p>
         
-        <div className="setup-steps" style={{
+        <div className="setup-steps" data-testid="bmad-setup-steps" style={{
           textAlign: 'left',
           maxWidth: '500px',
           margin: '0 auto 30px',
@@ -341,11 +341,12 @@ const BMADView = ({
           </ol>
         </div>
 
-        <div className="bmad-links" style={{ marginBottom: '20px' }}>
+        <div className="bmad-links" data-testid="bmad-setup-links" style={{ marginBottom: '20px' }}>
           <a 
             href="https://github.com/cline/bmad" 
             target="_blank" 
             rel="noopener noreferrer"
+            data-testid="bmad-repository-link"
             style={{
               display: 'inline-block',
               padding: '12px 24px',
@@ -363,6 +364,7 @@ const BMADView = ({
             href="https://github.com/cline/bmad/blob/main/user-guide.md" 
             target="_blank" 
             rel="noopener noreferrer"
+            data-testid="bmad-user-guide-link"
             style={{
               display: 'inline-block',
               padding: '12px 24px',
@@ -389,8 +391,8 @@ const BMADView = ({
   );
 
   const renderStoryViewer = () => (
-    <div className="story-viewer">
-      <div className="story-header">
+    <div className="story-viewer" data-testid="bmad-story-viewer">
+      <div className="story-header" data-testid="bmad-story-viewer-header">
         <Button
           variant="secondary"
           size="medium"
@@ -400,7 +402,7 @@ const BMADView = ({
         >
           Back to Stories
         </Button>
-        <h3>{selectedStory.name}</h3>
+        <h3 data-testid="bmad-story-viewer-title">{selectedStory.name}</h3>
       </div>
       
       <DocumentEditor
@@ -483,23 +485,23 @@ const BMADView = ({
   };
 
   const renderOverviewTab = () => (
-    <div className="p-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="stat-card rounded-lg border" style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', padding: '16px', borderColor: 'rgba(100, 149, 210, 0.2)' }}>
-          <h3 className="text-sm font-medium mb-1" style={{ color: '#cbd5e1' }}>Total Epics</h3>
-          <div className="text-2xl font-bold text-blue-400">{epics.length}</div>
+    <div className="p-4" data-testid="bmad-overview-tab-content">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" data-testid="bmad-overview-stats-grid">
+        <div className="stat-card rounded-lg border" data-testid="bmad-overview-epics-stat" style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', padding: '16px', borderColor: 'rgba(100, 149, 210, 0.2)' }}>
+          <h3 className="text-sm font-medium mb-1" style={{ color: '#cbd5e1' }} data-testid="bmad-overview-epics-label">Total Epics</h3>
+          <div className="text-2xl font-bold text-blue-400" data-testid="bmad-overview-epics-count">{epics.length}</div>
         </div>
-        <div className="stat-card rounded-lg border" style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', padding: '16px', borderColor: 'rgba(100, 149, 210, 0.2)' }}>
-          <h3 className="text-sm font-medium mb-1" style={{ color: '#cbd5e1' }}>Total Stories</h3>
-          <div className="text-2xl font-bold text-green-400">{stories.length}</div>
+        <div className="stat-card rounded-lg border" data-testid="bmad-overview-stories-stat" style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', padding: '16px', borderColor: 'rgba(100, 149, 210, 0.2)' }}>
+          <h3 className="text-sm font-medium mb-1" style={{ color: '#cbd5e1' }} data-testid="bmad-overview-stories-label">Total Stories</h3>
+          <div className="text-2xl font-bold text-green-400" data-testid="bmad-overview-stories-count">{stories.length}</div>
         </div>
-        <div className="stat-card rounded-lg border" style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', padding: '16px', borderColor: 'rgba(100, 149, 210, 0.2)' }}>
-          <h3 className="text-sm font-medium mb-1" style={{ color: '#cbd5e1' }}>Verified Stories</h3>
-          <div className="text-2xl font-bold text-purple-400">{Object.keys(verifications).length}</div>
+        <div className="stat-card rounded-lg border" data-testid="bmad-overview-verified-stat" style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', padding: '16px', borderColor: 'rgba(100, 149, 210, 0.2)' }}>
+          <h3 className="text-sm font-medium mb-1" style={{ color: '#cbd5e1' }} data-testid="bmad-overview-verified-label">Verified Stories</h3>
+          <div className="text-2xl font-bold text-purple-400" data-testid="bmad-overview-verified-count">{Object.keys(verifications).length}</div>
         </div>
-        <div className="stat-card rounded-lg border" style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', padding: '16px', borderColor: 'rgba(100, 149, 210, 0.2)' }}>
-          <h3 className="text-sm font-medium mb-1" style={{ color: '#cbd5e1' }}>Avg Score</h3>
-          <div className="text-2xl font-bold text-orange-400">
+        <div className="stat-card rounded-lg border" data-testid="bmad-overview-avg-score-stat" style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', padding: '16px', borderColor: 'rgba(100, 149, 210, 0.2)' }}>
+          <h3 className="text-sm font-medium mb-1" style={{ color: '#cbd5e1' }} data-testid="bmad-overview-avg-score-label">Avg Score</h3>
+          <div className="text-2xl font-bold text-orange-400" data-testid="bmad-overview-avg-score-value">
             {Object.keys(verifications).length > 0 
               ? Math.round(Object.values(verifications).reduce((sum, v) => sum + v.score, 0) / Object.keys(verifications).length)
               : '-'
@@ -508,15 +510,15 @@ const BMADView = ({
         </div>
       </div>
 
-      <div className="rounded-lg border" style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', padding: '20px', borderColor: 'rgba(100, 149, 210, 0.2)' }}>
-        <h3 className="text-lg font-semibold mb-4" style={{ color: '#e2e8f0' }}>Recent Activity</h3>
+      <div className="rounded-lg border" data-testid="bmad-overview-recent-activity" style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', padding: '20px', borderColor: 'rgba(100, 149, 210, 0.2)' }}>
+        <h3 className="text-lg font-semibold mb-4" style={{ color: '#e2e8f0' }} data-testid="bmad-overview-recent-activity-title">Recent Activity</h3>
         {Object.keys(verifications).length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-3" data-testid="bmad-overview-recent-activity-list">
             {Object.values(verifications)
               .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
               .slice(0, 5)
               .map((verification) => (
-                <div key={verification.storyId} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                <div key={verification.storyId} className="flex items-center justify-between p-3 bg-gray-50 rounded" data-testid={`bmad-overview-activity-${verification.storyId}`}>
                   <div>
                     <span className="font-medium">Story {verification.storyId}</span>
                     <span className="text-sm text-gray-500 ml-2">verified</span>
@@ -536,7 +538,7 @@ const BMADView = ({
               ))}
           </div>
         ) : (
-          <p className="text-gray-500">No verification activity yet</p>
+          <p className="text-gray-500" data-testid="bmad-overview-no-activity">No verification activity yet</p>
         )}
       </div>
     </div>
@@ -595,7 +597,7 @@ const BMADView = ({
   );
 
   const renderBMADContent = () => (
-    <div className="template-management-view">
+    <div className="template-management-view" data-testid="bmad-main-content">
       {isEditingStory && editingStory ? (
         <div>
           <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end', padding: '5px' }}>
@@ -622,43 +624,141 @@ const BMADView = ({
           />
         </div>
       ) : selectedStory && !isEditingStory ? renderStoryViewer() : (
-        <div className="bmad-content">
-          <div className="inner-tabs-wrapper">
+        <div className="bmad-content" data-testid="bmad-content-wrapper">
+          <div className="inner-tabs-wrapper" data-testid="bmad-inner-tabs-wrapper">
             <Tabs 
               index={activeTab} 
               onChange={setActiveTab}
               variant="line"
               colorScheme="blue"
               data-testid="bmad-main-tabs"
+              bg="#0f1626"
+              borderRadius="8px 8px 0 0"
+              mb={2}
             >
               <TabList 
-                className="inner-tabs-list project-inner-tabs" 
-                style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
                 data-testid="bmad-main-tablist"
+                position="relative"
+                display="flex"
+                alignItems="center"
+                borderBottom="1px solid #2c3e50"
+                mb={0}
+                p="10px 15px 0 15px"
+                bg="#0f1626"
+                borderRadius="8px 8px 0 0"
+                gap={0.5}
               >
-                <Tab data-testid="overview-tab">
+                <Tab 
+                  data-testid="overview-tab"
+                  _selected={{ bg: '#0f1626', borderColor: '#1a1f3a', borderBottom: '2px solid #0f1626', color: 'white' }}
+                  _hover={{ bg: 'rgba(26, 31, 58, 0.6)' }}
+                  bg="#1a1f3a"
+                  border="1px solid #1a1f3a"
+                  borderBottom="none"
+                  color="#cbd5e1"
+                  position="relative"
+                  zIndex={1}
+                  mb="-2px"
+                >
                   Overview
                 </Tab>
-                <Tab data-testid="stories-tab">
+                <Tab 
+                  data-testid="stories-tab"
+                  _selected={{ bg: '#0f1626', borderColor: '#1a1f3a', borderBottom: '2px solid #0f1626', color: 'white' }}
+                  _hover={{ bg: 'rgba(26, 31, 58, 0.6)' }}
+                  bg="#1a1f3a"
+                  border="1px solid #1a1f3a"
+                  borderBottom="none"
+                  color="#cbd5e1"
+                  position="relative"
+                  zIndex={1}
+                  mb="-2px"
+                >
                   Stories
                 </Tab>
-                <Tab data-testid="epics-tab">
+                <Tab 
+                  data-testid="epics-tab"
+                  _selected={{ bg: '#0f1626', borderColor: '#1a1f3a', borderBottom: '2px solid #0f1626', color: 'white' }}
+                  _hover={{ bg: 'rgba(26, 31, 58, 0.6)' }}
+                  bg="#1a1f3a"
+                  border="1px solid #1a1f3a"
+                  borderBottom="none"
+                  color="#cbd5e1"
+                  position="relative"
+                  zIndex={1}
+                  mb="-2px"
+                >
                   Epics
                 </Tab>
-                <Tab data-testid="prd-tab">
+                <Tab 
+                  data-testid="prd-tab"
+                  _selected={{ bg: '#0f1626', borderColor: '#1a1f3a', borderBottom: '2px solid #0f1626', color: 'white' }}
+                  _hover={{ bg: 'rgba(26, 31, 58, 0.6)' }}
+                  bg="#1a1f3a"
+                  border="1px solid #1a1f3a"
+                  borderBottom="none"
+                  color="#cbd5e1"
+                  position="relative"
+                  zIndex={1}
+                  mb="-2px"
+                >
                   PRD
                 </Tab>
-                <Tab data-testid="coding-standards-tab">
+                <Tab 
+                  data-testid="coding-standards-tab"
+                  _selected={{ bg: '#0f1626', borderColor: '#1a1f3a', borderBottom: '2px solid #0f1626', color: 'white' }}
+                  _hover={{ bg: 'rgba(26, 31, 58, 0.6)' }}
+                  bg="#1a1f3a"
+                  border="1px solid #1a1f3a"
+                  borderBottom="none"
+                  color="#cbd5e1"
+                  position="relative"
+                  zIndex={1}
+                  mb="-2px"
+                >
                   Coding Standards
                 </Tab>
-                <Tab data-testid="source-tree-tab">
+                <Tab 
+                  data-testid="source-tree-tab"
+                  _selected={{ bg: '#0f1626', borderColor: '#1a1f3a', borderBottom: '2px solid #0f1626', color: 'white' }}
+                  _hover={{ bg: 'rgba(26, 31, 58, 0.6)' }}
+                  bg="#1a1f3a"
+                  border="1px solid #1a1f3a"
+                  borderBottom="none"
+                  color="#cbd5e1"
+                  position="relative"
+                  zIndex={1}
+                  mb="-2px"
+                >
                   Source Tree
                 </Tab>
-                <Tab data-testid="tech-stack-tab">
+                <Tab 
+                  data-testid="tech-stack-tab"
+                  _selected={{ bg: '#0f1626', borderColor: '#1a1f3a', borderBottom: '2px solid #0f1626', color: 'white' }}
+                  _hover={{ bg: 'rgba(26, 31, 58, 0.6)' }}
+                  bg="#1a1f3a"
+                  border="1px solid #1a1f3a"
+                  borderBottom="none"
+                  color="#cbd5e1"
+                  position="relative"
+                  zIndex={1}
+                  mb="-2px"
+                >
                   Tech Stack
                 </Tab>
                 {showArchivedTab && (
-                  <Tab data-testid="archived-epics-tab">
+                  <Tab 
+                    data-testid="archived-epics-tab"
+                    _selected={{ bg: '#0f1626', borderColor: '#1a1f3a', borderBottom: '2px solid #0f1626', color: 'white' }}
+                    _hover={{ bg: 'rgba(26, 31, 58, 0.6)' }}
+                    bg="#1a1f3a"
+                    border="1px solid #1a1f3a"
+                    borderBottom="none"
+                    color="#cbd5e1"
+                    position="relative"
+                    zIndex={1}
+                    mb="-2px"
+                  >
                     📦 Archived EPICs
                   </Tab>
                 )}
@@ -681,12 +781,17 @@ const BMADView = ({
                   Refresh
                 </Button>
               </TabList>
-              <TabPanels className="inner-tab-panels" data-testid="bmad-main-tabpanels">
+              <TabPanels 
+                data-testid="bmad-main-tabpanels"
+                bg="#0f1626"
+                mt={0}
+                mr={2.5}
+              >
                 <TabPanel data-testid="overview-tabpanel">
                   {renderOverviewTab()}
                 </TabPanel>
                 <TabPanel data-testid="stories-tabpanel">
-                  <div className="p-6">
+                  <div className="p-6" data-testid="bmad-stories-tab-content">
                     <StoryGrid
                       stories={stories}
                       verifications={verifications}
@@ -696,7 +801,7 @@ const BMADView = ({
                   </div>
                 </TabPanel>
                 <TabPanel data-testid="epics-tabpanel">
-                  <div className="p-6">
+                  <div className="p-6" data-testid="bmad-epics-tab-content">
                     {epics && epics.length > 0 ? (
                       <EpicTabs 
                         epics={epics}
@@ -706,7 +811,7 @@ const BMADView = ({
                         onArchiveEpic={archiveEpic}
                       />
                     ) : (
-                      <div style={{ 
+                      <div data-testid="bmad-epics-empty-state" style={{ 
                         textAlign: 'center', 
                         padding: '40px',
                         color: '#6c757d',
@@ -748,7 +853,7 @@ const BMADView = ({
           </div>
 
           {stories.length === 0 && epics.length === 0 && !loading && (
-            <div style={{ 
+            <div data-testid="bmad-empty-state" style={{ 
               textAlign: 'center', 
               padding: '40px',
               color: '#6c757d',
@@ -773,7 +878,7 @@ const BMADView = ({
 
   if (loading) {
     return (
-      <div className="template-management-view">
+      <div className="template-management-view" data-testid="bmad-loading-state">
         <div className="template-management-header">
           <div className="header-content">
             <div className="header-text">
@@ -782,7 +887,7 @@ const BMADView = ({
             </div>
           </div>
         </div>
-        <div className="loading">
+        <div className="loading" data-testid="bmad-loading-message">
           Loading BMAD stories and epics... ⏳
         </div>
       </div>
@@ -791,7 +896,7 @@ const BMADView = ({
 
   if (error) {
     return (
-      <div className="template-management-view">
+      <div className="template-management-view" data-testid="bmad-error-state">
         <div className="template-management-header">
           <div className="header-content">
             <div className="header-text">
@@ -800,7 +905,7 @@ const BMADView = ({
             </div>
           </div>
         </div>
-        <div className="error">
+        <div className="error" data-testid="bmad-error-message">
           {error}
         </div>
       </div>

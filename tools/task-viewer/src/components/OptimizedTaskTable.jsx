@@ -11,6 +11,7 @@ import {
 import TaskDetailView from './TaskDetailView';
 import Tooltip from './Tooltip';
 import AgentInfoModal from './AgentInfoModal';
+import ParallelTaskIndicator from './ParallelTaskIndicator';
 import { useTranslation } from 'react-i18next';
 import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
 
@@ -281,6 +282,23 @@ function OptimizedTaskTable({
         </span>
       ),
       size: 120,
+    },
+    {
+      id: 'parallel',
+      header: 'Parallel',
+      cell: ({ row }) => {
+        const task = row.original;
+        return (
+          <ParallelTaskIndicator
+            taskId={task.id}
+            multiDevOK={task.multiDevOK || false}
+            isParallelizable={task.isParallelizable || false}
+            reason={task.parallelReason || ''}
+            userCount={task.userCount || 1}
+          />
+        );
+      },
+      size: 100,
     },
     {
       accessorKey: 'agent',

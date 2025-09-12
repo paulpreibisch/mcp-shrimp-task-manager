@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { Tab } from '@headlessui/react';
+import {
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel
+} from '@chakra-ui/react';
 import StoryPanel from './StoryPanel.jsx';
 import Button from './Button.jsx';
 import EpicProgressBar from './EpicProgressBar.jsx';
@@ -82,42 +88,66 @@ const EpicTabs = ({
   
   return (
     <div data-testid="epic-tabs-container">
-      <Tab.Group data-testid="epic-tabs-rendered">
-        {/* Epic Tabs List - Using nested-tabs.css system */}
-        <div className="inner-tabs-wrapper epic-tabs">
-          <Tab.List className="inner-tabs-list project-inner-tabs">
+      <div className="inner-tabs-wrapper epic-tabs" data-testid="epic-tabs-wrapper">
+        <Tabs
+          variant="line"
+          colorScheme="blue"
+          data-testid="epic-tabs-rendered"
+          bg="rgba(45, 55, 72, 0.4)"
+          borderRadius="8px"
+          border="1px solid #2d3748"
+        >
+          <TabList 
+            className="inner-tabs-list project-inner-tabs" 
+            data-testid="epic-tabs-list"
+            p={1}
+            bg="rgba(45, 55, 72, 0.4)"
+            borderRadius="8px"
+          >
             {epics.map((epic) => {
               const progress = calculateEpicProgress(epic);
               return (
                 <Tab
                   key={epic.id}
                   data-testid={`epic-${epic.id}-tab-button`}
-                  className={({ selected }) => `inner-tab ${selected ? 'active' : ''}`}
                   aria-label={`Epic ${epic.id}: ${epic.title}`}
-                  role="tab"
+                  _selected={{
+                    bg: '#3182ce',
+                    borderColor: '#3182ce',
+                    color: 'white',
+                    fontWeight: '600'
+                  }}
+                  _hover={{
+                    bg: 'rgba(74, 85, 104, 0.4)',
+                    borderColor: '#718096'
+                  }}
+                  bg="rgba(26, 32, 44, 0.6)"
+                  border="1px solid #4a5568"
+                  color="#cbd5e1"
+                  transition="all 0.2s ease"
                 >
                   {epic.id && !isNaN(parseInt(epic.id)) ? `Epic ${epic.id}` : (epic.title || epic.id || 'Epic')}
-              </Tab>
-            );
-          })}
-          </Tab.List>
+                </Tab>
+              );
+            })}
+          </TabList>
           
-          <Tab.Panels className="inner-tab-panels">
+          <TabPanels className="inner-tab-panels">
             {epics.map((epic) => {
             const progress = calculateEpicProgress(epic);
             
             return (
-              <Tab.Panel
+              <TabPanel
                 key={epic.id}
                 className="rounded-xl p-6"
                 style={{ backgroundColor: 'rgba(100, 149, 210, 0.1)', border: '1px solid rgba(100, 149, 210, 0.2)' }}
                 data-testid={`epic-${epic.id}-panel`}
               >
                 {/* Epic Description and Archive Button */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                  <div style={{ flex: 1 }}>
+                <div data-testid={`epic-${epic.id}-header`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                  <div data-testid={`epic-${epic.id}-description-container`} style={{ flex: 1 }}>
                     {epic.description && (
-                      <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.6' }}>
+                      <p data-testid={`epic-${epic.id}-description`} style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.6' }}>
                         {epic.description}
                       </p>
                     )}
@@ -143,7 +173,7 @@ const EpicTabs = ({
                 </div>
                 
                 {/* Epic Progress Visualization */}
-                <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'rgba(45, 55, 72, 0.3)', borderRadius: '8px' }}>
+                <div data-testid={`epic-${epic.id}-progress-section`} style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'rgba(45, 55, 72, 0.3)', borderRadius: '8px' }}>
                   <EpicProgressBar
                     epic={epic}
                     verifications={verifications}
@@ -155,7 +185,7 @@ const EpicTabs = ({
                 </div>
 
                 {/* View Mode Toggle */}
-                <div style={{
+                <div data-testid={`epic-${epic.id}-view-mode-toggle`} style={{
                   display: 'flex',
                   justifyContent: 'flex-end',
                   marginBottom: '16px',
@@ -190,6 +220,7 @@ const EpicTabs = ({
                 </div>
 
                 {/* Stories Display */}
+                <div data-testid={`epic-${epic.id}-stories-container`}>
                 {epic.stories && epic.stories.length > 0 ? (
                   <>
                     {viewMode === 'cards' ? (
@@ -222,8 +253,8 @@ const EpicTabs = ({
                           borderRadius: '8px',
                           border: '1px solid #2d3748'
                         }}>
-                        <table className="table-full-width">
-                          <thead>
+                        <table className="table-full-width" data-testid={`epic-${epic.id}-stories-table`}>
+                          <thead data-testid={`epic-${epic.id}-stories-table-header`}>
                             <tr style={{
                               backgroundColor: 'rgba(45, 55, 72, 0.3)',
                               borderBottom: '2px solid #2d3748'
@@ -278,7 +309,7 @@ const EpicTabs = ({
                                       {story.title}
                                     </div>
                                   </td>
-                                  <td style={{ padding: '12px', textAlign: 'center' }}>
+                                  <td data-testid={`epic-${epic.id}-story-${story.id}-status-cell`} style={{ padding: '12px', textAlign: 'center' }}>
                                     <span style={{
                                       display: 'inline-block',
                                       padding: '4px 12px',
@@ -293,7 +324,7 @@ const EpicTabs = ({
                                       {story.status === 'Done' ? 'Completed' : story.status}
                                     </span>
                                   </td>
-                                  <td style={{ padding: '12px', textAlign: 'center' }}>
+                                  <td data-testid={`epic-${epic.id}-story-${story.id}-score-cell`} style={{ padding: '12px', textAlign: 'center' }}>
                                     {verification ? (
                                       <span style={{
                                         display: 'inline-block',
@@ -311,12 +342,12 @@ const EpicTabs = ({
                                       <span style={{ color: '#94a3b8', fontSize: '12px' }}>-</span>
                                     )}
                                   </td>
-                                  <td style={{ padding: '12px', textAlign: 'center' }}>
+                                  <td data-testid={`epic-${epic.id}-story-${story.id}-parallel-cell`} style={{ padding: '12px', textAlign: 'center' }}>
                                     <span style={{ fontSize: '16px' }}>
                                       {story.parallelWork?.multiDevOK ? '👥' : '👤'}
                                     </span>
                                   </td>
-                                  <td style={{ padding: '12px', textAlign: 'center' }}>
+                                  <td data-testid={`epic-${epic.id}-story-${story.id}-actions-cell`} style={{ padding: '12px', textAlign: 'center' }}>
                                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                                       {onViewStory && (
                                         <Button
@@ -371,12 +402,13 @@ const EpicTabs = ({
                     </p>
                   </div>
                 )}
-              </Tab.Panel>
+                </div>
+              </TabPanel>
             );
           })}
-          </Tab.Panels>
-        </div>
-      </Tab.Group>
+          </TabPanels>
+        </Tabs>
+      </div>
     </div>
   );
 };

@@ -11,6 +11,7 @@ import TaskDetailView from './TaskDetailView';
 import TaskSummary from './TaskSummary';
 import Tooltip from './Tooltip';
 import AgentInfoModal from './AgentInfoModal';
+import ParallelTaskIndicator from './ParallelTaskIndicator';
 import { useTranslation } from 'react-i18next';
 import { generateTaskNumbers, getTaskNumber, convertDependenciesToNumbers, getTaskByNumber } from '../utils/taskNumbering';
 
@@ -357,6 +358,109 @@ function TaskTable({ data, globalFilter, onGlobalFilterChange, statusFilter, pro
         );
       },
       size: 120,
+    },
+    {
+      accessorKey: 'storyContext',
+      header: 'Story Context',
+      cell: ({ row }) => {
+        const task = row.original;
+        const storyContext = task.storyContext;
+        const storyId = task.storyId;
+        
+        if (!storyId && !storyContext) {
+          return (
+            <div className="story-context-cell" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '4px',
+              color: '#6b7280',
+              fontSize: '12px'
+            }}>
+              <span>—</span>
+            </div>
+          );
+        }
+
+        return (
+          <div className="story-context-cell" style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '2px',
+            fontSize: '12px'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '4px' 
+            }}>
+              <span style={{ 
+                fontWeight: '600',
+                color: '#1f2937'
+              }}>
+                📖 {storyContext?.title || `Story ${storyId}`}
+              </span>
+              {(storyContext?.verified !== undefined || storyContext?.verificationScore !== null) && (
+                <span style={{
+                  fontSize: '10px',
+                  padding: '1px 4px',
+                  borderRadius: '2px',
+                  backgroundColor: storyContext.verified ? '#dcfce7' : '#fef3c7',
+                  color: storyContext.verified ? '#166534' : '#92400e',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2px'
+                }}>
+                  {storyContext.verified ? '✅' : '⚠️'}
+                  {storyContext.verificationScore !== null && (
+                    <span style={{ fontSize: '9px', fontWeight: 'bold' }}>
+                      {storyContext.verificationScore}
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+            {storyContext?.description && (
+              <div style={{ 
+                color: '#6b7280',
+                fontSize: '11px',
+                maxWidth: '200px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }} title={storyContext.description}>
+                {storyContext.description}
+              </div>
+            )}
+            {storyContext?.epicId && (
+              <div style={{
+                fontSize: '10px',
+                color: '#9333ea',
+                fontWeight: '500'
+              }}>
+                Epic {storyContext.epicId}
+              </div>
+            )}
+          </div>
+        );
+      },
+      size: 200,
+    },
+    {
+      id: 'parallel',
+      header: 'Parallel',
+      cell: ({ row }) => {
+        const task = row.original;
+        return (
+          <ParallelTaskIndicator
+            taskId={task.id}
+            multiDevOK={task.multiDevOK || false}
+            isParallelizable={task.isParallelizable || false}
+            reason={task.parallelReason || ''}
+            userCount={task.userCount || 1}
+          />
+        );
+      },
+      size: 100,
     },
     {
       accessorKey: 'summary',

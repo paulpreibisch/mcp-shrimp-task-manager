@@ -1,11 +1,26 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
+import {
+  Box,
+  VStack,
+  HStack,
+  Text,
+  Badge,
+  Collapse,
+  IconButton,
+  Tooltip,
+  Skeleton,
+  SkeletonText,
+  useColorModeValue,
+  ScaleFade,
+} from '@chakra-ui/react';
+import { MdExpandMore, MdChevronRight, MdInfo } from 'react-icons/md';
 import VerificationView from './VerificationView.jsx';
 import ParallelIndicator from './ParallelIndicator.jsx';
 import Button from './Button.jsx';
 
 /**
- * StoryPanel component displays a story card with verification details
+ * StoryPanel component displays a story card with progressive disclosure for details
  */
 const StoryPanel = ({ 
   story,
@@ -18,6 +33,15 @@ const StoryPanel = ({
 }) => {
   const [showVerification, setShowVerification] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [detailsLoaded, setDetailsLoaded] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  
+  // Chakra UI color mode values
+  const bgColor = useColorModeValue('white', '#1e2536');
+  const borderColor = useColorModeValue('rgba(100, 149, 237, 0.2)', 'rgba(100, 149, 237, 0.2)');
+  const textColor = useColorModeValue('gray.800', '#f1f5f9');
+  const mutedColor = useColorModeValue('gray.600', '#94a3b8');
+  const headerBg = useColorModeValue('rgba(100, 149, 237, 0.05)', 'rgba(100, 149, 237, 0.1)');
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -52,156 +76,240 @@ const StoryPanel = ({
     return `Story ${storyId}`;
   };
 
+  // Handle expand/collapse with lazy loading
+  const toggleExpansion = () => {
+    if (!isExpanded && !detailsLoaded) {
+      setLoadingDetails(true);
+      // Simulate lazy loading of detailed content
+      setTimeout(() => {
+        setDetailsLoaded(true);
+        setLoadingDetails(false);
+      }, 300);
+    }
+    setIsExpanded(!isExpanded);
+  };
 
   return (
-    <div
+    <Box
       data-testid={`story-${story.id}-panel`}
       className={`story-panel story-panel--epic-${story.epicId || '1'}`}
       aria-label={`${formatStoryId(story.id)}: ${story.title}`}
-      style={{
-        backgroundColor: '#1e2536',
-        borderRadius: '12px',
-        border: '1px solid rgba(100, 149, 237, 0.2)',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        overflow: 'hidden',
-        transition: 'all 0.3s ease',
-        cursor: 'pointer',
-        position: 'relative',
-        height: '100%',
-        minHeight: '280px',
-        display: 'flex',
-        flexDirection: 'column'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
-        e.currentTarget.style.borderColor = 'rgba(100, 149, 237, 0.4)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-        e.currentTarget.style.borderColor = 'rgba(100, 149, 237, 0.2)';
+      bg={bgColor}
+      borderRadius="12px"
+      border="1px solid"
+      borderColor={borderColor}
+      boxShadow="0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+      overflow="hidden"
+      transition="all 0.3s ease"
+      position="relative"
+      height="100%"
+      minHeight="320px"
+      display="flex"
+      flexDirection="column"
+      _hover={{
+        transform: 'translateY(-4px)',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        borderColor: 'rgba(100, 149, 237, 0.4)'
       }}
     >
       {/* Header Section */}
-      <div 
+      <Box 
         className="story-panel__header"
-        style={{
-          padding: '16px',
-          background: 'linear-gradient(135deg, rgba(100, 149, 237, 0.1) 0%, rgba(100, 149, 237, 0.05) 100%)',
-          borderBottom: '1px solid rgba(100, 149, 237, 0.1)',
-          flex: '0 0 auto'
-        }}
+        data-testid={`story-${story.id}-header`}
+        p={4}
+        bg={headerBg}
+        borderBottom="1px solid"
+        borderBottomColor={borderColor}
+        flex="0 0 auto"
       >
         {/* Story ID and Status */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          marginBottom: '12px'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            <span style={{ fontSize: '18px' }}>
+        <HStack 
+          data-testid={`story-${story.id}-header-row`}
+          justify="space-between"
+          mb={3}
+        >
+          <HStack data-testid={`story-${story.id}-id-container`} spacing={2}>
+            <Text data-testid={`story-${story.id}-status-icon`} fontSize="lg">
               {getStatusIcon(story.status)}
-            </span>
-            <span style={{ 
-              fontSize: '14px', 
-              fontWeight: '700',
-              color: '#94a3b8',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
+            </Text>
+            <Text 
+              data-testid={`story-${story.id}-id-label`}
+              fontSize="sm"
+              fontWeight="700"
+              color={mutedColor}
+              textTransform="uppercase"
+              letterSpacing="0.5px"
+            >
               {formatStoryId(story.id)}
-            </span>
-          </div>
-          <span 
+            </Text>
+          </HStack>
+          <Badge 
             data-testid={`story-${story.id}-status-badge`}
             aria-label={`Status: ${getStatusDisplayName(story.status)}`}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              fontSize: '10px',
-              fontWeight: '700',
-              color: 'white',
-              backgroundColor: getStatusColor(story.status),
-              padding: '3px 8px',
-              borderRadius: '4px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}
+            colorScheme={getStatusColor(story.status) === '#38a169' ? 'green' : 
+                        getStatusColor(story.status) === '#3182ce' ? 'blue' : 
+                        getStatusColor(story.status) === '#d69e2e' ? 'yellow' : 
+                        getStatusColor(story.status) === '#00b5d8' ? 'cyan' : 'gray'}
+            size="sm"
+            textTransform="uppercase"
+            letterSpacing="0.5px"
           >
             {getStatusDisplayName(story.status)}
-          </span>
-        </div>
+          </Badge>
+        </HStack>
         
         {/* Story Title */}
-        <h4 
+        <Text 
           data-testid={`story-${story.id}-title`}
-          style={{ 
-            margin: '0 0 8px 0',
-            fontSize: '15px',
-            fontWeight: '600',
-            color: '#f1f5f9',
-            lineHeight: '1.4',
-            wordWrap: 'break-word',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical'
-          }}
+          fontSize="md"
+          fontWeight="600"
+          color={textColor}
+          lineHeight="1.4"
+          noOfLines={2}
+          mb={2}
         >
           {story.title}
-        </h4>
+        </Text>
+        
+        {/* Progressive Disclosure Toggle */}
+        <HStack justify="space-between" align="center">
+          <Text fontSize="xs" color={mutedColor}>
+            {isExpanded ? 'Hide details' : 'Show more details'}
+          </Text>
+          <Tooltip label={isExpanded ? 'Collapse story details' : 'Expand story details'} placement="top">
+            <IconButton
+              data-testid={`story-${story.id}-expand-toggle-button`}
+              size="xs"
+              variant="ghost"
+              icon={isExpanded ? <MdExpandMore /> : <MdChevronRight />}
+              onClick={toggleExpansion}
+              aria-label={isExpanded ? 'Collapse story details' : 'Expand story details'}
+              color={mutedColor}
+              _hover={{ color: textColor }}
+            />
+          </Tooltip>
+        </HStack>
 
-      </div>
+      </Box>
 
       {/* Card Body */}
-      <div 
-        style={{ 
-          padding: '16px',
-          flex: '1 1 auto',
-          display: 'flex',
-          flexDirection: 'column'
-        }}
+      <VStack 
+        data-testid={`story-${story.id}-body`}
+        p={4}
+        flex="1 1 auto"
+        align="stretch"
+        spacing={4}
       >
-        {/* Description */}
-        <p 
+        {/* Summary Description (Always Visible) */}
+        <Text 
           data-testid={`story-${story.id}-description`}
-          style={{ 
-            margin: '0 0 12px 0',
-            fontSize: '13px',
-            color: '#94a3b8',
-            lineHeight: '1.5',
-            wordWrap: 'break-word',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            flex: '1 1 auto'
-          }}
+          fontSize="sm"
+          color={mutedColor}
+          lineHeight="1.5"
+          noOfLines={isExpanded ? undefined : 3}
+          flex="1 1 auto"
         >
           {story.description || 'No description available'}
-        </p>
+        </Text>
+        
+        {/* Progressive Disclosure Content */}
+        <Collapse in={isExpanded} animateOpacity>
+          <ScaleFade in={isExpanded && !loadingDetails} initialScale={0.95}>
+            {loadingDetails ? (
+              <VStack spacing={3} align="start">
+                <Skeleton height="16px" width="70%" />
+                <SkeletonText noOfLines={2} spacing={2} skeletonHeight={2} />
+                <HStack spacing={2}>
+                  <Skeleton height="20px" width="80px" />
+                  <Skeleton height="20px" width="60px" />
+                </HStack>
+              </VStack>
+            ) : (
+              <VStack spacing={4} align="start">
+                {/* Detailed Information */}
+                {story.acceptanceCriteria && story.acceptanceCriteria.length > 0 && (
+                  <Box data-testid={`story-${story.id}-acceptance-criteria-section`}>
+                    <HStack mb={2}>
+                      <MdInfo color={mutedColor} />
+                      <Text fontWeight="semibold" fontSize="sm" color={textColor}>
+                        Acceptance Criteria
+                      </Text>
+                    </HStack>
+                    <VStack data-testid={`story-${story.id}-acceptance-criteria-list`} align="start" spacing={1} pl={6}>
+                      {story.acceptanceCriteria.slice(0, 3).map((criteria, index) => (
+                        <Text key={index} fontSize="xs" color={mutedColor} lineHeight="1.4">
+                          • {criteria}
+                        </Text>
+                      ))}
+                      {story.acceptanceCriteria.length > 3 && (
+                        <Text fontSize="xs" color={mutedColor} fontStyle="italic">
+                          +{story.acceptanceCriteria.length - 3} more criteria
+                        </Text>
+                      )}
+                    </VStack>
+                  </Box>
+                )}
+                
+                {/* Verification Details */}
+                {verification && (
+                  <Box data-testid={`story-${story.id}-verification-details-section`}>
+                    <Text fontWeight="semibold" fontSize="sm" color={textColor} mb={2}>
+                      Verification Status
+                    </Text>
+                    <HStack spacing={3}>
+                      <Badge 
+                        colorScheme={verification.score >= 80 ? 'green' : verification.score >= 60 ? 'yellow' : 'red'}
+                        size="sm"
+                      >
+                        Score: {verification.score}/100
+                      </Badge>
+                      <Text fontSize="xs" color={mutedColor} noOfLines={2}>
+                        {verification.summary}
+                      </Text>
+                    </HStack>
+                  </Box>
+                )}
+                
+                {/* Story Metadata */}
+                <Box data-testid={`story-${story.id}-metadata-section`}>
+                  <Text fontWeight="semibold" fontSize="sm" color={textColor} mb={2}>
+                    Story Information
+                  </Text>
+                  <VStack data-testid={`story-${story.id}-metadata-list`} align="start" spacing={1}>
+                    {story.epicId && (
+                      <HStack>
+                        <Text fontSize="xs" color={mutedColor} minW="60px">Epic:</Text>
+                        <Badge size="sm" colorScheme="blue">Epic {story.epicId}</Badge>
+                      </HStack>
+                    )}
+                    {story.lastModified && (
+                      <HStack>
+                        <Text fontSize="xs" color={mutedColor} minW="60px">Updated:</Text>
+                        <Text fontSize="xs" color={mutedColor}>
+                          {new Date(story.lastModified).toLocaleDateString()}
+                        </Text>
+                      </HStack>
+                    )}
+                  </VStack>
+                </Box>
+              </VStack>
+            )}
+          </ScaleFade>
+        </Collapse>
 
         {/* Footer Actions */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between',
-          marginTop: 'auto',
-          paddingTop: '12px',
-          borderTop: '1px solid rgba(100, 149, 237, 0.1)'
-        }}>
+        <HStack 
+          data-testid={`story-${story.id}-footer`}
+          justify="space-between"
+          mt="auto"
+          pt={3}
+          borderTop="1px solid"
+          borderTopColor={borderColor}
+        >
           {/* Parallel Indicator */}
-          <div 
+          <HStack 
             data-testid={`story-${story.id}-parallel-indicator`}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            spacing={2}
           >
             <ParallelIndicator
               multiDevOK={story.parallelWork?.multiDevOK || false}
@@ -212,43 +320,35 @@ const StoryPanel = ({
             
             {/* Acceptance Criteria Count */}
             {story.acceptanceCriteria && story.acceptanceCriteria.length > 0 && (
-              <span 
-                data-testid={`story-${story.id}-acceptance-criteria-count`}
-                aria-label={`${story.acceptanceCriteria.length} acceptance criteria`}
-                style={{ 
-                  fontSize: '11px', 
-                  color: '#64748b',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                📋 {story.acceptanceCriteria.length}
-              </span>
+              <Tooltip label={`${story.acceptanceCriteria.length} acceptance criteria`} placement="top">
+                <HStack 
+                  data-testid={`story-${story.id}-acceptance-criteria-count`}
+                  spacing={1}
+                >
+                  <Text fontSize="xs">📋</Text>
+                  <Text fontSize="xs" color={mutedColor}>
+                    {story.acceptanceCriteria.length}
+                  </Text>
+                </HStack>
+              </Tooltip>
             )}
-          </div>
+          </HStack>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <HStack data-testid={`story-${story.id}-actions`} spacing={2}>
             {/* Verification Score */}
             {verification && (
-              <div
-                data-testid={`story-${story.id}-verification-score`}
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  color: 'white',
-                  backgroundColor: verification.score >= 80 ? '#38a169' : 
-                         verification.score >= 60 ? '#d69e2e' : '#e53e3e',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  minWidth: '32px',
-                  textAlign: 'center'
-                }}
-                title={`Verification score: ${verification.score}/100`}
-              >
-                {verification.score}
-              </div>
+              <Tooltip label={`Verification score: ${verification.score}/100`} placement="top">
+                <Badge
+                  data-testid={`story-${story.id}-verification-score`}
+                  colorScheme={verification.score >= 80 ? 'green' : 
+                             verification.score >= 60 ? 'yellow' : 'red'}
+                  fontSize="xs"
+                  fontWeight="bold"
+                >
+                  {verification.score}
+                </Badge>
+              </Tooltip>
             )}
 
             {/* View Button */}
@@ -282,11 +382,11 @@ const StoryPanel = ({
               </Button>
             )}
 
-          </div>
-        </div>
-      </div>
+          </HStack>
+        </HStack>
+      </VStack>
 
-    </div>
+    </Box>
   );
 };
 

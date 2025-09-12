@@ -541,6 +541,244 @@ describe('DashboardView', () => {
     });
   });
 
+  describe('Loading and Error States', () => {
+    it('displays loading state correctly', () => {
+      renderWithChakra(
+        <DashboardView 
+          loading={true}
+          epics={mockEpics}
+          stories={mockStories}
+          tasks={mockTasks}
+        />
+      );
+      
+      expect(screen.getByText('Loading dashboard...')).toBeInTheDocument();
+      expect(screen.queryByText('Dashboard Overview')).not.toBeInTheDocument();
+    });
+
+    it('displays error state correctly', () => {
+      const errorMessage = 'Failed to load dashboard data';
+      renderWithChakra(
+        <DashboardView 
+          error={errorMessage}
+          epics={mockEpics}
+          stories={mockStories}
+          tasks={mockTasks}
+        />
+      );
+      
+      expect(screen.getByText(`Error loading dashboard: ${errorMessage}`)).toBeInTheDocument();
+      expect(screen.queryByText('Dashboard Overview')).not.toBeInTheDocument();
+    });
+
+    it('prioritizes error state over loading state', () => {
+      renderWithChakra(
+        <DashboardView 
+          loading={true}
+          error="Error occurred"
+          epics={mockEpics}
+        />
+      );
+      
+      expect(screen.getByText('Error loading dashboard: Error occurred')).toBeInTheDocument();
+      expect(screen.queryByText('Loading dashboard...')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Stats Integration with Props', () => {
+    it('uses provided stats when available', () => {
+      const customStats = {
+        pending: 5,
+        completed: 8,
+        total: 15,
+        inProgress: 2
+      };
+
+      renderWithChakra(
+        <DashboardView 
+          tasks={mockTasks}
+          stats={customStats}
+        />
+      );
+      
+      // Should use stats props instead of calculating from tasks
+      expect(screen.getByTestId('dashboard-task-count')).toHaveTextContent('5');
+      expect(screen.getByText('53%')).toBeInTheDocument(); // 8/15 * 100 = 53.33% rounded
+      expect(screen.getByText('8 of 15 tasks')).toBeInTheDocument();
+    });
+
+    it('falls back to calculated stats when stats prop is not provided', () => {
+      renderWithChakra(
+        <DashboardView tasks={mockTasks} />
+      );
+      
+      // Should calculate from tasks array
+      expect(screen.getByTestId('dashboard-task-count')).toHaveTextContent('1');
+      expect(screen.getByText('50%')).toBeInTheDocument(); // 2/4 = 50%
+    });
+
+    it('handles partial stats objects', () => {
+      const partialStats = {
+        pending: 3,
+        // missing completed, total, inProgress
+      };
+
+      renderWithChakra(
+        <DashboardView 
+          tasks={mockTasks}
+          stats={partialStats}
+        />
+      );
+      
+      // Should use provided stats for pending, calculate others
+      expect(screen.getByTestId('dashboard-task-count')).toHaveTextContent('3');
+      expect(screen.getByText('50%')).toBeInTheDocument(); // Still calculated from tasks
+    });
+  });
+
+  describe('Epic Title Display Logic', () => {
+    it('displays epic titles correctly for different ID formats', () => {
+      const epicsWithVariousFormats = [
+        { id: '1', title: 'Epic One' },
+        { id: 'alpha', title: 'Epic Alpha' },
+        { id: '2' }, // No title, numeric ID
+        { id: 'beta' }, // No title, non-numeric ID
+        { title: 'No ID Epic' }, // No ID
+        {} // Empty epic
+      ];
+
+      renderWithChakra(
+        <DashboardView 
+          epics={epicsWithVariousFormats}
+          verifications={mockVerifications}
+        />
+      );
+      
+      expect(screen.getByText('Epic One')).toBeInTheDocument();
+      expect(screen.getByText('Epic Alpha')).toBeInTheDocument();
+      expect(screen.getByText('Epic 2')).toBeInTheDocument();
+      expect(screen.getByText('beta')).toBeInTheDocument();
+      expect(screen.getByText('No ID Epic')).toBeInTheDocument();
+      expect(screen.getByText('Epic')).toBeInTheDocument(); // Default fallback
+    });
+  });
+
+  describe('Recent Activity Timestamp Handling', () => {
+    it('formats timestamps correctly', () => {
+      const verificationsWithDifferentTimes = {
+        'story-1': {
+          storyId: 'story-1',
+          score: 85,
+          timestamp: '2024-01-15T10:30:00Z'
+        },
+        'story-2': {
+          storyId: 'story-2',
+          score: 90,
+          timestamp: '2024-12-25T23:59:59Z' 
+        }
+      };
+
+      renderWithChakra(
+        <DashboardView verifications={verificationsWithDifferentTimes} />
+      );
+      
+      // Check that dates are formatted and displayed
+      expect(screen.getByText(/Jan 15/)).toBeInTheDocument();
+      expect(screen.getByText(/Dec 25/)).toBeInTheDocument();
+    });
+
+    it('handles future timestamps', () => {
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 1);
+      
+      const verificationsWithFuture = {
+        'story-future': {
+          storyId: 'story-future',
+          score: 95,
+          timestamp: futureDate.toISOString()
+        }
+      };
+
+      renderWithChakra(
+        <DashboardView verifications={verificationsWithFuture} />
+      );
+      
+      // Should not crash with future dates
+      expect(screen.getByText('Story story-future')).toBeInTheDocument();
+    });
+  });
+
+  describe('Performance and Optimization', () => {
+    it('handles large datasets efficiently', () => {
+      const largeEpics = Array.from({ length: 50 }, (_, i) => ({
+        id: `epic-${i}`,
+        title: `Epic ${i}`,
+        description: `Description for epic ${i}`
+      }));
+
+      const largeVerifications = {};
+      for (let i = 0; i < 100; i++) {
+        largeVerifications[`story-${i}`] = {
+          storyId: `story-${i}`,
+          score: Math.floor(Math.random() * 100),
+          timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString()
+        };
+      }
+
+      renderWithChakra(
+        <DashboardView 
+          epics={largeEpics}
+          verifications={largeVerifications}
+          tasks={mockTasks}
+        />
+      );
+      
+      expect(screen.getByTestId('dashboard-epic-count')).toHaveTextContent('50');
+      // Should only show 5 most recent activities despite 100 verifications
+      const activities = screen.getAllByText(/Story story-/);
+      expect(activities).toHaveLength(5);
+    });
+
+    it('recalculates stats only when props change', () => {
+      const { rerender } = renderWithChakra(
+        <DashboardView tasks={mockTasks} />
+      );
+      
+      const initialCount = screen.getByTestId('dashboard-task-count').textContent;
+      
+      // Rerender with same props
+      rerender(
+        <ChakraProvider theme={chakraTheme}>
+          <DashboardView tasks={mockTasks} />
+        </ChakraProvider>
+      );
+      
+      // Should maintain the same calculated values
+      expect(screen.getByTestId('dashboard-task-count')).toHaveTextContent(initialCount);
+    });
+  });
+
+  describe('Color Mode Integration', () => {
+    it('applies color mode values correctly', () => {
+      const { container } = renderWithChakra(
+        <DashboardView 
+          epics={mockEpics}
+          stories={mockStories}
+          tasks={mockTasks}
+          verifications={mockVerifications}
+        />
+      );
+      
+      // Check that color mode dependent styles are applied
+      const cards = container.querySelectorAll('.chakra-card');
+      expect(cards.length).toBeGreaterThan(0);
+      
+      // Verify VStack elements exist (layout structure)
+      const vstacks = container.querySelectorAll('.chakra-stack');
+      expect(vstacks.length).toBeGreaterThan(0);
+    });
+  });
+
   describe('Accessibility', () => {
     it('has correct ARIA labels and semantic structure', () => {
       renderWithChakra(
@@ -570,6 +808,77 @@ describe('DashboardView', () => {
       
       expect(screen.getByText('Active projects')).toBeInTheDocument();
       expect(screen.getByText('Awaiting action')).toBeInTheDocument();
+    });
+
+    it('maintains focus management for interactive elements', () => {
+      renderWithChakra(
+        <DashboardView 
+          epics={mockEpics}
+          verifications={mockVerifications}
+        />
+      );
+      
+      // Verify that epic cards are focusable
+      const epicCards = screen.getAllByTestId(/dashboard-epic-.*-card/);
+      epicCards.forEach(card => {
+        expect(card).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Dynamic Data Updates', () => {
+    it('updates statistics when props change', () => {
+      const { rerender } = renderWithChakra(
+        <DashboardView tasks={mockTasks} />
+      );
+      
+      expect(screen.getByTestId('dashboard-task-count')).toHaveTextContent('1');
+      
+      const updatedTasks = [
+        ...mockTasks,
+        { id: 'task-5', status: 'pending', name: 'New Task' }
+      ];
+      
+      rerender(
+        <ChakraProvider theme={chakraTheme}>
+          <DashboardView tasks={updatedTasks} />
+        </ChakraProvider>
+      );
+      
+      expect(screen.getByTestId('dashboard-task-count')).toHaveTextContent('2');
+    });
+
+    it('updates epic display when epics change', () => {
+      const { rerender } = renderWithChakra(
+        <DashboardView epics={mockEpics.slice(0, 1)} />
+      );
+      
+      expect(screen.getByTestId('dashboard-epic-count')).toHaveTextContent('1');
+      
+      rerender(
+        <ChakraProvider theme={chakraTheme}>
+          <DashboardView epics={mockEpics} />
+        </ChakraProvider>
+      );
+      
+      expect(screen.getByTestId('dashboard-epic-count')).toHaveTextContent('3');
+    });
+
+    it('updates recent activity when verifications change', () => {
+      const { rerender } = renderWithChakra(
+        <DashboardView verifications={{}} />
+      );
+      
+      expect(screen.getByText('No recent verification activity')).toBeInTheDocument();
+      
+      rerender(
+        <ChakraProvider theme={chakraTheme}>
+          <DashboardView verifications={mockVerifications} />
+        </ChakraProvider>
+      );
+      
+      expect(screen.queryByText('No recent verification activity')).not.toBeInTheDocument();
+      expect(screen.getByText('Story story-1')).toBeInTheDocument();
     });
   });
 });

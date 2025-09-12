@@ -423,7 +423,7 @@ export class BMADDataCache {
 /**
  * Get tasks with story context integration
  */
-export const getTasksWithStoryContext = async (tasks, projectId) => {
+export const getTasksWithStoryContext = async (tasks, projectId, verifications = {}) => {
   if (!projectId) {
     console.warn('getTasksWithStoryContext called without projectId');
     return tasks;
@@ -436,8 +436,8 @@ export const getTasksWithStoryContext = async (tasks, projectId) => {
     // Import the task-story mapper (dynamic import to avoid circular dependency)
     const { enrichTasksWithStoryContext } = await import('./taskStoryMapper.js');
     
-    // Enrich tasks with story context
-    return enrichTasksWithStoryContext(tasks, stories);
+    // Enrich tasks with story context and verification data
+    return enrichTasksWithStoryContext(tasks, stories, verifications);
   } catch (error) {
     console.error('Error enriching tasks with story context:', error);
     return tasks; // Return original tasks if enrichment fails

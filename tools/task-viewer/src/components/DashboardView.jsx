@@ -26,14 +26,19 @@ const DashboardView = ({
   epics = [], 
   stories = [], 
   tasks = [], 
-  verifications = {} 
+  verifications = {},
+  stats = {},
+  profileId,
+  loading,
+  error
 }) => {
-  // Calculate statistics
+  // Use provided stats or calculate statistics
   const totalEpics = epics.length;
   const activeStories = stories.filter(story => story.status !== 'completed').length;
-  const pendingTasks = tasks.filter(task => task.status === 'pending').length;
-  const completedTasks = tasks.filter(task => task.status === 'completed').length;
-  const totalTasks = tasks.length;
+  const pendingTasks = stats.pending || tasks.filter(task => task.status === 'pending').length;
+  const completedTasks = stats.completed || tasks.filter(task => task.status === 'completed').length;
+  const totalTasks = stats.total || tasks.length;
+  const inProgressTasks = stats.inProgress || tasks.filter(task => task.status === 'in_progress').length;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // Get recent activity from verifications
@@ -45,6 +50,28 @@ const DashboardView = ({
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   
+  // Handle loading state
+  if (loading) {
+    return (
+      <Box p={6} minH="100vh">
+        <VStack spacing={8} align="stretch">
+          <Text>Loading dashboard...</Text>
+        </VStack>
+      </Box>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <Box p={6} minH="100vh">
+        <VStack spacing={8} align="stretch">
+          <Text color="red.500">Error loading dashboard: {error}</Text>
+        </VStack>
+      </Box>
+    );
+  }
+
   return (
     <Box p={6} minH="100vh">
       <VStack spacing={8} align="stretch">
@@ -319,7 +346,7 @@ const DashboardView = ({
                   <HStack justify="space-between">
                     <Text fontSize="sm" color="text.muted">In Progress</Text>
                     <Badge variant="outline" colorScheme="blue">
-                      {tasks.filter(task => task.status === 'in_progress').length}
+                      {inProgressTasks}
                     </Badge>
                   </HStack>
                   

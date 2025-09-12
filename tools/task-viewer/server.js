@@ -1607,15 +1607,16 @@ Progress achieved so far and remaining scope`
                         // Dynamic import of BMAD API utilities
                         const bmadApi = await import('./src/utils/bmad-api.js');
                         
+                        // Get stories, epics, and verifications for complete context
+                        const [stories, epics, verifications] = await Promise.all([
+                            bmadApi.getStories(projectId),
+                            bmadApi.getEpics(projectId),
+                            bmadApi.getAllVerifications(projectId)
+                        ]);
+                        
                         // Enrich tasks with story context and epic hierarchy
                         console.log(`Enriching ${enrichedTasks.length} tasks with story context and epic hierarchy for project ${projectId}`);
-                        enrichedTasks = await bmadApi.getTasksWithStoryContext(enrichedTasks, projectId);
-                        
-                        // Get stories and epics for epic hierarchy mapping
-                        const [stories, epics] = await Promise.all([
-                            bmadApi.getStories(projectId),
-                            bmadApi.getEpics(projectId)
-                        ]);
+                        enrichedTasks = await bmadApi.getTasksWithStoryContext(enrichedTasks, projectId, verifications);
                         
                         // Create story-to-epic mapping
                         const storyToEpicMap = new Map();
@@ -2656,14 +2657,18 @@ Progress achieved so far and remaining scope`
                                                 stories.push({
                                                     id: storyId,
                                                     epicId: epicId,
+                                                    epic: epicId, // Both epicId and epic for compatibility
                                                     name: title,
                                                     title: title,
                                                     description: description,
+                                                    userStory: description,
                                                     status: status,
                                                     filename: entry.name,
                                                     path: fullPath,
                                                     directory: path.relative(project.projectRoot, storiesPath),
-                                                    filePath: path.relative(project.projectRoot, fullPath)
+                                                    filePath: path.relative(project.projectRoot, fullPath),
+                                                    verified: false, // Default verification status
+                                                    verificationStatus: 'pending'
                                                 });
                                             }
                                         } catch (err) {
@@ -3945,6 +3950,506 @@ Progress achieved so far and remaining scope`
                 }
             });
             
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/story-hierarchy') && req.method === 'GET') {
+            // Enhanced endpoint: Get complete epic-story-task hierarchy
+            const projectId = url.pathname.split('/')[3]; // Extract projectId from /api/tasks/{projectId}/story-hierarchy
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Project not found' }));
+                return;
+            }
+            
+            try {
+                // Check cache first
+                const cacheKey = `story-hierarchy-${projectId}`;
+                const cachedHierarchy = getCacheEntry(cacheKey);
+                
+                if (cachedHierarchy) {
+                    console.log(`Serving cached story hierarchy for project: ${projectId}`);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=300'
+                    });
+                    res.end(JSON.stringify(cachedHierarchy));
+                    return;
+                }
+                
+                // Check if tasks file exists
+                try {
+                    await fs.access(project.path);
+                } catch (accessErr) {
+                    const emptyHierarchy = {
+                        epics: [],
+                        stories: [],
+                        tasks: [],
+                        hierarchy: {},
+                        metrics: {
+                            totalEpics: 0,
+                            totalStories: 0,
+                            totalTasks: 0,
+                            tasksWithStories: 0,
+                            storiesWithTasks: 0,
+                            epicsWithStories: 0
+                        },
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    setCacheEntry(cacheKey, emptyHierarchy);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=300'
+                    });
+                    res.end(JSON.stringify(emptyHierarchy));
+                    return;
+                }
+                
+                // Read and parse tasks
+                const data = await fs.readFile(project.path, 'utf8');
+                let tasksData = JSON.parse(data);
+                
+                if (Array.isArray(tasksData)) {
+                    tasksData = { tasks: tasksData };
+                }
+                
+                const tasks = tasksData.tasks || [];
+                let stories = [];
+                let epics = [];
+                let hierarchy = {};
+                
+                // Try BMAD integration for complete hierarchy
+                try {
+                    const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                    const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                    
+                    if (bmadExists) {
+                        const bmadApi = await import('./src/utils/bmad-api.js');
+                        
+                        // Get stories and epics with full data
+                        [stories, epics] = await Promise.all([
+                            bmadApi.getStories(projectId),
+                            bmadApi.getEpics(projectId)
+                        ]);
+                        
+                        // Enrich tasks with story context
+                        const enrichedTasks = await bmadApi.getTasksWithStoryContext(tasks, projectId);
+                        
+                        // Build complete hierarchy
+                        epics.forEach(epic => {
+                            hierarchy[epic.id] = {
+                                epic: {
+                                    id: epic.id,
+                                    title: epic.title,
+                                    description: epic.description,
+                                    status: epic.status,
+                                    priority: epic.priority || 'medium',
+                                    createdAt: epic.createdAt,
+                                    updatedAt: epic.updatedAt
+                                },
+                                stories: {},
+                                metrics: {
+                                    storyCount: 0,
+                                    taskCount: 0,
+                                    completedTasks: 0,
+                                    completionRate: 0
+                                }
+                            };
+                        });
+                        
+                        // Add stories to hierarchy
+                        stories.forEach(story => {
+                            const epicId = story.epic || story.epicId;
+                            if (epicId && hierarchy[epicId]) {
+                                hierarchy[epicId].stories[story.id] = {
+                                    story: {
+                                        id: story.id,
+                                        title: story.title,
+                                        description: story.description || story.userStory,
+                                        status: story.status,
+                                        epic: epicId,
+                                        verified: Boolean(story.verified),
+                                        verificationStatus: story.verificationStatus || 'pending',
+                                        acceptanceCriteria: story.acceptanceCriteria || [],
+                                        createdAt: story.createdAt,
+                                        updatedAt: story.updatedAt
+                                    },
+                                    tasks: [],
+                                    metrics: {
+                                        taskCount: 0,
+                                        completedTasks: 0,
+                                        completionRate: 0
+                                    }
+                                };
+                                hierarchy[epicId].metrics.storyCount++;
+                            }
+                        });
+                        
+                        // Add tasks to hierarchy
+                        enrichedTasks.forEach(task => {
+                            const storyId = task.storyId;
+                            if (storyId) {
+                                // Find the epic containing this story
+                                for (const epicId in hierarchy) {
+                                    if (hierarchy[epicId].stories[storyId]) {
+                                        const taskData = {
+                                            id: task.id,
+                                            name: task.name,
+                                            description: task.description,
+                                            status: task.status,
+                                            agent: task.agent || null,
+                                            priority: task.priority || 'medium',
+                                            storyId: storyId,
+                                            epicId: epicId,
+                                            createdAt: task.createdAt,
+                                            updatedAt: task.updatedAt,
+                                            storyContext: task.storyContext
+                                        };
+                                        
+                                        hierarchy[epicId].stories[storyId].tasks.push(taskData);
+                                        hierarchy[epicId].stories[storyId].metrics.taskCount++;
+                                        hierarchy[epicId].metrics.taskCount++;
+                                        
+                                        if (task.status === 'completed') {
+                                            hierarchy[epicId].stories[storyId].metrics.completedTasks++;
+                                            hierarchy[epicId].metrics.completedTasks++;
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+                        
+                        // Calculate completion rates
+                        for (const epicId in hierarchy) {
+                            const epicData = hierarchy[epicId];
+                            
+                            // Epic completion rate
+                            if (epicData.metrics.taskCount > 0) {
+                                epicData.metrics.completionRate = Math.round(
+                                    (epicData.metrics.completedTasks / epicData.metrics.taskCount) * 100
+                                );
+                            }
+                            
+                            // Story completion rates
+                            for (const storyId in epicData.stories) {
+                                const storyData = epicData.stories[storyId];
+                                if (storyData.metrics.taskCount > 0) {
+                                    storyData.metrics.completionRate = Math.round(
+                                        (storyData.metrics.completedTasks / storyData.metrics.taskCount) * 100
+                                    );
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error building story hierarchy:', error);
+                    // Continue with basic structure if enhancement fails
+                }
+                
+                // Calculate overall metrics
+                const metrics = {
+                    totalEpics: epics.length,
+                    totalStories: stories.length,
+                    totalTasks: tasks.length,
+                    tasksWithStories: tasks.filter(t => t.storyId || 
+                        stories.some(s => s.id === t.storyId)).length,
+                    storiesWithTasks: stories.filter(s => 
+                        tasks.some(t => t.storyId === s.id)).length,
+                    epicsWithStories: epics.filter(e => 
+                        stories.some(s => s.epic === e.id || s.epicId === e.id)).length
+                };
+                
+                const storyHierarchy = {
+                    epics,
+                    stories,
+                    tasks,
+                    hierarchy,
+                    metrics,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Cache the response
+                setCacheEntry(cacheKey, storyHierarchy);
+                
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'private, max-age=300'
+                });
+                res.end(JSON.stringify(storyHierarchy));
+                
+            } catch (err) {
+                console.error(`Error building story hierarchy for ${project.path}:`, err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    error: 'Failed to build story hierarchy',
+                    details: err.message 
+                }));
+            }
+            
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/story-validation') && req.method === 'GET') {
+            // Enhanced endpoint: Validate task-story linkages and return detailed report
+            const projectId = url.pathname.split('/')[3]; // Extract projectId from /api/tasks/{projectId}/story-validation
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Project not found' }));
+                return;
+            }
+            
+            try {
+                // Check cache first
+                const cacheKey = `story-validation-${projectId}`;
+                const cachedValidation = getCacheEntry(cacheKey);
+                
+                if (cachedValidation) {
+                    console.log(`Serving cached story validation for project: ${projectId}`);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=180' // 3 minutes cache for validation data
+                    });
+                    res.end(JSON.stringify(cachedValidation));
+                    return;
+                }
+                
+                // Check if tasks file exists
+                try {
+                    await fs.access(project.path);
+                } catch (accessErr) {
+                    const emptyValidation = {
+                        summary: {
+                            totalTasks: 0,
+                            tasksWithStories: 0,
+                            tasksWithoutStories: 0,
+                            totalStories: 0,
+                            storiesWithTasks: 0,
+                            storiesWithoutTasks: 0,
+                            validLinks: 0,
+                            brokenLinks: 0,
+                            healthScore: 0
+                        },
+                        taskAnalysis: {
+                            linked: [],
+                            unlinked: [],
+                            brokenLinks: []
+                        },
+                        storyAnalysis: {
+                            withTasks: [],
+                            orphaned: [],
+                            missingFromProject: []
+                        },
+                        recommendations: [],
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    setCacheEntry(cacheKey, emptyValidation);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=180'
+                    });
+                    res.end(JSON.stringify(emptyValidation));
+                    return;
+                }
+                
+                // Read and parse tasks
+                const data = await fs.readFile(project.path, 'utf8');
+                let tasksData = JSON.parse(data);
+                
+                if (Array.isArray(tasksData)) {
+                    tasksData = { tasks: tasksData };
+                }
+                
+                const tasks = tasksData.tasks || [];
+                let stories = [];
+                let validationResult = {
+                    summary: {
+                        totalTasks: tasks.length,
+                        tasksWithStories: 0,
+                        tasksWithoutStories: tasks.length,
+                        totalStories: 0,
+                        storiesWithTasks: 0,
+                        storiesWithoutTasks: 0,
+                        validLinks: 0,
+                        brokenLinks: 0,
+                        healthScore: 0
+                    },
+                    taskAnalysis: {
+                        linked: [],
+                        unlinked: [],
+                        brokenLinks: []
+                    },
+                    storyAnalysis: {
+                        withTasks: [],
+                        orphaned: [],
+                        missingFromProject: []
+                    },
+                    recommendations: []
+                };
+                
+                // Try BMAD integration for comprehensive validation
+                try {
+                    const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                    const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                    
+                    if (bmadExists) {
+                        const bmadApi = await import('./src/utils/bmad-api.js');
+                        
+                        // Get stories and perform validation using the utility functions
+                        stories = await bmadApi.getStories(projectId);
+                        const validation = await bmadApi.validateProjectStoryTaskLinking(tasks, projectId);
+                        
+                        if (validation) {
+                            // Use validation results to build comprehensive report
+                            validationResult.summary.totalStories = stories.length;
+                            validationResult.summary.tasksWithStories = validation.tasksWithStories;
+                            validationResult.summary.tasksWithoutStories = validation.tasksWithoutStories;
+                            
+                            const storiesWithTasks = validation.linkedStories.length;
+                            const orphanedStories = validation.orphanedStories.length;
+                            
+                            validationResult.summary.storiesWithTasks = storiesWithTasks;
+                            validationResult.summary.storiesWithoutTasks = orphanedStories;
+                            validationResult.summary.validLinks = validation.tasksWithStories;
+                            validationResult.summary.brokenLinks = validation.missingStories.length;
+                            
+                            // Calculate health score (0-100)
+                            const totalConnections = tasks.length + stories.length;
+                            const validConnections = validation.tasksWithStories + storiesWithTasks;
+                            validationResult.summary.healthScore = totalConnections > 0 ? 
+                                Math.round((validConnections / totalConnections) * 100) : 100;
+                            
+                            // Detailed task analysis
+                            tasks.forEach(task => {
+                                const storyId = task.storyId;
+                                const taskInfo = {
+                                    id: task.id,
+                                    name: task.name,
+                                    status: task.status,
+                                    storyId: storyId
+                                };
+                                
+                                if (storyId) {
+                                    if (validation.missingStories.includes(storyId)) {
+                                        validationResult.taskAnalysis.brokenLinks.push({
+                                            ...taskInfo,
+                                            issue: 'Story not found in project',
+                                            storyId: storyId
+                                        });
+                                    } else {
+                                        validationResult.taskAnalysis.linked.push(taskInfo);
+                                    }
+                                } else {
+                                    validationResult.taskAnalysis.unlinked.push(taskInfo);
+                                }
+                            });
+                            
+                            // Detailed story analysis
+                            stories.forEach(story => {
+                                const storyInfo = {
+                                    id: story.id,
+                                    title: story.title,
+                                    status: story.status,
+                                    epic: story.epic || story.epicId
+                                };
+                                
+                                if (validation.linkedStories.includes(story.id)) {
+                                    validationResult.storyAnalysis.withTasks.push(storyInfo);
+                                } else {
+                                    validationResult.storyAnalysis.orphaned.push(storyInfo);
+                                }
+                            });
+                            
+                            // Add missing stories that tasks reference
+                            validation.missingStories.forEach(storyId => {
+                                validationResult.storyAnalysis.missingFromProject.push({
+                                    id: storyId,
+                                    title: `Story ${storyId}`,
+                                    status: 'unknown',
+                                    issue: 'Referenced by tasks but not found in project stories'
+                                });
+                            });
+                            
+                            // Generate recommendations
+                            if (validation.tasksWithoutStories > 0) {
+                                validationResult.recommendations.push({
+                                    type: 'unlinked-tasks',
+                                    priority: 'medium',
+                                    message: `${validation.tasksWithoutStories} tasks are not linked to stories. Consider creating stories or linking them to existing ones.`,
+                                    count: validation.tasksWithoutStories
+                                });
+                            }
+                            
+                            if (validation.orphanedStories.length > 0) {
+                                validationResult.recommendations.push({
+                                    type: 'orphaned-stories',
+                                    priority: 'low',
+                                    message: `${validation.orphanedStories.length} stories have no associated tasks. Consider creating implementation tasks.`,
+                                    count: validation.orphanedStories.length
+                                });
+                            }
+                            
+                            if (validation.missingStories.length > 0) {
+                                validationResult.recommendations.push({
+                                    type: 'broken-links',
+                                    priority: 'high',
+                                    message: `${validation.missingStories.length} tasks reference non-existent stories. Please create these stories or fix the references.`,
+                                    count: validation.missingStories.length,
+                                    storyIds: validation.missingStories
+                                });
+                            }
+                            
+                            if (validationResult.summary.healthScore >= 90) {
+                                validationResult.recommendations.push({
+                                    type: 'health-excellent',
+                                    priority: 'info',
+                                    message: 'Excellent task-story linkage health! Your project has strong traceability.'
+                                });
+                            } else if (validationResult.summary.healthScore >= 70) {
+                                validationResult.recommendations.push({
+                                    type: 'health-good',
+                                    priority: 'info',
+                                    message: 'Good task-story linkage health. Consider addressing the recommendations to improve further.'
+                                });
+                            } else {
+                                validationResult.recommendations.push({
+                                    type: 'health-poor',
+                                    priority: 'high',
+                                    message: 'Poor task-story linkage health. Immediate attention needed to improve project traceability.'
+                                });
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error performing story validation:', error);
+                    validationResult.recommendations.push({
+                        type: 'validation-error',
+                        priority: 'high',
+                        message: 'Error occurred during validation. Some results may be incomplete.',
+                        details: error.message
+                    });
+                }
+                
+                validationResult.timestamp = new Date().toISOString();
+                
+                // Cache the response (shorter TTL for validation data)
+                setCacheEntry(cacheKey, validationResult);
+                
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'private, max-age=180'
+                });
+                res.end(JSON.stringify(validationResult));
+                
+            } catch (err) {
+                console.error(`Error validating story links for ${project.path}:`, err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    error: 'Failed to validate story links',
+                    details: err.message 
+                }));
+            }
+            
         } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/with-stories') && req.method === 'GET') {
             // Enhanced endpoint: Get tasks with enriched story data
             const projectId = url.pathname.split('/')[3]; // Extract projectId from /api/tasks/{projectId}/with-stories
@@ -4032,23 +4537,30 @@ Progress achieved so far and remaining scope`
                         
                         const bmadApi = await import('./src/utils/bmad-api.js');
                         
-                        // Get stories and epics
-                        const [stories, epics] = await Promise.all([
+                        // Get stories, epics, and verifications for complete context
+                        const [stories, epics, verifications] = await Promise.all([
                             bmadApi.getStories(projectId),
-                            bmadApi.getEpics(projectId)
+                            bmadApi.getEpics(projectId),
+                            bmadApi.getAllVerifications(projectId)
                         ]);
                         
-                        // Enrich tasks with story context
-                        enrichedTasks = await bmadApi.getTasksWithStoryContext(enrichedTasks, projectId);
+                        // Enrich tasks with story context and verification data
+                        enrichedTasks = await bmadApi.getTasksWithStoryContext(enrichedTasks, projectId, verifications);
                         
-                        // Build story context map
+                        // Build story context map with verification status
                         const storyMap = new Map();
                         stories.forEach(story => {
+                            const storyVerification = verifications[story.id] || {};
                             storyMap.set(story.id, {
                                 id: story.id,
                                 title: story.title,
                                 epic: story.epic,
                                 status: story.status,
+                                verified: Boolean(story.verified || storyVerification.verified),
+                                verificationStatus: story.verificationStatus || storyVerification.status || 'pending',
+                                verificationScore: storyVerification.score || story.verificationScore || null,
+                                verificationUpdatedAt: storyVerification.updatedAt || story.verificationUpdatedAt || null,
+                                acceptanceCriteria: story.acceptanceCriteria || [],
                                 tasks: []
                             });
                         });
@@ -4311,26 +4823,1025 @@ Progress achieved so far and remaining scope`
                 }));
             }
             
-        } else if (url.pathname === '/api/tasks/cache-clear' && req.method === 'POST') {
-            // Cache management endpoint
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/story-hierarchy') && req.method === 'GET') {
+            // Enhanced endpoint: Get complete epic-story-task hierarchy
+            const projectId = url.pathname.split('/')[3]; // Extract projectId from /api/tasks/{projectId}/story-hierarchy
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Project not found' }));
+                return;
+            }
+            
             try {
-                clearCache();
-                console.log('Task-story integration cache cleared');
+                // Check cache first
+                const cacheKey = `story-hierarchy-${projectId}`;
+                const cachedHierarchy = getCacheEntry(cacheKey);
                 
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ 
-                    success: true,
-                    message: 'Cache cleared successfully',
+                if (cachedHierarchy) {
+                    console.log(`Serving cached story hierarchy for project: ${projectId}`);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=300'
+                    });
+                    res.end(JSON.stringify(cachedHierarchy));
+                    return;
+                }
+                
+                // Check if tasks file exists
+                try {
+                    await fs.access(project.path);
+                } catch (accessErr) {
+                    const emptyHierarchy = {
+                        epics: [],
+                        stories: [],
+                        tasks: [],
+                        hierarchy: {},
+                        metrics: {
+                            totalEpics: 0,
+                            totalStories: 0,
+                            totalTasks: 0,
+                            tasksWithStories: 0,
+                            storiesWithTasks: 0,
+                            epicsWithStories: 0
+                        },
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    setCacheEntry(cacheKey, emptyHierarchy);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=300'
+                    });
+                    res.end(JSON.stringify(emptyHierarchy));
+                    return;
+                }
+                
+                // Read and parse tasks
+                const data = await fs.readFile(project.path, 'utf8');
+                let tasksData = JSON.parse(data);
+                
+                if (Array.isArray(tasksData)) {
+                    tasksData = { tasks: tasksData };
+                }
+                
+                const tasks = tasksData.tasks || [];
+                let stories = [];
+                let epics = [];
+                let hierarchy = {};
+                
+                // Try BMAD integration for complete hierarchy
+                try {
+                    const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                    const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                    
+                    if (bmadExists) {
+                        const bmadApi = await import('./src/utils/bmad-api.js');
+                        
+                        // Get stories and epics with full data
+                        [stories, epics] = await Promise.all([
+                            bmadApi.getStories(projectId),
+                            bmadApi.getEpics(projectId)
+                        ]);
+                        
+                        // Enrich tasks with story context
+                        const enrichedTasks = await bmadApi.getTasksWithStoryContext(tasks, projectId);
+                        
+                        // Build complete hierarchy
+                        epics.forEach(epic => {
+                            hierarchy[epic.id] = {
+                                epic: {
+                                    id: epic.id,
+                                    title: epic.title,
+                                    description: epic.description,
+                                    status: epic.status,
+                                    priority: epic.priority || 'medium',
+                                    createdAt: epic.createdAt,
+                                    updatedAt: epic.updatedAt
+                                },
+                                stories: {},
+                                metrics: {
+                                    storyCount: 0,
+                                    taskCount: 0,
+                                    completedTasks: 0,
+                                    completionRate: 0
+                                }
+                            };
+                        });
+                        
+                        // Add stories to hierarchy
+                        stories.forEach(story => {
+                            const epicId = story.epic || story.epicId;
+                            if (epicId && hierarchy[epicId]) {
+                                hierarchy[epicId].stories[story.id] = {
+                                    story: {
+                                        id: story.id,
+                                        title: story.title,
+                                        description: story.description || story.userStory,
+                                        status: story.status,
+                                        epic: epicId,
+                                        verified: Boolean(story.verified),
+                                        verificationStatus: story.verificationStatus || 'pending',
+                                        acceptanceCriteria: story.acceptanceCriteria || [],
+                                        createdAt: story.createdAt,
+                                        updatedAt: story.updatedAt
+                                    },
+                                    tasks: [],
+                                    metrics: {
+                                        taskCount: 0,
+                                        completedTasks: 0,
+                                        completionRate: 0
+                                    }
+                                };
+                                hierarchy[epicId].metrics.storyCount++;
+                            }
+                        });
+                        
+                        // Add tasks to hierarchy
+                        enrichedTasks.forEach(task => {
+                            const storyId = task.storyId;
+                            if (storyId) {
+                                // Find the epic containing this story
+                                for (const epicId in hierarchy) {
+                                    if (hierarchy[epicId].stories[storyId]) {
+                                        const taskData = {
+                                            id: task.id,
+                                            name: task.name,
+                                            description: task.description,
+                                            status: task.status,
+                                            agent: task.agent || null,
+                                            priority: task.priority || 'medium',
+                                            storyId: storyId,
+                                            epicId: epicId,
+                                            createdAt: task.createdAt,
+                                            updatedAt: task.updatedAt,
+                                            storyContext: task.storyContext
+                                        };
+                                        
+                                        hierarchy[epicId].stories[storyId].tasks.push(taskData);
+                                        hierarchy[epicId].stories[storyId].metrics.taskCount++;
+                                        hierarchy[epicId].metrics.taskCount++;
+                                        
+                                        if (task.status === 'completed') {
+                                            hierarchy[epicId].stories[storyId].metrics.completedTasks++;
+                                            hierarchy[epicId].metrics.completedTasks++;
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+                        
+                        // Calculate completion rates
+                        for (const epicId in hierarchy) {
+                            const epicData = hierarchy[epicId];
+                            
+                            // Epic completion rate
+                            if (epicData.metrics.taskCount > 0) {
+                                epicData.metrics.completionRate = Math.round(
+                                    (epicData.metrics.completedTasks / epicData.metrics.taskCount) * 100
+                                );
+                            }
+                            
+                            // Story completion rates
+                            for (const storyId in epicData.stories) {
+                                const storyData = epicData.stories[storyId];
+                                if (storyData.metrics.taskCount > 0) {
+                                    storyData.metrics.completionRate = Math.round(
+                                        (storyData.metrics.completedTasks / storyData.metrics.taskCount) * 100
+                                    );
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error building story hierarchy:', error);
+                    // Continue with basic structure if enhancement fails
+                }
+                
+                // Calculate overall metrics
+                const metrics = {
+                    totalEpics: epics.length,
+                    totalStories: stories.length,
+                    totalTasks: tasks.length,
+                    tasksWithStories: tasks.filter(t => t.storyId || 
+                        stories.some(s => s.id === t.storyId)).length,
+                    storiesWithTasks: stories.filter(s => 
+                        tasks.some(t => t.storyId === s.id)).length,
+                    epicsWithStories: epics.filter(e => 
+                        stories.some(s => s.epic === e.id || s.epicId === e.id)).length
+                };
+                
+                const storyHierarchy = {
+                    epics,
+                    stories,
+                    tasks,
+                    hierarchy,
+                    metrics,
                     timestamp: new Date().toISOString()
-                }));
+                };
+                
+                // Cache the response
+                setCacheEntry(cacheKey, storyHierarchy);
+                
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'private, max-age=300'
+                });
+                res.end(JSON.stringify(storyHierarchy));
+                
             } catch (err) {
-                console.error('Error clearing cache:', err);
+                console.error(`Error building story hierarchy for ${project.path}:`, err);
                 res.writeHead(500, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ 
-                    error: 'Failed to clear cache',
+                    error: 'Failed to build story hierarchy',
                     details: err.message 
                 }));
             }
+            
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.endsWith('/story-validation') && req.method === 'GET') {
+            // Enhanced endpoint: Validate task-story linkages and return detailed report
+            const projectId = url.pathname.split('/')[3]; // Extract projectId from /api/tasks/{projectId}/story-validation
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Project not found' }));
+                return;
+            }
+            
+            try {
+                // Check cache first
+                const cacheKey = `story-validation-${projectId}`;
+                const cachedValidation = getCacheEntry(cacheKey);
+                
+                if (cachedValidation) {
+                    console.log(`Serving cached story validation for project: ${projectId}`);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=180' // 3 minutes cache for validation data
+                    });
+                    res.end(JSON.stringify(cachedValidation));
+                    return;
+                }
+                
+                // Check if tasks file exists
+                try {
+                    await fs.access(project.path);
+                } catch (accessErr) {
+                    const emptyValidation = {
+                        summary: {
+                            totalTasks: 0,
+                            tasksWithStories: 0,
+                            tasksWithoutStories: 0,
+                            totalStories: 0,
+                            storiesWithTasks: 0,
+                            storiesWithoutTasks: 0,
+                            validLinks: 0,
+                            brokenLinks: 0,
+                            healthScore: 0
+                        },
+                        taskAnalysis: {
+                            linked: [],
+                            unlinked: [],
+                            brokenLinks: []
+                        },
+                        storyAnalysis: {
+                            withTasks: [],
+                            orphaned: [],
+                            missingFromProject: []
+                        },
+                        recommendations: [],
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    setCacheEntry(cacheKey, emptyValidation);
+                    res.writeHead(200, { 
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'private, max-age=180'
+                    });
+                    res.end(JSON.stringify(emptyValidation));
+                    return;
+                }
+                
+                // Read and parse tasks
+                const data = await fs.readFile(project.path, 'utf8');
+                let tasksData = JSON.parse(data);
+                
+                if (Array.isArray(tasksData)) {
+                    tasksData = { tasks: tasksData };
+                }
+                
+                const tasks = tasksData.tasks || [];
+                let stories = [];
+                let validationResult = {
+                    summary: {
+                        totalTasks: tasks.length,
+                        tasksWithStories: 0,
+                        tasksWithoutStories: tasks.length,
+                        totalStories: 0,
+                        storiesWithTasks: 0,
+                        storiesWithoutTasks: 0,
+                        validLinks: 0,
+                        brokenLinks: 0,
+                        healthScore: 0
+                    },
+                    taskAnalysis: {
+                        linked: [],
+                        unlinked: [],
+                        brokenLinks: []
+                    },
+                    storyAnalysis: {
+                        withTasks: [],
+                        orphaned: [],
+                        missingFromProject: []
+                    },
+                    recommendations: []
+                };
+                
+                // Try BMAD integration for comprehensive validation
+                try {
+                    const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                    const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                    
+                    if (bmadExists) {
+                        const bmadApi = await import('./src/utils/bmad-api.js');
+                        
+                        // Get stories and perform validation using the utility functions
+                        stories = await bmadApi.getStories(projectId);
+                        const validation = await bmadApi.validateProjectStoryTaskLinking(tasks, projectId);
+                        
+                        if (validation) {
+                            // Use validation results to build comprehensive report
+                            validationResult.summary.totalStories = stories.length;
+                            validationResult.summary.tasksWithStories = validation.tasksWithStories;
+                            validationResult.summary.tasksWithoutStories = validation.tasksWithoutStories;
+                            
+                            const storiesWithTasks = validation.linkedStories.length;
+                            const orphanedStories = validation.orphanedStories.length;
+                            
+                            validationResult.summary.storiesWithTasks = storiesWithTasks;
+                            validationResult.summary.storiesWithoutTasks = orphanedStories;
+                            validationResult.summary.validLinks = validation.tasksWithStories;
+                            validationResult.summary.brokenLinks = validation.missingStories.length;
+                            
+                            // Calculate health score (0-100)
+                            const totalConnections = tasks.length + stories.length;
+                            const validConnections = validation.tasksWithStories + storiesWithTasks;
+                            validationResult.summary.healthScore = totalConnections > 0 ? 
+                                Math.round((validConnections / totalConnections) * 100) : 100;
+                            
+                            // Detailed task analysis
+                            tasks.forEach(task => {
+                                const storyId = task.storyId;
+                                const taskInfo = {
+                                    id: task.id,
+                                    name: task.name,
+                                    status: task.status,
+                                    storyId: storyId
+                                };
+                                
+                                if (storyId) {
+                                    if (validation.missingStories.includes(storyId)) {
+                                        validationResult.taskAnalysis.brokenLinks.push({
+                                            ...taskInfo,
+                                            issue: 'Story not found in project',
+                                            storyId: storyId
+                                        });
+                                    } else {
+                                        validationResult.taskAnalysis.linked.push(taskInfo);
+                                    }
+                                } else {
+                                    validationResult.taskAnalysis.unlinked.push(taskInfo);
+                                }
+                            });
+                            
+                            // Detailed story analysis
+                            stories.forEach(story => {
+                                const storyInfo = {
+                                    id: story.id,
+                                    title: story.title,
+                                    status: story.status,
+                                    epic: story.epic || story.epicId
+                                };
+                                
+                                if (validation.linkedStories.includes(story.id)) {
+                                    validationResult.storyAnalysis.withTasks.push(storyInfo);
+                                } else {
+                                    validationResult.storyAnalysis.orphaned.push(storyInfo);
+                                }
+                            });
+                            
+                            // Add missing stories that tasks reference
+                            validation.missingStories.forEach(storyId => {
+                                validationResult.storyAnalysis.missingFromProject.push({
+                                    id: storyId,
+                                    title: `Story ${storyId}`,
+                                    status: 'unknown',
+                                    issue: 'Referenced by tasks but not found in project stories'
+                                });
+                            });
+                            
+                            // Generate recommendations
+                            if (validation.tasksWithoutStories > 0) {
+                                validationResult.recommendations.push({
+                                    type: 'unlinked-tasks',
+                                    priority: 'medium',
+                                    message: `${validation.tasksWithoutStories} tasks are not linked to stories. Consider creating stories or linking them to existing ones.`,
+                                    count: validation.tasksWithoutStories
+                                });
+                            }
+                            
+                            if (validation.orphanedStories.length > 0) {
+                                validationResult.recommendations.push({
+                                    type: 'orphaned-stories',
+                                    priority: 'low',
+                                    message: `${validation.orphanedStories.length} stories have no associated tasks. Consider creating implementation tasks.`,
+                                    count: validation.orphanedStories.length
+                                });
+                            }
+                            
+                            if (validation.missingStories.length > 0) {
+                                validationResult.recommendations.push({
+                                    type: 'broken-links',
+                                    priority: 'high',
+                                    message: `${validation.missingStories.length} tasks reference non-existent stories. Please create these stories or fix the references.`,
+                                    count: validation.missingStories.length,
+                                    storyIds: validation.missingStories
+                                });
+                            }
+                            
+                            if (validationResult.summary.healthScore >= 90) {
+                                validationResult.recommendations.push({
+                                    type: 'health-excellent',
+                                    priority: 'info',
+                                    message: 'Excellent task-story linkage health! Your project has strong traceability.'
+                                });
+                            } else if (validationResult.summary.healthScore >= 70) {
+                                validationResult.recommendations.push({
+                                    type: 'health-good',
+                                    priority: 'info',
+                                    message: 'Good task-story linkage health. Consider addressing the recommendations to improve further.'
+                                });
+                            } else {
+                                validationResult.recommendations.push({
+                                    type: 'health-poor',
+                                    priority: 'high',
+                                    message: 'Poor task-story linkage health. Immediate attention needed to improve project traceability.'
+                                });
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error performing story validation:', error);
+                    validationResult.recommendations.push({
+                        type: 'validation-error',
+                        priority: 'high',
+                        message: 'Error occurred during validation. Some results may be incomplete.',
+                        details: error.message
+                    });
+                }
+                
+                validationResult.timestamp = new Date().toISOString();
+                
+                // Cache the response (shorter TTL for validation data)
+                setCacheEntry(cacheKey, validationResult);
+                
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'private, max-age=180'
+                });
+                res.end(JSON.stringify(validationResult));
+                
+            } catch (err) {
+                console.error(`Error validating story links for ${project.path}:`, err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    error: 'Failed to validate story links',
+                    details: err.message 
+                }));
+            }
+            
+        } else if (url.pathname === '/api/tasks/cache-clear' && req.method === 'POST') {
+            // Enhanced cache management endpoint with selective clearing
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            
+            req.on('end', async () => {
+                try {
+                    let requestData = {};
+                    if (body) {
+                        try {
+                            requestData = JSON.parse(body);
+                        } catch (parseErr) {
+                            console.warn('Invalid JSON in cache-clear request, using default behavior');
+                        }
+                    }
+                    
+                    const { projectId, cacheType, all = false } = requestData;
+                    let clearedCount = 0;
+                    let clearedTypes = [];
+                    
+                    if (all || (!projectId && !cacheType)) {
+                        // Clear all cache
+                        clearedCount = taskStoryCache.size;
+                        clearCache();
+                        clearedTypes.push('all');
+                        console.log('All task-story integration cache cleared');
+                    } else {
+                        // Selective cache clearing
+                        const cacheKeys = Array.from(taskStoryCache.keys());
+                        
+                        cacheKeys.forEach(key => {
+                            let shouldClear = false;
+                            
+                            if (projectId && key.includes(projectId)) {
+                                shouldClear = true;
+                            }
+                            
+                            if (cacheType && key.startsWith(cacheType)) {
+                                shouldClear = true;
+                            }
+                            
+                            if (projectId && cacheType && key.startsWith(`${cacheType}-${projectId}`)) {
+                                shouldClear = true;
+                            }
+                            
+                            if (shouldClear) {
+                                taskStoryCache.delete(key);
+                                clearedCount++;
+                                
+                                // Track what types were cleared
+                                const type = key.split('-')[0];
+                                if (!clearedTypes.includes(type)) {
+                                    clearedTypes.push(type);
+                                }
+                            }
+                        });
+                        
+                        console.log(`Selective cache clear: ${clearedCount} entries cleared for projectId=${projectId}, cacheType=${cacheType}`);
+                    }
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        success: true,
+                        message: `Cache cleared successfully: ${clearedCount} entries`,
+                        cleared: {
+                            count: clearedCount,
+                            types: clearedTypes,
+                            projectId: projectId || 'all',
+                            cacheType: cacheType || 'all'
+                        },
+                        timestamp: new Date().toISOString()
+                    }));
+                } catch (err) {
+                    console.error('Error clearing cache:', err);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: 'Failed to clear cache',
+                        details: err.message 
+                    }));
+                }
+            });
+            
+        } else if (url.pathname === '/api/tasks/cache-status' && req.method === 'GET') {
+            // Cache status and metrics endpoint
+            try {
+                const cacheEntries = Array.from(taskStoryCache.entries());
+                const now = Date.now();
+                
+                let stats = {
+                    totalEntries: cacheEntries.length,
+                    cacheSize: taskStoryCache.size,
+                    ttl: CACHE_TTL,
+                    byType: {},
+                    byProject: {},
+                    expired: 0,
+                    fresh: 0,
+                    oldestEntry: null,
+                    newestEntry: null
+                };
+                
+                cacheEntries.forEach(([key, entry]) => {
+                    const age = now - entry.timestamp;
+                    const isExpired = age > CACHE_TTL;
+                    
+                    if (isExpired) {
+                        stats.expired++;
+                    } else {
+                        stats.fresh++;
+                    }
+                    
+                    // Track oldest and newest
+                    if (!stats.oldestEntry || entry.timestamp < stats.oldestEntry.timestamp) {
+                        stats.oldestEntry = {
+                            key,
+                            timestamp: entry.timestamp,
+                            age: age,
+                            expired: isExpired
+                        };
+                    }
+                    
+                    if (!stats.newestEntry || entry.timestamp > stats.newestEntry.timestamp) {
+                        stats.newestEntry = {
+                            key,
+                            timestamp: entry.timestamp,
+                            age: age,
+                            expired: isExpired
+                        };
+                    }
+                    
+                    // Parse cache type and project ID from key
+                    const keyParts = key.split('-');
+                    const cacheType = keyParts[0];
+                    const projectId = keyParts[1];
+                    
+                    // Count by type
+                    if (!stats.byType[cacheType]) {
+                        stats.byType[cacheType] = { count: 0, fresh: 0, expired: 0 };
+                    }
+                    stats.byType[cacheType].count++;
+                    if (isExpired) {
+                        stats.byType[cacheType].expired++;
+                    } else {
+                        stats.byType[cacheType].fresh++;
+                    }
+                    
+                    // Count by project
+                    if (projectId) {
+                        if (!stats.byProject[projectId]) {
+                            stats.byProject[projectId] = { count: 0, fresh: 0, expired: 0 };
+                        }
+                        stats.byProject[projectId].count++;
+                        if (isExpired) {
+                            stats.byProject[projectId].expired++;
+                        } else {
+                            stats.byProject[projectId].fresh++;
+                        }
+                    }
+                });
+                
+                // Calculate hit rates and efficiency metrics
+                stats.efficiency = {
+                    freshPercentage: stats.totalEntries > 0 ? Math.round((stats.fresh / stats.totalEntries) * 100) : 100,
+                    expiredPercentage: stats.totalEntries > 0 ? Math.round((stats.expired / stats.totalEntries) * 100) : 0,
+                    memoryUsageEstimate: `~${Math.round(stats.totalEntries * 0.001)}KB` // Rough estimate
+                };
+                
+                stats.timestamp = new Date().toISOString();
+                
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate'
+                });
+                res.end(JSON.stringify(stats));
+                
+            } catch (err) {
+                console.error('Error getting cache status:', err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    error: 'Failed to get cache status',
+                    details: err.message 
+                }));
+            }
+            
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.includes('/link-story') && req.method === 'POST') {
+            // Link a task to a story
+            const pathParts = url.pathname.split('/');
+            const projectId = pathParts[3]; // Extract projectId from /api/tasks/{projectId}/link-story
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Project not found' }));
+                return;
+            }
+            
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            
+            req.on('end', async () => {
+                try {
+                    const { taskId, storyId } = JSON.parse(body);
+                    
+                    if (!taskId || !storyId) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ 
+                            error: 'Missing required parameters: taskId and storyId' 
+                        }));
+                        return;
+                    }
+                    
+                    // Read current tasks
+                    const data = await fs.readFile(project.path, 'utf8');
+                    let tasksData = JSON.parse(data);
+                    
+                    if (Array.isArray(tasksData)) {
+                        tasksData = { tasks: tasksData };
+                    }
+                    
+                    // Find the task to update
+                    const taskIndex = tasksData.tasks.findIndex(t => t.id === taskId);
+                    if (taskIndex === -1) {
+                        res.writeHead(404, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Task not found' }));
+                        return;
+                    }
+                    
+                    // Validate story exists (if BMAD is available)
+                    let storyExists = true;
+                    try {
+                        const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                        const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                        
+                        if (bmadExists) {
+                            const bmadApi = await import('./src/utils/bmad-api.js');
+                            const stories = await bmadApi.getStories(projectId);
+                            storyExists = stories.some(s => s.id === storyId);
+                        }
+                    } catch (error) {
+                        console.warn('Could not validate story existence:', error);
+                        // Continue without validation if BMAD is unavailable
+                    }
+                    
+                    if (!storyExists) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ 
+                            error: 'Story not found in project',
+                            storyId: storyId 
+                        }));
+                        return;
+                    }
+                    
+                    // Update the task with story link
+                    const previousStoryId = tasksData.tasks[taskIndex].storyId;
+                    tasksData.tasks[taskIndex].storyId = storyId;
+                    tasksData.tasks[taskIndex].updatedAt = getLocalISOString();
+                    
+                    // Save updated tasks
+                    await fs.writeFile(project.path, JSON.stringify(tasksData, null, 2));
+                    
+                    // Clear relevant cache entries
+                    const cacheKeys = Array.from(taskStoryCache.keys());
+                    cacheKeys.forEach(key => {
+                        if (key.includes(projectId)) {
+                            taskStoryCache.delete(key);
+                        }
+                    });
+                    
+                    console.log(`Task ${taskId} linked to story ${storyId} (previously: ${previousStoryId || 'none'})`);
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        success: true,
+                        message: 'Task linked to story successfully',
+                        taskId: taskId,
+                        storyId: storyId,
+                        previousStoryId: previousStoryId || null,
+                        timestamp: new Date().toISOString()
+                    }));
+                    
+                } catch (err) {
+                    console.error(`Error linking task to story for project ${projectId}:`, err);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: 'Failed to link task to story',
+                        details: err.message 
+                    }));
+                }
+            });
+            
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.includes('/unlink-story') && req.method === 'POST') {
+            // Unlink a task from its story
+            const pathParts = url.pathname.split('/');
+            const projectId = pathParts[3]; // Extract projectId from /api/tasks/{projectId}/unlink-story
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Project not found' }));
+                return;
+            }
+            
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            
+            req.on('end', async () => {
+                try {
+                    const { taskId } = JSON.parse(body);
+                    
+                    if (!taskId) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ 
+                            error: 'Missing required parameter: taskId' 
+                        }));
+                        return;
+                    }
+                    
+                    // Read current tasks
+                    const data = await fs.readFile(project.path, 'utf8');
+                    let tasksData = JSON.parse(data);
+                    
+                    if (Array.isArray(tasksData)) {
+                        tasksData = { tasks: tasksData };
+                    }
+                    
+                    // Find the task to update
+                    const taskIndex = tasksData.tasks.findIndex(t => t.id === taskId);
+                    if (taskIndex === -1) {
+                        res.writeHead(404, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Task not found' }));
+                        return;
+                    }
+                    
+                    // Remove story link
+                    const previousStoryId = tasksData.tasks[taskIndex].storyId;
+                    delete tasksData.tasks[taskIndex].storyId;
+                    tasksData.tasks[taskIndex].updatedAt = getLocalISOString();
+                    
+                    // Save updated tasks
+                    await fs.writeFile(project.path, JSON.stringify(tasksData, null, 2));
+                    
+                    // Clear relevant cache entries
+                    const cacheKeys = Array.from(taskStoryCache.keys());
+                    cacheKeys.forEach(key => {
+                        if (key.includes(projectId)) {
+                            taskStoryCache.delete(key);
+                        }
+                    });
+                    
+                    console.log(`Task ${taskId} unlinked from story ${previousStoryId || 'none'}`);
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        success: true,
+                        message: 'Task unlinked from story successfully',
+                        taskId: taskId,
+                        previousStoryId: previousStoryId || null,
+                        timestamp: new Date().toISOString()
+                    }));
+                    
+                } catch (err) {
+                    console.error(`Error unlinking task from story for project ${projectId}:`, err);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: 'Failed to unlink task from story',
+                        details: err.message 
+                    }));
+                }
+            });
+            
+        } else if (url.pathname.startsWith('/api/tasks/') && url.pathname.includes('/bulk-link-stories') && req.method === 'POST') {
+            // Bulk link multiple tasks to stories
+            const pathParts = url.pathname.split('/');
+            const projectId = pathParts[3]; // Extract projectId from /api/tasks/{projectId}/bulk-link-stories
+            const project = projects.find(p => p.id === projectId);
+            
+            if (!project) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Project not found' }));
+                return;
+            }
+            
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            
+            req.on('end', async () => {
+                try {
+                    const { links } = JSON.parse(body); // Array of {taskId, storyId} objects
+                    
+                    if (!Array.isArray(links) || links.length === 0) {
+                        res.writeHead(400, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ 
+                            error: 'Missing or invalid parameter: links (should be array of {taskId, storyId})' 
+                        }));
+                        return;
+                    }
+                    
+                    // Read current tasks
+                    const data = await fs.readFile(project.path, 'utf8');
+                    let tasksData = JSON.parse(data);
+                    
+                    if (Array.isArray(tasksData)) {
+                        tasksData = { tasks: tasksData };
+                    }
+                    
+                    let successful = 0;
+                    let failed = 0;
+                    let results = [];
+                    
+                    // Get available stories for validation
+                    let availableStories = [];
+                    try {
+                        const bmadPath = path.join(project.projectRoot, '.bmad-core');
+                        const bmadExists = await fs.access(bmadPath).then(() => true).catch(() => false);
+                        
+                        if (bmadExists) {
+                            const bmadApi = await import('./src/utils/bmad-api.js');
+                            availableStories = await bmadApi.getStories(projectId);
+                        }
+                    } catch (error) {
+                        console.warn('Could not load stories for bulk validation:', error);
+                    }
+                    
+                    // Process each link
+                    for (const link of links) {
+                        const { taskId, storyId } = link;
+                        
+                        try {
+                            // Find the task
+                            const taskIndex = tasksData.tasks.findIndex(t => t.id === taskId);
+                            if (taskIndex === -1) {
+                                results.push({
+                                    taskId,
+                                    storyId,
+                                    success: false,
+                                    error: 'Task not found'
+                                });
+                                failed++;
+                                continue;
+                            }
+                            
+                            // Validate story exists (if stories are available)
+                            if (availableStories.length > 0 && !availableStories.some(s => s.id === storyId)) {
+                                results.push({
+                                    taskId,
+                                    storyId,
+                                    success: false,
+                                    error: 'Story not found in project'
+                                });
+                                failed++;
+                                continue;
+                            }
+                            
+                            // Update the task
+                            const previousStoryId = tasksData.tasks[taskIndex].storyId;
+                            tasksData.tasks[taskIndex].storyId = storyId;
+                            tasksData.tasks[taskIndex].updatedAt = getLocalISOString();
+                            
+                            results.push({
+                                taskId,
+                                storyId,
+                                success: true,
+                                previousStoryId: previousStoryId || null
+                            });
+                            successful++;
+                            
+                        } catch (error) {
+                            results.push({
+                                taskId,
+                                storyId,
+                                success: false,
+                                error: error.message
+                            });
+                            failed++;
+                        }
+                    }
+                    
+                    // Save updated tasks
+                    await fs.writeFile(project.path, JSON.stringify(tasksData, null, 2));
+                    
+                    // Clear relevant cache entries
+                    const cacheKeys = Array.from(taskStoryCache.keys());
+                    cacheKeys.forEach(key => {
+                        if (key.includes(projectId)) {
+                            taskStoryCache.delete(key);
+                        }
+                    });
+                    
+                    console.log(`Bulk link operation completed: ${successful} successful, ${failed} failed`);
+                    
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        success: true,
+                        message: `Bulk link completed: ${successful} successful, ${failed} failed`,
+                        summary: {
+                            total: links.length,
+                            successful,
+                            failed
+                        },
+                        results,
+                        timestamp: new Date().toISOString()
+                    }));
+                    
+                } catch (err) {
+                    console.error(`Error in bulk link operation for project ${projectId}:`, err);
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ 
+                        error: 'Failed to perform bulk link operation',
+                        details: err.message 
+                    }));
+                }
+            });
             
         } else {
             // Serve static files (React app)
