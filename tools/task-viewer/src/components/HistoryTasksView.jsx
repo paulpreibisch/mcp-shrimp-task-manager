@@ -10,6 +10,17 @@ import {
 import TaskDetailView from './TaskDetailView';
 import { useTranslation } from 'react-i18next';
 import MDEditor from '@uiw/react-md-editor';
+import {
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Button,
+  useDisclosure,
+} from '@chakra-ui/react';
 
 function HistoryTasksView({ 
   tasks = [], 
@@ -23,6 +34,20 @@ function HistoryTasksView({
 }) {
   const { t } = useTranslation();
   const [selectedTask, setSelectedTask] = useState(null);
+  
+  // Modal controls for Initial Request
+  const {
+    isOpen: isInitialRequestOpen,
+    onOpen: onInitialRequestOpen,
+    onClose: onInitialRequestClose
+  } = useDisclosure();
+  
+  // Modal controls for Summary
+  const {
+    isOpen: isSummaryOpen,
+    onOpen: onSummaryOpen,
+    onClose: onSummaryClose
+  } = useDisclosure();
 
   const columns = useMemo(() => [
     {
@@ -152,26 +177,90 @@ function HistoryTasksView({
       <div className="history-tasks-header">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <h2>📋 {t('tasksFrom')} {historyEntry ? new Date(historyEntry.timestamp).toLocaleString() : ''}</h2>
-          <button 
-            className="back-button" 
-            onClick={onBack} 
-            title={t('backToHistory')}
-            style={{ 
-              backgroundColor: '#8b5cf6', 
-              color: 'white', 
-              border: 'none',
-              padding: '8px 16px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'background-color 0.2s'
-            }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#7c3aed'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#8b5cf6'}
-          >
-            ← {t('backToHistory')}
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {/* Initial Request Button */}
+            {initialRequest && (
+              <button
+                id="initial-request-button"
+                data-testid="initial-request-button"
+                className="action-button"
+                onClick={onInitialRequestOpen}
+                title={t('viewInitialRequest', 'View Initial Request')}
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'background-color 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
+              >
+                📝 {t('initialRequest', 'Initial Request')}
+                {generatedInitialRequest && (
+                  <span style={{ fontSize: '11px' }}>⚡</span>
+                )}
+              </button>
+            )}
+            
+            {/* Summary Button */}
+            {summary && (
+              <button
+                id="summary-button"
+                data-testid="summary-button"
+                className="action-button"
+                onClick={onSummaryOpen}
+                title={t('viewSummary', 'View Summary')}
+                style={{
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'background-color 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = '#10b981'}
+              >
+                📊 {t('summary', 'Summary')}
+              </button>
+            )}
+            
+            {/* Back Button */}
+            <button 
+              className="back-button" 
+              onClick={onBack} 
+              title={t('backToHistory')}
+              style={{ 
+                backgroundColor: '#8b5cf6', 
+                color: 'white', 
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#7c3aed'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = '#8b5cf6'}
+            >
+              ← {t('backToHistory')}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -198,56 +287,6 @@ function HistoryTasksView({
         )}
       </div>
 
-      {/* Initial Request Section */}
-      {initialRequest && (
-        <div className="task-detail-section collapsible-section" style={{ marginBottom: '20px' }}>
-          <h3 className="collapsible-header">
-            {t('initialRequest', 'Initial Request')}
-            {generatedInitialRequest && (
-              <span style={{ 
-                marginLeft: '10px', 
-                fontSize: '12px', 
-                color: '#facc15',
-                fontWeight: 'normal',
-                backgroundColor: 'rgba(250, 204, 21, 0.1)',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                border: '1px solid rgba(250, 204, 21, 0.3)'
-              }}>
-                ⚡ Auto-generated
-              </span>
-            )}
-            <span className="expand-icon expanded">▼</span>
-          </h3>
-          <div className="collapsible-content expanded">
-            <div className="detail-content">
-              {initialRequest.replace(/\n要求:/g, '\nRequirements:').replace(/\n需求:/g, '\nRequirements:')}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Summary Section */}
-      {summary && (
-        <div className="task-detail-section collapsible-section" style={{ marginBottom: '20px' }}>
-          <h3 className="collapsible-header">
-            Summary
-            <span className="expand-icon expanded">▼</span>
-          </h3>
-          <div className="collapsible-content expanded">
-            <div className="detail-content">
-              <MDEditor.Markdown 
-                source={summary}
-                style={{
-                  backgroundColor: 'transparent',
-                  color: 'inherit'
-                }}
-                data-color-mode="dark"
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {tasks.length === 0 ? (
         <div className="empty-tasks">
@@ -330,6 +369,91 @@ function HistoryTasksView({
           </div>
         </>
       )}
+      
+      {/* Initial Request Modal */}
+      <Modal 
+        isOpen={isInitialRequestOpen} 
+        onClose={onInitialRequestClose}
+        size="xl"
+        scrollBehavior="inside"
+      >
+        <ModalOverlay />
+        <ModalContent bg="#1a1f3a" color="#e5e5e5">
+          <ModalHeader display="flex" alignItems="center" gap={2}>
+            📝 {t('initialRequest', 'Initial Request')}
+            {generatedInitialRequest && (
+              <span style={{ 
+                marginLeft: '10px', 
+                fontSize: '12px', 
+                color: '#facc15',
+                fontWeight: 'normal',
+                backgroundColor: 'rgba(250, 204, 21, 0.1)',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                border: '1px solid rgba(250, 204, 21, 0.3)'
+              }}>
+                ⚡ Auto-generated
+              </span>
+            )}
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <div style={{ 
+              whiteSpace: 'pre-wrap',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              padding: '16px',
+              backgroundColor: '#0f1626',
+              borderRadius: '8px'
+            }}>
+              {initialRequest.replace(/\n要求:/g, '\nRequirements:').replace(/\n需求:/g, '\nRequirements:')}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="purple" onClick={onInitialRequestClose}>
+              {t('close', 'Close')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      
+      {/* Summary Modal */}
+      <Modal 
+        isOpen={isSummaryOpen} 
+        onClose={onSummaryClose}
+        size="xl"
+        scrollBehavior="inside"
+      >
+        <ModalOverlay />
+        <ModalContent bg="#1a1f3a" color="#e5e5e5">
+          <ModalHeader display="flex" alignItems="center" gap={2}>
+            📊 {t('summary', 'Summary')}
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#0f1626',
+              borderRadius: '8px'
+            }}>
+              <MDEditor.Markdown 
+                source={summary}
+                style={{
+                  backgroundColor: 'transparent',
+                  color: 'inherit'
+                }}
+                data-color-mode="dark"
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="green" onClick={onSummaryClose}>
+              {t('close', 'Close')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
