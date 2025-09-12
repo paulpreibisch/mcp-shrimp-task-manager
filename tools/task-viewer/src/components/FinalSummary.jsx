@@ -159,77 +159,75 @@ const FinalSummary = forwardRef(({
     });
   };
 
+  // Component only renders the modal, no visible UI
   return (
-    <>
-      {/* Summary Modal */}
-      <Modal 
-        isOpen={isSummaryModalOpen} 
-        onClose={onSummaryModalClose}
-        size="xl"
-        scrollBehavior="inside"
-      >
-        <ModalOverlay />
-        <ModalContent bg="#1a1f3a" color="#e5e5e5">
-          <ModalHeader display="flex" alignItems="center" gap={2}>
-            📊 Summary
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            {summary ? (
-              <div style={{
-                fontSize: '14px',
-                lineHeight: '1.5',
-                whiteSpace: 'pre-wrap',
-                padding: '16px',
-                backgroundColor: '#0f1626',
-                borderRadius: '8px'
-              }}>
-                {formatSummary(summary)}
-              </div>
-            ) : (
-              <div style={{
-                fontSize: '14px',
-                color: '#7f8c8d',
-                fontStyle: 'italic',
-                marginBottom: '12px',
-                padding: '16px',
-                backgroundColor: '#0f1626',
-                borderRadius: '8px'
-              }}>
-                📌 Click Generate to create an overall summary of all completed tasks.
-              </div>
-            )}
-            
-            {error && (
-              <div style={{ 
-                color: '#e74c3c', 
-                marginTop: '10px',
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                ⚠️ {error}
-              </div>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              colorScheme="teal"
-              isLoading={isGenerating}
-              loadingText="Generating..."
-              onClick={handleGenerateSummary}
-              mr={3}
-            >
-              {summary ? '🔄 Regenerate' : '✨ Generate'}
-            </Button>
-            <Button colorScheme="green" onClick={onSummaryModalClose}>
-              Close
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </>
+    <Modal 
+      isOpen={isSummaryModalOpen} 
+      onClose={onSummaryModalClose}
+      size="xl"
+      scrollBehavior="inside"
+    >
+      <ModalOverlay />
+      <ModalContent bg="#1a1f3a" color="#e5e5e5">
+        <ModalHeader display="flex" alignItems="center" gap={2}>
+          📊 Summary
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          {summary ? (
+            <div style={{
+              fontSize: '14px',
+              lineHeight: '1.5',
+              whiteSpace: 'pre-wrap',
+              padding: '16px',
+              backgroundColor: '#0f1626',
+              borderRadius: '8px'
+            }}>
+              {formatSummary(summary)}
+            </div>
+          ) : (
+            <div style={{
+              fontSize: '14px',
+              color: '#7f8c8d',
+              fontStyle: 'italic',
+              marginBottom: '12px',
+              padding: '16px',
+              backgroundColor: '#0f1626',
+              borderRadius: '8px'
+            }}>
+              📌 Click Generate to create an overall summary of all completed tasks.
+            </div>
+          )}
+          
+          {error && (
+            <div style={{ 
+              color: '#e74c3c', 
+              marginTop: '10px',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              ⚠️ {error}
+            </div>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            colorScheme="teal"
+            isLoading={isGenerating}
+            loadingText="Generating..."
+            onClick={handleGenerateSummary}
+            mr={3}
+          >
+            {summary ? '🔄 Regenerate' : '✨ Generate'}
+          </Button>
+          <Button colorScheme="green" onClick={onSummaryModalClose}>
+            Close
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
 });
 

@@ -1742,32 +1742,30 @@ function AppContent() {
                       </button>
                     )}
                     
-                    {/* Summary Button */}
-                    {summary && (
-                      <button
-                        id="summary-button"
-                        data-testid="summary-button"
-                        name="summary-button"
-                        className="action-button"
-                        onClick={() => summaryRef.current?.openModal()}
-                        title={t('viewSummary', 'View Summary')}
-                        style={{
-                          padding: '8px 12px',
-                          marginRight: '8px',
-                          backgroundColor: '#10b981',
-                          border: 'none',
-                          borderRadius: '4px',
-                          color: '#fff',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                      >
-                        📊 {t('summary', 'Summary')}
-                      </button>
-                    )}
+                    {/* Summary Button - always show to allow generation */}
+                    <button
+                      id="summary-button"
+                      data-testid="summary-button"
+                      name="summary-button"
+                      className="action-button"
+                      onClick={() => summaryRef.current?.openModal()}
+                      title={summary ? t('viewSummary', 'View Summary') : t('generateSummary', 'Generate Summary')}
+                      style={{
+                        padding: '8px 12px',
+                        marginRight: '8px',
+                        backgroundColor: '#10b981',
+                        border: 'none',
+                        borderRadius: '4px',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      📊 {summary ? t('summary', 'Summary') : t('generateSummary', 'Generate Summary')}
+                    </button>
 
                     <button
                       name="export-tasks-button"
