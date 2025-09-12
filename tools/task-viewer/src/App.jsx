@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChakraProvider } from '@chakra-ui/react';
+import { 
+  ChakraProvider,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Button,
+  useDisclosure,
+} from '@chakra-ui/react';
 import TaskTable from './components/TaskTable';
 import { analyzeTaskParallelization, generateFullExecutionPlan, copyToClipboard } from './utils/taskParallelization';
 import FinalSummary from './components/FinalSummary';
@@ -41,6 +52,7 @@ import chakraTheme from './theme/chakra-theme';
 function AppContent() {
   const { t, i18n } = useTranslation();
   const currentLanguage = i18n.language;
+  const summaryRef = useRef(null);
   
   // Performance monitoring for the main App component
   const performanceData = usePerformanceMonitoring('AppContent', {
@@ -129,11 +141,12 @@ function AppContent() {
   // Current task state for chat context
   const [currentTask, setCurrentTask] = useState(null);
   
-  // Initial request collapse state
-  const [initialRequestCollapsed, setInitialRequestCollapsed] = useState(() => {
-    const saved = localStorage.getItem('initialRequestCollapsed');
-    return saved !== null ? saved === 'true' : false;
-  });
+  // Modal controls for Initial Request
+  const {
+    isOpen: isInitialRequestOpen,
+    onOpen: onInitialRequestOpen,
+    onClose: onInitialRequestClose
+  } = useDisclosure();
 
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false);
@@ -667,10 +680,6 @@ function AppContent() {
     localStorage.setItem('watcherEnabled', watcherEnabled.toString());
   }, [watcherEnabled]);
 
-  // Save initial request collapse state to localStorage when it changes
-  useEffect(() => {
-    localStorage.setItem('initialRequestCollapsed', initialRequestCollapsed.toString());
-  }, [initialRequestCollapsed]);
   
   // Update URL when history view changes
   useEffect(() => {
@@ -1706,6 +1715,60 @@ function AppContent() {
                   </div>
 
                   <div className="controls-right" name="right-side-controls">
+                    {/* Initial Request Button */}
+                    {initialRequest && (
+                      <button
+                        id="initial-request-button"
+                        data-testid="initial-request-button"
+                        name="initial-request-button"
+                        className="action-button"
+                        onClick={onInitialRequestOpen}
+                        title={t('viewInitialRequest', 'View Initial Request')}
+                        style={{
+                          padding: '8px 12px',
+                          marginRight: '8px',
+                          backgroundColor: '#3b82f6',
+                          border: 'none',
+                          borderRadius: '4px',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        📝 {t('initialRequest', 'Initial Request')}
+                      </button>
+                    )}
+                    
+                    {/* Summary Button */}
+                    {summary && (
+                      <button
+                        id="summary-button"
+                        data-testid="summary-button"
+                        name="summary-button"
+                        className="action-button"
+                        onClick={() => summaryRef.current?.openModal()}
+                        title={t('viewSummary', 'View Summary')}
+                        style={{
+                          padding: '8px 12px',
+                          marginRight: '8px',
+                          backgroundColor: '#10b981',
+                          border: 'none',
+                          borderRadius: '4px',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        📊 {t('summary', 'Summary')}
+                      </button>
+                    )}
+
                     <button
                       name="export-tasks-button"
                       className="export-button"
@@ -1871,66 +1934,10 @@ function AppContent() {
                   </div>
                 </div>
 
-                {/* Initial Request Display */}
-                {initialRequest && (
-                  <div style={{
-                    backgroundColor: '#16213e',
-                    border: '1px solid #2c3e50',
-                    borderRadius: '8px',
-                    marginBottom: '20px',
-                    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-                    overflow: 'hidden'
-                  }}>
-                    <div 
-                      style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#4fbdba',
-                        padding: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        cursor: 'pointer',
-                        borderBottom: initialRequestCollapsed ? 'none' : '1px solid #2c3e50'
-                      }}
-                      onClick={() => setInitialRequestCollapsed(!initialRequestCollapsed)}
-                      title={initialRequestCollapsed ? 'Click to expand' : 'Click to collapse'}
-                    >
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}>
-                        <span style={{
-                          fontSize: '16px'
-                        }}>📋</span>
-                        {t('initialRequest', 'Initial Request')}
-                      </div>
-                      <span style={{
-                        fontSize: '16px',
-                        transition: 'transform 0.2s ease',
-                        transform: initialRequestCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)'
-                      }}>
-                        ▼
-                      </span>
-                    </div>
-                    {!initialRequestCollapsed && (
-                      <div style={{
-                        fontSize: '14px',
-                        color: '#b8c5d6',
-                        lineHeight: '1.5',
-                        whiteSpace: 'pre-wrap',
-                        padding: '16px',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        {initialRequest.replace(/\n要求:/g, '\nRequirements:').replace(/\n需求:/g, '\nRequirements:')}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* Summarize - positioned at task list level */}
                 <FinalSummary
+                  ref={summaryRef}
                   tasks={tasks}
                   projectId={selectedProfile}
                   onSummaryGenerated={(summary) => {
@@ -2504,6 +2511,40 @@ function AppContent() {
             )
           }}
         />
+
+      {/* Initial Request Modal */}
+      <Modal 
+        isOpen={isInitialRequestOpen} 
+        onClose={onInitialRequestClose}
+        size="xl"
+        scrollBehavior="inside"
+      >
+        <ModalOverlay />
+        <ModalContent bg="#1a1f3a" color="#e5e5e5">
+          <ModalHeader display="flex" alignItems="center" gap={2}>
+            📝 {t('initialRequest', 'Initial Request')}
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <div style={{ 
+              whiteSpace: 'pre-wrap',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              padding: '16px',
+              backgroundColor: '#0f1626',
+              borderRadius: '8px'
+            }}>
+              {initialRequest?.replace(/\n要求:/g, '\nRequirements:').replace(/\n需求:/g, '\nRequirements:')}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" onClick={onInitialRequestClose}>
+              {t('close', 'Close')}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* Export Modal */}
       <ExportModal 

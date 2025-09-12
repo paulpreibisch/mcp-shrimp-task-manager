@@ -1,23 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import {
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  Button,
+  useDisclosure,
+} from '@chakra-ui/react';
 
-function FinalSummary({ 
+const FinalSummary = forwardRef(({ 
   tasks = [], 
   projectId, 
   onSummaryGenerated, 
   existingSummary = null 
-}) {
+}, ref) => {
   const [summary, setSummary] = useState(existingSummary);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
-  const [isExpanded, setIsExpanded] = useState(() => {
-    const saved = localStorage.getItem('finalSummaryExpanded');
-    return saved !== null ? saved === 'true' : false;
-  });
-
-  // Save expand state to localStorage when it changes
+  
+  // Modal controls
+  const {
+    isOpen: isSummaryModalOpen,
+    onOpen: onSummaryModalOpen,
+    onClose: onSummaryModalClose
+  } = useDisclosure();
+  
+  // Update summary when existingSummary prop changes
   useEffect(() => {
-    localStorage.setItem('finalSummaryExpanded', isExpanded.toString());
-  }, [isExpanded]);
+    setSummary(existingSummary);
+  }, [existingSummary]);
+  
+  // Expose openModal method via ref
+  useImperativeHandle(ref, () => ({
+    openModal: onSummaryModalOpen
+  }));
 
   const handleGenerateSummary = async () => {
     console.log('Generate button clicked');
@@ -141,129 +160,77 @@ function FinalSummary({
   };
 
   return (
-    <div 
-      style={{
-        backgroundColor: '#16213e',
-        border: '1px solid #2c3e50',
-        borderRadius: '8px',
-        marginBottom: '20px',
-        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        overflow: 'hidden'
-      }}
-      data-testid="summarize-section"
-    >
-      <div 
-        style={{
-          fontSize: '14px',
-          fontWeight: '600',
-          color: '#4fbdba',
-          padding: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
-          borderBottom: isExpanded ? '1px solid #2c3e50' : 'none'
-        }}
-        onClick={() => setIsExpanded(!isExpanded)}
-        title={isExpanded ? 'Click to collapse' : 'Click to expand'}
+    <>
+      {/* Summary Modal */}
+      <Modal 
+        isOpen={isSummaryModalOpen} 
+        onClose={onSummaryModalClose}
+        size="xl"
+        scrollBehavior="inside"
       >
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <span style={{ fontSize: '16px' }}>📝</span>
-          Summarize
-        </div>
-        <span style={{
-          fontSize: '16px',
-          transition: 'transform 0.2s ease',
-          transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)'
-        }}>
-          ▼
-        </span>
-      </div>
-      
-      {isExpanded && (
-        <div style={{
-          padding: '16px',
-          transition: 'all 0.3s ease'
-        }}>
-          {summary ? (
-            <div style={{
-              fontSize: '14px',
-              lineHeight: '1.5',
-              whiteSpace: 'pre-wrap'
-            }}>
-              {formatSummary(summary)}
-            </div>
-          ) : (
-            <div style={{
-              fontSize: '14px',
-              color: '#7f8c8d',
-              fontStyle: 'italic',
-              marginBottom: '12px'
-            }}>
-              📌 Click Generate to create an overall summary of all completed tasks.
-            </div>
-          )}
-          
-          {error && (
-            <div style={{ 
-              color: '#e74c3c', 
-              marginTop: '10px',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              ⚠️ {error}
-            </div>
-          )}
-          
-          <div style={{ marginTop: '16px' }}>
-            <button
-              style={{
-                backgroundColor: isGenerating ? '#2c3e50' : '#4fbdba',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '8px 16px',
+        <ModalOverlay />
+        <ModalContent bg="#1a1f3a" color="#e5e5e5">
+          <ModalHeader display="flex" alignItems="center" gap={2}>
+            📊 Summary
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {summary ? (
+              <div style={{
                 fontSize: '14px',
-                fontWeight: '500',
-                cursor: isGenerating ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
-                opacity: isGenerating ? 0.7 : 1,
-                display: 'inline-flex',
+                lineHeight: '1.5',
+                whiteSpace: 'pre-wrap',
+                padding: '16px',
+                backgroundColor: '#0f1626',
+                borderRadius: '8px'
+              }}>
+                {formatSummary(summary)}
+              </div>
+            ) : (
+              <div style={{
+                fontSize: '14px',
+                color: '#7f8c8d',
+                fontStyle: 'italic',
+                marginBottom: '12px',
+                padding: '16px',
+                backgroundColor: '#0f1626',
+                borderRadius: '8px'
+              }}>
+                📌 Click Generate to create an overall summary of all completed tasks.
+              </div>
+            )}
+            
+            {error && (
+              <div style={{ 
+                color: '#e74c3c', 
+                marginTop: '10px',
+                fontSize: '14px',
+                display: 'flex',
                 alignItems: 'center',
                 gap: '6px'
-              }}
+              }}>
+                ⚠️ {error}
+              </div>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              colorScheme="teal"
+              isLoading={isGenerating}
+              loadingText="Generating..."
               onClick={handleGenerateSummary}
-              disabled={isGenerating}
-              onMouseEnter={(e) => {
-                if (!isGenerating) {
-                  e.target.style.backgroundColor = '#3498db';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isGenerating) {
-                  e.target.style.backgroundColor = '#4fbdba';
-                }
-              }}
+              mr={3}
             >
-              {isGenerating ? (
-                <>⏳ Generating...</>
-              ) : summary ? (
-                <>🔄 Regenerate</>
-              ) : (
-                <>✨ Generate</>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+              {summary ? '🔄 Regenerate' : '✨ Generate'}
+            </Button>
+            <Button colorScheme="green" onClick={onSummaryModalClose}>
+              Close
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
-}
+});
 
 export default FinalSummary;
