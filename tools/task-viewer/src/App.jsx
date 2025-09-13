@@ -1636,7 +1636,7 @@ function AppContent() {
           children={{
             dashboard: (
               <DashboardView 
-                tasks={filteredAndSearchedTasks}
+                tasks={tasks}
                 profileId={selectedProfile}
                 stats={stats}
                 loading={loading}
